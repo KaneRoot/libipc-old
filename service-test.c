@@ -48,6 +48,8 @@ void main_loop (const char *spath)
                 exit (1);
             }
         }
+
+        service_free_processes (&proc, nproc);
     } while (0); // it's a test, we only do it once
 
     close (sfifo); // closes the service named pipe

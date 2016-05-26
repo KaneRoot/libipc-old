@@ -45,47 +45,50 @@ int service_close (const char *fifopath)
     return 0;
 }
 
+// TODO only works for a single process
 void service_get_new_processes (struct process **proc, int *nproc, int sfifo)
 {
     char buf[BUFSIZ];
     bzero (buf, BUFSIZ);
     read (sfifo, buf, BUFSIZ);
 
-    // TODO
-#if 0
-    unsigned long long int val = strtoull(s, NULL, 10);
+    proc = malloc(sizeof(struct process*) * 1); // FIXME
+    proc[0] = malloc(sizeof(struct process) * 1); // FIXME
+
+    // unsigned long long int val = strtoul(s, NULL, 10);
 
     char *token, *saveptr;
     char *str;
-    int i, j;
+    int i;
 
-    // printf("%d fields :: ", f->nbfields);
-    // for( i = 0 ; i < f->nbfields ; i++) {
-    //     printf("%u, ", f->fields[i]);
-    // }
-    // printf("\n");
-
-    for (str = s, i = 1; ; str = NULL, i++) {
-        token = strtok_r(str, delim, &saveptr);
+    for (str = buf, i = 1; ; str = NULL, i++) {
+        token = strtok_r(str, " ", &saveptr);
         if (token == NULL)
             break;
 
-        // check if we need to print the current token humanized
-        int found = 0;
-
-        for (j = 0 ; j < f->nbfields && found == 0; j++ ) {
-            if( i == f->fields[j] ) {
-                print_token_to_human(token);
-                found = 1;
-            }
+        // do something
+        if (i == 1) {
+            // FIXME
+            proc[0]->pid = strtoul(token, NULL, 10);
+        }
+        else if (i == 2) {
+            // FIXME
+            proc[0]->version = strtoul(token, NULL, 10);
         }
 
-        // print the current token not humanized
-        if (found == 0) {
-            printf("%s ", token);
-        }
     }
-#endif
+}
+
+void struct_process_free (struct process * p)
+{
+    free (p);
+}
+
+void service_free_processes (struct process **procs, int nproc)
+{
+    while (--nproc != -1) {
+        struct_process_free (procs[nproc]);
+    }
 }
 
 void gen_process_structure (struct process *p
@@ -168,10 +171,32 @@ int process_close (struct process *proc)
 
 int process_read (struct process *proc, void * buf, size_t * msize)
 {
+    if ((*msize = read (proc->in, buf, *msize)))
+        return *msize;
+
     return 0;
 }
 
 int process_write (struct process *proc, void * buf, size_t msize)
 {
+    if ((msize = write (proc->out, buf, msize)))
+        return msize;
+
+    return 0;
+}
+
+int service_read (struct process *proc, void * buf, size_t * msize)
+{
+    if ((*msize = read (proc->out, buf, *msize)))
+        return *msize;
+
+    return 0;
+}
+
+int service_write (struct process *proc, void * buf, size_t msize)
+{
+    if ((msize = write (proc->in, buf, msize)))
+        return msize;
+
     return 0;
 }

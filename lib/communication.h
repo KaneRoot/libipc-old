@@ -43,6 +43,7 @@ int service_create (const char *sname);
 int service_close (const char *sname);
 
 void service_get_new_processes (struct process **, int *nproc, int sfifo);
+void service_free_processes (struct process **, int nproc);
 
 int process_create (struct process *, int index); // called by the application
 int process_destroy (struct process *); // called by the application
