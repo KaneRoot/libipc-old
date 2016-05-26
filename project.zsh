@@ -2,6 +2,8 @@
 package=perfect-os-junk
 version=0.0.1
 
+CFLAGS="-O2 -Wall -Wextra -Wshadow -ansi -pedantic -std=c99"
+
 targets=(libposj)
 type[libposj]=library
 sources[libposj]="$(echo lib/*.c)"

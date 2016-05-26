@@ -10,7 +10,7 @@ INCLUDEDIR := $(PREFIX)/include
 CC := cc
 AR := ar
 RANLIB := ranlib
-CFLAGS := 
+CFLAGS := -O2 -Wall -Wextra -Wshadow -ansi -pedantic -std=c99
 LDFLAGS := 
 
 Q := @
