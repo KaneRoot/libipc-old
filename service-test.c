@@ -19,35 +19,30 @@ void main_loop (const char *spath)
     do {
         service_get_new_processes (&proc, &nproc, sfifo);
 
+        printf ("nb proc : %d\n", nproc);
+
         // for each process : open, read, write, close
         for (int i = 0 ; i < nproc ; i++) {
-            printf ("new connected process : %d, version %d, index %d\n"
-                    , proc[i].pid, proc[i].version, proc[i].index);
-
-            if ((ret = process_open (&proc[i]))) {
-                fprintf(stdout, "error process_create %d\n", ret);
-                exit (1);
-            }
+            process_print (&proc[i]);
 
             // about the message
-            size_t msize;
-            char *buf;
+            size_t msize = BUFSIZ;
+            char buf[BUFSIZ];
 
             if ((ret = process_read (&proc[i], &buf, &msize))) {
                 fprintf(stdout, "error process_read %d\n", ret);
                 exit (1);
             }
 
+            printf ("read, size %ld : %s\n", msize, buf);
+
             if ((ret = process_write (&proc[i], &buf, msize))) {
                 fprintf(stdout, "error process_read %d\n", ret);
                 exit (1);
             }
-
-            if ((ret = process_close (&proc[i]))) {
-                fprintf(stdout, "error process_destroy %d\n", ret);
-                exit (1);
-            }
         }
+
+        service_free_processes (&proc, nproc);
     } while (0); // it's a test, we only do it once
 
     close (sfifo); // closes the service named pipe
@@ -80,7 +75,7 @@ int main(int argc, char * argv[])
     main_loop (spath);
 
     // the application will shut down, and remove the service named pipe
-    if ((ret = service_close ("windows"))) {
+    if ((ret = service_close (spath))) {
         fprintf(stdout, "error service_close %d\n", ret);
         exit (1);
     }
