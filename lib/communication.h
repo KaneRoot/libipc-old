@@ -11,6 +11,8 @@
 #include <sys/stat.h> // mkfifo
 #include <fcntl.h> // open
 
+#include <errno.h> // error numbers
+
 #define TMPDIR "/tmp/"
 
 #define COMMUNICATION_VERSION 1
@@ -22,7 +24,7 @@ struct process {
     pid_t pid;
     unsigned int version;
     unsigned int index;
-    int in, out;
+    FILE *in, *out;
 };
 
 // TODO create the service process structure
@@ -45,6 +47,7 @@ int service_close (const char *sname);
 void service_get_new_processes (struct process **, int *nproc, int sfifo);
 void service_free_processes (struct process **, int nproc);
 
+void process_print (struct process *);
 int process_create (struct process *, int index); // called by the application
 int process_destroy (struct process *); // called by the application
 
