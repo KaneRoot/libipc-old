@@ -16,3 +16,9 @@ for i in *.c; do
 	ldflags[${i%.c}]="libposj.a"
 done
 
+targets+=(pubsub/pubsubd)
+type[pubsub/pubsubd]=binary
+sources[pubsub/pubsubd]="pubsub/list.c pubsub/pubsubd.c"
+cflags[pubsub/pubsubd]="-I lib"
+ldflags[pubsub/pubsubd]="libposj.a"
+
