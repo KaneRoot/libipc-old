@@ -15,7 +15,7 @@ LDFLAGS :=
 
 Q := @
 
-all: libposj init-connection service-test
+all: libposj init-connection open-read-close-fifo open-write-close-fifo service-test
 
 libposj: libposj.so libposj.a
 	@:
@@ -25,9 +25,9 @@ libposj.clean: libposj.so.clean libposj.a.clean
 
 libposj.uninstall: libposj.so.uninstall libposj.a.uninstall
 
-init-connection: init-connection.o lib/communication.o 
+init-connection: init-connection.o lib/communication.o libposj.a
 	@echo '[01;32m  [LD]    [01;37minit-connection[00m'
-	$(Q)$(CC) -o init-connection $(LDFLAGS) init-connection.o lib/communication.o 
+	$(Q)$(CC) -o init-connection $(LDFLAGS) init-connection.o lib/communication.o libposj.a
 
 init-connection.install: init-connection
 	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/init-connection[00m'
@@ -42,9 +42,43 @@ init-connection.uninstall:
 	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/init-connection[00m'
 	$(Q)rm -f '$(DESTDIR)$(BINDIR)/init-connection'
 
-service-test: service-test.o lib/communication.o 
+open-read-close-fifo: open-read-close-fifo.o lib/communication.o libposj.a
+	@echo '[01;32m  [LD]    [01;37mopen-read-close-fifo[00m'
+	$(Q)$(CC) -o open-read-close-fifo $(LDFLAGS) open-read-close-fifo.o lib/communication.o libposj.a
+
+open-read-close-fifo.install: open-read-close-fifo
+	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/open-read-close-fifo[00m'
+	$(Q)mkdir -p '$(DESTDIR)$(BINDIR)'
+	$(Q)install -m0755 open-read-close-fifo $(DESTDIR)$(BINDIR)/open-read-close-fifo
+
+open-read-close-fifo.clean:  open-read-close-fifo.o.clean lib/communication.o.clean
+	@echo '[01;37m  [RM]    [01;37mopen-read-close-fifo[00m'
+	$(Q)rm -f open-read-close-fifo
+
+open-read-close-fifo.uninstall:
+	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/open-read-close-fifo[00m'
+	$(Q)rm -f '$(DESTDIR)$(BINDIR)/open-read-close-fifo'
+
+open-write-close-fifo: open-write-close-fifo.o lib/communication.o libposj.a
+	@echo '[01;32m  [LD]    [01;37mopen-write-close-fifo[00m'
+	$(Q)$(CC) -o open-write-close-fifo $(LDFLAGS) open-write-close-fifo.o lib/communication.o libposj.a
+
+open-write-close-fifo.install: open-write-close-fifo
+	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/open-write-close-fifo[00m'
+	$(Q)mkdir -p '$(DESTDIR)$(BINDIR)'
+	$(Q)install -m0755 open-write-close-fifo $(DESTDIR)$(BINDIR)/open-write-close-fifo
+
+open-write-close-fifo.clean:  open-write-close-fifo.o.clean lib/communication.o.clean
+	@echo '[01;37m  [RM]    [01;37mopen-write-close-fifo[00m'
+	$(Q)rm -f open-write-close-fifo
+
+open-write-close-fifo.uninstall:
+	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/open-write-close-fifo[00m'
+	$(Q)rm -f '$(DESTDIR)$(BINDIR)/open-write-close-fifo'
+
+service-test: service-test.o lib/communication.o libposj.a
 	@echo '[01;32m  [LD]    [01;37mservice-test[00m'
-	$(Q)$(CC) -o service-test $(LDFLAGS) service-test.o lib/communication.o 
+	$(Q)$(CC) -o service-test $(LDFLAGS) service-test.o lib/communication.o libposj.a
 
 service-test.install: service-test
 	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/service-test[00m'
@@ -129,6 +163,30 @@ lib/communication.o.clean:
 
 lib/communication.o.uninstall:
 
+open-read-close-fifo.o: open-read-close-fifo.c
+	@echo '[01;34m  [CC]    [01;37mopen-read-close-fifo.o[00m'
+	$(Q)$(CC) $(CFLAGS)  -c open-read-close-fifo.c   -o open-read-close-fifo.o
+
+open-read-close-fifo.o.install:
+
+open-read-close-fifo.o.clean:
+	@echo '[01;37m  [RM]    [01;37mopen-read-close-fifo.o[00m'
+	$(Q)rm -f open-read-close-fifo.o
+
+open-read-close-fifo.o.uninstall:
+
+open-write-close-fifo.o: open-write-close-fifo.c
+	@echo '[01;34m  [CC]    [01;37mopen-write-close-fifo.o[00m'
+	$(Q)$(CC) $(CFLAGS)  -c open-write-close-fifo.c   -o open-write-close-fifo.o
+
+open-write-close-fifo.o.install:
+
+open-write-close-fifo.o.clean:
+	@echo '[01;37m  [RM]    [01;37mopen-write-close-fifo.o[00m'
+	$(Q)rm -f open-write-close-fifo.o
+
+open-write-close-fifo.o.uninstall:
+
 service-test.o: service-test.c ./lib/communication.h
 	@echo '[01;34m  [CC]    [01;37mservice-test.o[00m'
 	$(Q)$(CC) $(CFLAGS)  -c service-test.c   -o service-test.o
@@ -156,12 +214,12 @@ $(DESTDIR)$(SHAREDIR):
 $(DESTDIR)$(INCLUDEDIR):
 	@echo '[01;35m  [DIR]   [01;37m$(INCLUDEDIR)[00m'
 	$(Q)mkdir -p $(DESTDIR)$(INCLUDEDIR)
-install: subdirs.install libposj.install init-connection.install service-test.install libposj.so.install libposj.a.install init-connection.o.install lib/communication.o.install service-test.o.install lib/communication.o.install lib/communication.o.install lib/communication.o.install
+install: subdirs.install libposj.install init-connection.install open-read-close-fifo.install open-write-close-fifo.install service-test.install libposj.so.install libposj.a.install init-connection.o.install lib/communication.o.install open-read-close-fifo.o.install lib/communication.o.install open-write-close-fifo.o.install lib/communication.o.install service-test.o.install lib/communication.o.install lib/communication.o.install lib/communication.o.install
 	@:
 
 subdirs.install:
 
-uninstall: subdirs.uninstall libposj.uninstall init-connection.uninstall service-test.uninstall libposj.so.uninstall libposj.a.uninstall init-connection.o.uninstall lib/communication.o.uninstall service-test.o.uninstall lib/communication.o.uninstall lib/communication.o.uninstall lib/communication.o.uninstall
+uninstall: subdirs.uninstall libposj.uninstall init-connection.uninstall open-read-close-fifo.uninstall open-write-close-fifo.uninstall service-test.uninstall libposj.so.uninstall libposj.a.uninstall init-connection.o.uninstall lib/communication.o.uninstall open-read-close-fifo.o.uninstall lib/communication.o.uninstall open-write-close-fifo.o.uninstall lib/communication.o.uninstall service-test.o.uninstall lib/communication.o.uninstall lib/communication.o.uninstall lib/communication.o.uninstall
 	@:
 
 subdirs.uninstall:
@@ -171,7 +229,7 @@ test: all subdirs subdirs.test
 
 subdirs.test:
 
-clean: libposj.clean init-connection.clean service-test.clean libposj.so.clean libposj.a.clean init-connection.o.clean lib/communication.o.clean service-test.o.clean lib/communication.o.clean lib/communication.o.clean lib/communication.o.clean
+clean: libposj.clean init-connection.clean open-read-close-fifo.clean open-write-close-fifo.clean service-test.clean libposj.so.clean libposj.a.clean init-connection.o.clean lib/communication.o.clean open-read-close-fifo.o.clean lib/communication.o.clean open-write-close-fifo.o.clean lib/communication.o.clean service-test.o.clean lib/communication.o.clean lib/communication.o.clean lib/communication.o.clean
 
 distclean: clean
 
@@ -188,7 +246,10 @@ $(PACKAGE)-$(VERSION).tar.gz: distdir
 	$(Q)tar czf $(PACKAGE)-$(VERSION).tar.gz \
 		$(PACKAGE)-$(VERSION)/init-connection.c \
 		$(PACKAGE)-$(VERSION)/service-test.c \
+		$(PACKAGE)-$(VERSION)/open-write-close-fifo.c \
+		$(PACKAGE)-$(VERSION)/open-read-close-fifo.c \
 		$(PACKAGE)-$(VERSION)/lib/communication.c \
+		$(PACKAGE)-$(VERSION)/libposj.a \
 		$(PACKAGE)-$(VERSION)/lib/communication.h
 
 dist-xz: $(PACKAGE)-$(VERSION).tar.xz
@@ -197,7 +258,10 @@ $(PACKAGE)-$(VERSION).tar.xz: distdir
 	$(Q)tar cJf $(PACKAGE)-$(VERSION).tar.xz \
 		$(PACKAGE)-$(VERSION)/init-connection.c \
 		$(PACKAGE)-$(VERSION)/service-test.c \
+		$(PACKAGE)-$(VERSION)/open-write-close-fifo.c \
+		$(PACKAGE)-$(VERSION)/open-read-close-fifo.c \
 		$(PACKAGE)-$(VERSION)/lib/communication.c \
+		$(PACKAGE)-$(VERSION)/libposj.a \
 		$(PACKAGE)-$(VERSION)/lib/communication.h
 
 dist-bz2: $(PACKAGE)-$(VERSION).tar.bz2
@@ -206,7 +270,10 @@ $(PACKAGE)-$(VERSION).tar.bz2: distdir
 	$(Q)tar cjf $(PACKAGE)-$(VERSION).tar.bz2 \
 		$(PACKAGE)-$(VERSION)/init-connection.c \
 		$(PACKAGE)-$(VERSION)/service-test.c \
+		$(PACKAGE)-$(VERSION)/open-write-close-fifo.c \
+		$(PACKAGE)-$(VERSION)/open-read-close-fifo.c \
 		$(PACKAGE)-$(VERSION)/lib/communication.c \
+		$(PACKAGE)-$(VERSION)/libposj.a \
 		$(PACKAGE)-$(VERSION)/lib/communication.h
 
 help:
@@ -234,6 +301,8 @@ help:
 	@echo '[01;37mProject targets: [00m'
 	@echo '    - [01;33mlibposj       [37mlibrary[00m'
 	@echo '    - [01;33minit-connection[37mbinary[00m'
+	@echo '    - [01;33mopen-read-close-fifo[37mbinary[00m'
+	@echo '    - [01;33mopen-write-close-fifo[37mbinary[00m'
 	@echo '    - [01;33mservice-test  [37mbinary[00m'
 	@echo ''
 	@echo '[01;37mMakefile options:[00m'

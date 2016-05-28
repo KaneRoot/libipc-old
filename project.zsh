@@ -12,5 +12,7 @@ for i in *.c; do
 	targets+=(${i%.c})
 	sources[${i%.c}]="$i $(echo lib/*.c)"
 	type[${i%.c}]=binary
+	depends[${i%.c}]="libposj.a"
+	ldflags[${i%.c}]="libposj.a"
 done
 
