@@ -1,4 +1,6 @@
 #include "communication.h"
+#include <stdio.h>
+#include <time.h>
 
 int service_path (char *buf, const char *sname)
 {
@@ -70,17 +72,31 @@ int service_close (const char *fifopath)
     return 0;
 }
 
-// FIXME only works for a single process
-void service_get_new_processes (struct process **proc, int *nproc, int sfifo)
+int service_get_new_process (struct process *proc, const char * spath)
 {
+    if (spath == NULL) {
+        return -1;
+    }
+
     char buf[BUFSIZ];
     bzero (buf, BUFSIZ);
-    read (sfifo, buf, BUFSIZ);
 
-    //proc[0] = malloc(sizeof(struct process*) * 1); // FIXME
-    proc[0] = malloc(sizeof(struct process) * 1); // FIXME
+    // read the pipe, get a process to work on
+    int ret;
 
-    // unsigned long long int val = strtoul(s, NULL, 10);
+    struct timespec ts = { 0 };
+    struct timespec ts2 = { 0 };
+
+    FILE * f = fopen (spath, "r");
+    clock_gettime(CLOCK_REALTIME, &ts);
+    fgets (buf, BUFSIZ, f);
+    clock_gettime(CLOCK_REALTIME, &ts2);
+    fclose (f);
+
+    printf("sec: %ld nsec: %ld\n", ts.tv_sec, ts.tv_nsec);
+    printf("sec: %ld nsec: %ld\n", ts2.tv_sec, ts2.tv_nsec);
+
+    printf("diff nsec: %ld\n", ts2.tv_nsec - ts.tv_nsec);
 
     char *token, *saveptr;
     char *str;
@@ -91,27 +107,71 @@ void service_get_new_processes (struct process **proc, int *nproc, int sfifo)
         if (token == NULL)
             break;
 
-        printf ("token : %s\n", token);
-
-        // do something
         if (i == 1) {
-            int index = strchr (token, '-') - token;
-            char * buf_pid = strndup (token, index);
-            proc[0]->pid = strtoul(buf_pid, NULL, 10);
-            proc[0]->index = strtoul(token + index +1, NULL, 10);
-
-            printf ("buf_pid : %s\n", buf_pid);
-            printf ("pid : %d\n", proc[0]->pid);
-            printf ("index : %d\n", proc[0]->index);
+            proc->pid = strtoul(token, NULL, 10);
         }
         else if (i == 2) {
-            // FIXME
-            proc[0]->version = strtoul(token, NULL, 10);
+            proc->index = strtoul(token, NULL, 10);
         }
-
+        else if (i == 3) {
+            proc->version = strtoul(token, NULL, 10);
+        }
     }
 
-    *nproc = 1;
+    return 1;
+}
+
+// FIXME only works for a single process
+void service_get_new_processes (struct process ***proc, int *nproc, char * spath)
+{
+    if (proc == NULL || spath == NULL) {
+        return;
+    }
+
+    char buf[BUFSIZ];
+    bzero (buf, BUFSIZ);
+
+    // read the pipe, get a process to work on
+    FILE * f = fopen (spath, "rb");
+    fgets (buf, BUFSIZ, f);
+    fclose (f);
+
+    char *token, *line, *saveptr, *saveptr2;
+    char *str, *str2;
+    int i, j;
+
+    *nproc = 0;
+    proc[0] = malloc(sizeof(struct process**));
+
+    for (str2 = buf, j = 1; ; str2 = NULL, j++) {
+        line = strtok_r(str2, "\n", &saveptr2);
+        if (line == NULL)
+            break;
+
+        printf ("line : %s\n", line);
+
+        *nproc = *nproc +1;
+
+        proc[0] = realloc(proc[0], sizeof(struct process*) * (*nproc));
+        proc[0][*nproc -1] = malloc(sizeof(struct process));
+
+        for (str = line, i = 1; ; str = NULL, i++) {
+            token = strtok_r(str, " ", &saveptr);
+            if (token == NULL)
+                break;
+
+            if (i == 1) {
+                proc[0][*nproc -1]->pid = strtoul(token, NULL, 10);
+            }
+            else if (i == 2) {
+                proc[0][*nproc -1]->index = strtoul(token, NULL, 10);
+            }
+            else if (i == 3) {
+                proc[0][*nproc -1]->version = strtoul(token, NULL, 10);
+            }
+
+        }
+    }
 }
 
 void struct_process_free (struct process * p)
@@ -121,7 +181,10 @@ void struct_process_free (struct process * p)
 
 void service_free_processes (struct process **procs, int nproc)
 {
-    while (--nproc != -1) {
+    printf ("free processes\n");
+    while (nproc--) {
+        printf ("free process %d\n", nproc);
+
         struct_process_free (procs[nproc]);
     }
 }
@@ -135,7 +198,8 @@ void gen_process_structure (struct process *p
 }
 
 
-void process_print (struct process *p) {
+void process_print (struct process *p)
+{
     printf ("process %d : index %d\n", p->pid, p->index);
 }
 
@@ -238,7 +302,7 @@ int process_open_in (struct process *proc)
 
     printf ("opening in %s\n", fifopathin);
     proc->in = fopen (fifopathin, "rb");
-    printf ("opened\n");
+    printf ("opened : %d\n", proc->in);
 
     return 0;
 }
@@ -256,27 +320,13 @@ int process_open_out (struct process *proc)
     return 0;
 }
 
-
-int process_open (struct process *proc)
-{
-    char fifopathin[PATH_MAX];
-    char fifopathout[PATH_MAX];
-    process_paths (fifopathin, fifopathout, proc->pid, proc->index);
-
-    printf ("opening %s\n", fifopathin);
-    proc->in = fopen (fifopathin, "rb");
-    printf ("opening %s\n", fifopathout);
-    proc->out = fopen (fifopathout, "wb");
-    printf ("opened\n");
-
-    return 0;
-}
-
 int process_close_in (struct process *proc)
 {
     printf ("closing in\n");
     if (proc->in != 0) {
+        printf ("before fclose in\n");
         fclose (proc->in);
+        printf ("after fclose in\n");
         proc->in = 0;
     }
     return 0;
@@ -302,6 +352,7 @@ int process_read (struct process *proc, void * buf, size_t * msize)
     }
 
     *msize = fread (buf, 1, *msize, proc->in); // FIXME check errors
+    printf ("DEBUG read, size %ld : %s\n", *msize, buf);
 
     if ((ret = process_close_in (proc))) {
         fprintf(stdout, "error process_close_in %d\n", ret);

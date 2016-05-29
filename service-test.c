@@ -11,41 +11,85 @@
 void main_loop (const char *spath)
 {
     int ret;
-    int sfifo = open (spath, S_IRUSR); // opens the service named pipe
+    struct process proc;
+#if 1
+    while (1) {
 
-    struct process *proc;
+        // -1 : error
+        // 0 = no new process
+        // 1 = new process
+        ret = service_get_new_process (&proc, spath);
+        if (ret == -1) {
+            fprintf (stderr, "Error service_get_new_process\n");
+            exit (1);
+        } else if (ret == 0) {
+            continue;
+        }
+
+        printf ("before print\n");
+        process_print (&proc);
+        printf ("after print\n");
+
+        // about the message
+        size_t msize = BUFSIZ;
+        char buf[BUFSIZ];
+        bzero(buf, BUFSIZ);
+
+        printf ("before read\n");
+        if ((ret = process_read (&proc, &buf, &msize))) {
+            fprintf(stdout, "error process_read %d\n", ret);
+            exit (1);
+        }
+        printf ("after read\n");
+        printf ("read, size %ld : %s\n", msize, buf);
+
+        printf ("before proc write\n");
+        if ((ret = process_write (&proc, &buf, msize))) {
+            fprintf(stdout, "error process_write %d\n", ret);
+            exit (1);
+        }
+        printf ("after proc write\n");
+    }
+#endif
+
+#if 0
+
+    int ret;
+    struct process **proc;
     int nproc = 0;
-
-    do {
-        service_get_new_processes (&proc, &nproc, sfifo);
-
-        printf ("nb proc : %d\n", nproc);
+    while (1) {
+        service_get_new_processes (&proc, &nproc, spath);
 
         // for each process : open, read, write, close
         for (int i = 0 ; i < nproc ; i++) {
-            process_print (&proc[i]);
+            printf ("before print\n");
+            process_print (proc[i]);
+            printf ("after print, i = %d\n", i);
 
             // about the message
             size_t msize = BUFSIZ;
             char buf[BUFSIZ];
+            bzero(buf, BUFSIZ);
 
-            if ((ret = process_read (&proc[i], &buf, &msize))) {
+            printf ("before read\n");
+            if ((ret = process_read (proc[i], &buf, &msize))) {
                 fprintf(stdout, "error process_read %d\n", ret);
                 exit (1);
             }
-
+            printf ("after read\n");
             printf ("read, size %ld : %s\n", msize, buf);
 
-            if ((ret = process_write (&proc[i], &buf, msize))) {
-                fprintf(stdout, "error process_read %d\n", ret);
+            printf ("before proc write\n");
+            if ((ret = process_write (proc[i], &buf, msize))) {
+                fprintf(stdout, "error process_write %d\n", ret);
                 exit (1);
             }
+            printf ("after proc write\n");
         }
-
-        service_free_processes (&proc, nproc);
-    } while (0); // it's a test, we only do it once
-
-    close (sfifo); // closes the service named pipe
+        service_free_processes (proc, nproc);
+        free (proc);
+    }
+#endif
 }
 
 /*

@@ -13,7 +13,7 @@
 
 #include <errno.h> // error numbers
 
-#define TMPDIR "/tmp/"
+#define TMPDIR "/tmp/ipc/"
 
 #define COMMUNICATION_VERSION 1
 
@@ -25,6 +25,11 @@ struct process {
     unsigned int version;
     unsigned int index;
     FILE *in, *out;
+};
+
+struct service {
+    unsigned int version;
+    unsigned int index;
 };
 
 // TODO create the service process structure
@@ -44,15 +49,13 @@ void gen_process_structure (struct process *p
 int service_create (const char *sname);
 int service_close (const char *sname);
 
-void service_get_new_processes (struct process **, int *nproc, int sfifo);
+int service_get_new_process (struct process *proc, const char * spath);
+void service_get_new_processes (struct process ***, int *nproc, char *spath);
 void service_free_processes (struct process **, int nproc);
 
 void process_print (struct process *);
 int process_create (struct process *, int index); // called by the application
 int process_destroy (struct process *); // called by the application
-
-int process_open (struct process *); // called by the service & application
-int process_close (struct process *); // called by the service & application
 
 int process_read (struct process *, void * buf, size_t *);
 int process_write (struct process *, void * buf, size_t);
