@@ -60,4 +60,7 @@ int process_destroy (struct process *); // called by the application
 int process_read (struct process *, void * buf, size_t *);
 int process_write (struct process *, void * buf, size_t);
 
+int service_read (struct process *, void * buf, size_t *);
+int service_write (struct process *, void * buf, size_t);
+
 #endif

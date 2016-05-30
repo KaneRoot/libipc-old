@@ -82,8 +82,6 @@ int service_get_new_process (struct process *proc, const char * spath)
     bzero (buf, BUFSIZ);
 
     // read the pipe, get a process to work on
-    int ret;
-
     struct timespec ts = { 0 };
     struct timespec ts2 = { 0 };
 
@@ -307,6 +305,32 @@ int process_open_in (struct process *proc)
     return 0;
 }
 
+int service_proc_open_in (struct process *proc)
+{
+    char fifopathin[PATH_MAX];
+    char fifopathout[PATH_MAX];
+    process_paths (fifopathin, fifopathout, proc->pid, proc->index);
+
+    printf ("opening in %s\n", fifopathin);
+    proc->in = fopen (fifopathin, "wb");
+    printf ("opened : %d\n", proc->in);
+
+    return 0;
+}
+
+int service_proc_open_out (struct process *proc)
+{
+    char fifopathin[PATH_MAX];
+    char fifopathout[PATH_MAX];
+    process_paths (fifopathin, fifopathout, proc->pid, proc->index);
+
+    printf ("opening out %s\n", fifopathout);
+    proc->out = fopen (fifopathout, "rb");
+    printf ("opened\n");
+
+    return 0;
+}
+
 int process_open_out (struct process *proc)
 {
     char fifopathin[PATH_MAX];
@@ -347,12 +371,12 @@ int process_read (struct process *proc, void * buf, size_t * msize)
 {
     int ret;
     if ((ret = process_open_in (proc))) {
-        fprintf(stdout, "error process_create %d\n", ret);
+        fprintf(stdout, "error process_open_in %d\n", ret);
         exit (1);
     }
 
     *msize = fread (buf, 1, *msize, proc->in); // FIXME check errors
-    printf ("DEBUG read, size %ld : %s\n", *msize, buf);
+    // printf ("DEBUG read, size %ld : %s\n", *msize, buf);
 
     if ((ret = process_close_in (proc))) {
         fprintf(stdout, "error process_close_in %d\n", ret);
@@ -381,16 +405,36 @@ int process_write (struct process *proc, void * buf, size_t msize)
 
 int service_read (struct process *proc, void * buf, size_t * msize)
 {
-    if ((*msize = fread (buf, 1, *msize, proc->out)))
-        return *msize;
+    int ret;
+    if ((ret = service_proc_open_out (proc))) {
+        fprintf(stdout, "error process_open_out %d\n", ret);
+        exit (1);
+    }
+
+    *msize = fread (buf, 1, *msize, proc->out); // FIXME check errors
+    // printf ("DEBUG read, size %ld : %s\n", *msize, buf);
+
+    if ((ret = process_close_out (proc))) {
+        fprintf(stdout, "error process_close_out %d\n", ret);
+        exit (1);
+    }
 
     return 0;
 }
 
 int service_write (struct process *proc, void * buf, size_t msize)
 {
-    if ((msize = fwrite (buf, 1, msize, proc->in)))
-        return msize;
+    int ret;
+    if ((ret = service_proc_open_in (proc))) {
+        fprintf(stdout, "error process_open_in %d\n", ret);
+        exit (1);
+    }
 
+    fwrite (buf, 1, msize, proc->in); // FIXME check errors
+
+    if ((ret = process_close_in (proc))) {
+        fprintf(stdout, "error process_close_in %d\n", ret);
+        exit (1);
+    }
     return 0;
 }
