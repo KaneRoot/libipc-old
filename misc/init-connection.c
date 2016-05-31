@@ -1,4 +1,4 @@
-#include "lib/communication.h"
+#include "../lib/communication.h"
 
 /*
  * pipes creation and removal test program
