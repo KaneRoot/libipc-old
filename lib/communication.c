@@ -300,6 +300,10 @@ int process_open_in (struct process *proc)
 
     printf ("opening in %s\n", fifopathin);
     proc->in = fopen (fifopathin, "rb");
+    if (proc->in == NULL) {
+        fprintf (stderr, "\033[31mnot opened\033[00m\n");
+        return -1;
+    }
     printf ("opened : %d\n", proc->in);
 
     return 0;
@@ -313,6 +317,10 @@ int service_proc_open_in (struct process *proc)
 
     printf ("opening in %s\n", fifopathin);
     proc->in = fopen (fifopathin, "wb");
+    if (proc->in == NULL) {
+        fprintf (stderr, "\033[31mnot opened\033[00m\n");
+        return -1;
+    }
     printf ("opened : %d\n", proc->in);
 
     return 0;
@@ -326,6 +334,10 @@ int service_proc_open_out (struct process *proc)
 
     printf ("opening out %s\n", fifopathout);
     proc->out = fopen (fifopathout, "rb");
+    if (proc->out == NULL) {
+        fprintf (stderr, "\033[31mnot opened\033[00m\n");
+        return -1;
+    }
     printf ("opened\n");
 
     return 0;
@@ -339,6 +351,10 @@ int process_open_out (struct process *proc)
 
     printf ("opening out %s\n", fifopathout);
     proc->out = fopen (fifopathout, "wb");
+    if (proc->out == NULL) {
+        fprintf (stderr, "\033[31mnot opened\033[00m\n");
+        return -1;
+    }
     printf ("opened\n");
 
     return 0;
@@ -371,16 +387,14 @@ int process_read (struct process *proc, void * buf, size_t * msize)
 {
     int ret;
     if ((ret = process_open_in (proc))) {
-        fprintf(stdout, "error process_open_in %d\n", ret);
-        exit (1);
+        return 1;
     }
 
     *msize = fread (buf, 1, *msize, proc->in); // FIXME check errors
     // printf ("DEBUG read, size %ld : %s\n", *msize, buf);
 
     if ((ret = process_close_in (proc))) {
-        fprintf(stdout, "error process_close_in %d\n", ret);
-        exit (1);
+        return 1;
     }
 
     return 0;
@@ -390,15 +404,13 @@ int process_write (struct process *proc, void * buf, size_t msize)
 {
     int ret;
     if ((ret = process_open_out (proc))) {
-        fprintf(stdout, "error process_create %d\n", ret);
-        exit (1);
+        return 1;
     }
 
     fwrite (buf, 1, msize, proc->out); // FIXME check errors
 
     if ((ret = process_close_out (proc))) {
-        fprintf(stdout, "error process_close_out %d\n", ret);
-        exit (1);
+        return 1;
     }
     return 0;
 }
@@ -407,16 +419,14 @@ int service_read (struct process *proc, void * buf, size_t * msize)
 {
     int ret;
     if ((ret = service_proc_open_out (proc))) {
-        fprintf(stdout, "error process_open_out %d\n", ret);
-        exit (1);
+        return 1;
     }
 
     *msize = fread (buf, 1, *msize, proc->out); // FIXME check errors
     // printf ("DEBUG read, size %ld : %s\n", *msize, buf);
 
     if ((ret = process_close_out (proc))) {
-        fprintf(stdout, "error process_close_out %d\n", ret);
-        exit (1);
+        return 1;
     }
 
     return 0;
@@ -426,15 +436,13 @@ int service_write (struct process *proc, void * buf, size_t msize)
 {
     int ret;
     if ((ret = service_proc_open_in (proc))) {
-        fprintf(stdout, "error process_open_in %d\n", ret);
-        exit (1);
+        return 1;
     }
 
     fwrite (buf, 1, msize, proc->in); // FIXME check errors
 
     if ((ret = process_close_in (proc))) {
-        fprintf(stdout, "error process_close_in %d\n", ret);
-        exit (1);
+        return 1;
     }
     return 0;
 }

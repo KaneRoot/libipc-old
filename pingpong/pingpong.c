@@ -19,8 +19,8 @@ void main_loop (const char *spath)
         // -1 : error, 0 = no new process, 1 = new process
         ret = service_get_new_process (&proc, spath);
         if (ret == -1) {
-            fprintf (stderr, "Error service_get_new_process\n");
-            exit (1);
+            fprintf (stderr, "error service_get_new_process\n");
+            continue;
         } else if (ret == 0) { // that should not happen
             continue;
         }
@@ -37,7 +37,7 @@ void main_loop (const char *spath)
         // printf ("before read\n");
         if ((ret = service_read (&proc, &buf, &msize))) {
             fprintf(stdout, "error service_read %d\n", ret);
-            exit (1);
+            continue;
         }
         // printf ("after read\n");
         printf ("read, size %ld : %s\n", msize, buf);
@@ -45,7 +45,7 @@ void main_loop (const char *spath)
         // printf ("before proc write\n");
         if ((ret = service_write (&proc, &buf, msize))) {
             fprintf(stdout, "error service_write %d\n", ret);
-            exit (1);
+            continue;
         }
         // printf ("after proc write\n");
         printf ("\033[32mStill \033[31m%d\033[32m applications to serve\n",cnt);
