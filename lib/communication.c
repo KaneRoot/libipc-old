@@ -72,6 +72,23 @@ int service_close (const char *fifopath)
     return 0;
 }
 
+struct process * srv_process_copy (const struct process *p)
+{
+    if (p == NULL)
+        return NULL;
+
+    struct process * copy = malloc (sizeof(struct process));
+    memcpy (copy, p, sizeof (struct process));
+
+    return copy;
+}
+
+int srv_process_eq (const struct process *p1, const struct process *p2)
+{
+    return (p1->pid == p2->pid && p1>version == p2->version
+            && p1->index == p2->index);
+}
+
 int service_get_new_process (struct process *proc, const char * spath)
 {
     if (spath == NULL) {

@@ -36,6 +36,10 @@ struct service {
 
 int service_path (char *buf, const char *sname);
 
+struct process * srv_process_copy (struct process *p);
+
+int srv_process_eq (const struct process *p1, const struct process *p2);
+
 void gen_process_structure (struct process *p
         , pid_t pid, unsigned int index, unsigned int version);
 
@@ -52,6 +56,7 @@ int service_close (const char *sname);
 int service_get_new_process (struct process *proc, const char * spath);
 void service_get_new_processes (struct process ***, int *nproc, char *spath);
 void service_free_processes (struct process **, int nproc);
+
 
 void process_print (struct process *);
 int process_create (struct process *, int index); // called by the application
