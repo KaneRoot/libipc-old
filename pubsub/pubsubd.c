@@ -9,31 +9,24 @@ ohshit(int rvalue, const char* str) {
     exit(rvalue);
 }
 
-// init lists
-void pubsubd_channels_init (struct channels *chans) { LIST_INIT(chans); }
-void pubsubd_subscriber_init (struct app_list *al) { LIST_INIT(al); } 
+// CHANNELS
 
-int
-pubsubd_channels_eq (const struct channel *c1, const struct channel *c2)
-{
-    return (strncmp (c1->chan, c2->chan, c1->chanlen) == 0);
-}
-struct channels * pubsubd_channels_copy (struct channels *c);
+void pubsubd_channels_init (struct channels *chans) { LIST_INIT(chans); }
 
 void
-pubsubd_channels_add (struct channels *chans, struct channels *c)
+pubsubd_channels_add (struct channels *chans, struct channel *c)
 {
     if(!chans || !c)
         return;
 
-    struct process *n = pubsubd_channels_copy (c);
+    struct channel *n = pubsubd_channel_copy (c);
     LIST_INSERT_HEAD(al, n, entries);
 }
 
 void
-pubsubd_subscriber_del (struct app_list *al, struct process *p)
+pubsubd_channels_del (struct app_list *al, struct channel *c)
 {
-    struct process *todel = srv_subscriber_get (al, p);
+    struct channel *todel = pubsubd_channel_get (al, c);
     if(todel != NULL) {
         LIST_REMOVE(todel, entries);
         srv_process_free (mfree, todel);
@@ -41,6 +34,24 @@ pubsubd_subscriber_del (struct app_list *al, struct process *p)
         todel = NULL;
     }
 }
+
+struct channel * pubsubd_channel_copy (struct channel *c)
+{
+    struct channel *copy;
+    copy = malloc (sizeof(struct channel));
+    memcpy (copy, c, sizeof(struct channel));
+    return copy;
+}
+
+int
+pubsubd_channels_eq (const struct channel *c1, const struct channel *c2)
+{
+    return (strncmp (c1->chan, c2->chan, c1->chanlen) == 0);
+}
+
+// SUBSCRIBER
+
+void pubsubd_subscriber_init (struct app_list *al) { LIST_INIT(al); } 
 
 void
 pubsubd_subscriber_add (struct app_list *al, struct process *p)
@@ -68,7 +79,7 @@ pubsubd_subscriber_get (const struct app_list *al
 void
 pubsubd_subscriber_del (struct app_list *al, struct process *p)
 {
-    struct process *todel = srv_subscriber_get (al, p);
+    struct process *todel = pubsubd_subscriber_get (al, p);
     if(todel != NULL) {
         LIST_REMOVE(todel, entries);
         srv_process_free (mfree, todel);
@@ -155,7 +166,7 @@ void main_loop (const char *spath)
 
     while (cnt--) {
         // -1 : error, 0 = no new process, 1 = new process
-        ret = service_get_new_process (&proc, spath);
+        ret = srv_get_new_process (&proc, spath);
         if (ret == -1) {
             fprintf (stderr, "error service_get_new_process\n");
             continue;
@@ -173,7 +184,7 @@ void main_loop (const char *spath)
         bzero(buf, BUFSIZ);
 
         // printf ("before read\n");
-        if ((ret = service_read (&proc, &buf, &msize))) {
+        if ((ret = srv_read (&proc, &buf, &msize))) {
             fprintf(stdout, "error service_read %d\n", ret);
             continue;
         }
@@ -181,10 +192,11 @@ void main_loop (const char *spath)
         printf ("read, size %ld : %s\n", msize, buf);
 
         // printf ("before proc write\n");
-        if ((ret = service_write (&proc, &buf, msize))) {
+        if ((ret = srv_write (&proc, &buf, msize))) {
             fprintf(stdout, "error service_write %d\n", ret);
             continue;
         }
+
         // printf ("after proc write\n");
         printf ("\033[32mStill \033[31m%d\033[32m applications to serve\n",cnt);
     }

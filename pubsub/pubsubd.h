@@ -19,12 +19,14 @@ struct channel {
     size_t chanlen;
 };
 
+struct channel * pubsubd_channel_copy (struct channel *c);
+
+int pubsubd_channel_eq (const struct channel *c1, const struct channel *c2);
+
 struct channels {
     struct channel *chan;
     LIST_ENTRY(channels) entries;
 };
-
-int pubsubd_channels_eq (const struct channels *c1, const struct channels *c2);
 
 struct app_list {
     struct process *p;
