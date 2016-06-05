@@ -2,7 +2,32 @@
 #include <stdio.h>
 #include <time.h>
 
-int service_path (char *buf, const char *sname)
+int file_open (FILE **f, const char *path, const char *mode)
+{
+    printf ("opening %s\n", path);
+    *f = fopen (path, mode);
+    if (*f == NULL) {
+        fprintf (stderr, "\033[31mnot opened\033[00m\n");
+        return -1;
+    }
+    printf ("opened : %ld\n", (long) *f);
+
+    return 0;
+}
+
+int file_close (FILE *f)
+{
+    if (f != 0) {
+        printf ("before fclosing\n");
+        fclose (f);
+        printf ("after fclosing\n");
+    }
+    return 0;
+}
+
+// SERVICE
+
+int srv_path (char *buf, const char *sname)
 {
     if (buf == NULL) {
         return 1;
@@ -20,15 +45,7 @@ int service_path (char *buf, const char *sname)
     return 0;
 }
 
-void process_paths (char *in, char *out, pid_t pid, int index)
-{
-    bzero (in, PATH_MAX);
-    bzero (out, PATH_MAX);
-    snprintf(in , PATH_MAX, "%s/%d-%d-in" , TMPDIR, pid, index);
-    snprintf(out, PATH_MAX, "%s/%d-%d-out", TMPDIR, pid, index);
-}
-
-int service_create (const char *fifopath)
+int srv_create (const char *fifopath)
 {
     int ret;
     if ((ret = mkfifo (fifopath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
@@ -63,7 +80,7 @@ int service_create (const char *fifopath)
     return 0;
 }
 
-int service_close (const char *fifopath)
+int srv_close (const char *fifopath)
 {
     if (unlink (fifopath)) {
         return 1;
@@ -72,24 +89,7 @@ int service_close (const char *fifopath)
     return 0;
 }
 
-struct process * srv_process_copy (const struct process *p)
-{
-    if (p == NULL)
-        return NULL;
-
-    struct process * copy = malloc (sizeof(struct process));
-    memcpy (copy, p, sizeof (struct process));
-
-    return copy;
-}
-
-int srv_process_eq (const struct process *p1, const struct process *p2)
-{
-    return (p1->pid == p2->pid && p1>version == p2->version
-            && p1->index == p2->index);
-}
-
-int service_get_new_process (struct process *proc, const char * spath)
+int srv_get_new_process (struct process *p, const char * spath)
 {
     if (spath == NULL) {
         return -1;
@@ -117,349 +117,167 @@ int service_get_new_process (struct process *proc, const char * spath)
     char *str;
     int i;
 
+    pid_t pid;
+    int index;
+    int version;
+
     for (str = buf, i = 1; ; str = NULL, i++) {
         token = strtok_r(str, " ", &saveptr);
         if (token == NULL)
             break;
 
         if (i == 1) {
-            proc->pid = strtoul(token, NULL, 10);
+            pid = strtoul(token, NULL, 10);
         }
         else if (i == 2) {
-            proc->index = strtoul(token, NULL, 10);
+            index = strtoul(token, NULL, 10);
         }
         else if (i == 3) {
-            proc->version = strtoul(token, NULL, 10);
+            version = strtoul(token, NULL, 10);
         }
     }
+
+    srv_process_gen (p, pid, index, version);
 
     return 1;
 }
 
-// FIXME only works for a single process
-void service_get_new_processes (struct process ***proc, int *nproc, char * spath)
+int srv_read (struct process *p, void * buf, size_t * msize)
 {
-    if (proc == NULL || spath == NULL) {
-        return;
-    }
+    if (file_open (&p->out, p->path_out, "rb"))
+        return 1;
 
-    char buf[BUFSIZ];
-    bzero (buf, BUFSIZ);
+    *msize = fread (buf, 1, *msize, p->out); // FIXME check errors
+    // printf ("DEBUG read, size %ld : %s\n", *msize, buf);
 
-    // read the pipe, get a process to work on
-    FILE * f = fopen (spath, "rb");
-    fgets (buf, BUFSIZ, f);
-    fclose (f);
+    if (file_close (p->out))
+        return 1;
 
-    char *token, *line, *saveptr, *saveptr2;
-    char *str, *str2;
-    int i, j;
-
-    *nproc = 0;
-    proc[0] = malloc(sizeof(struct process**));
-
-    for (str2 = buf, j = 1; ; str2 = NULL, j++) {
-        line = strtok_r(str2, "\n", &saveptr2);
-        if (line == NULL)
-            break;
-
-        printf ("line : %s\n", line);
-
-        *nproc = *nproc +1;
-
-        proc[0] = realloc(proc[0], sizeof(struct process*) * (*nproc));
-        proc[0][*nproc -1] = malloc(sizeof(struct process));
-
-        for (str = line, i = 1; ; str = NULL, i++) {
-            token = strtok_r(str, " ", &saveptr);
-            if (token == NULL)
-                break;
-
-            if (i == 1) {
-                proc[0][*nproc -1]->pid = strtoul(token, NULL, 10);
-            }
-            else if (i == 2) {
-                proc[0][*nproc -1]->index = strtoul(token, NULL, 10);
-            }
-            else if (i == 3) {
-                proc[0][*nproc -1]->version = strtoul(token, NULL, 10);
-            }
-
-        }
-    }
+    return 0;
 }
 
-void struct_process_free (struct process * p)
+int srv_write (struct process *p, void * buf, size_t msize)
 {
-    free (p);
+    if (file_open (&p->in, p->path_in, "wb"))
+        return 1;
+
+    fwrite (buf, 1, msize, p->in); // FIXME check errors
+
+    if (file_close (p->in))
+        return 1;
+
+    return 0;
 }
 
-void service_free_processes (struct process **procs, int nproc)
-{
-    printf ("free processes\n");
-    while (nproc--) {
-        printf ("free process %d\n", nproc);
+// APPLICATION
 
-        struct_process_free (procs[nproc]);
-    }
-}
-
-void gen_process_structure (struct process *p
-        , pid_t pid, unsigned int index, unsigned int version)
-{
-    p->pid = pid;
-    p->version = version;
-    p->index = index;
-}
-
-
-void process_print (struct process *p)
-{
-    printf ("process %d : index %d\n", p->pid, p->index);
-}
-
-int process_create (struct process *p, int index)
+int app_create (struct process *p, int index)
 {
     pid_t pid = getpid();
-    char fifopathin[PATH_MAX];
-    char fifopathout[PATH_MAX];
-    process_paths (fifopathin, fifopathout, pid, index);
+
+    // then creates the structure
+    srv_process_gen (p, pid, index, COMMUNICATION_VERSION);
 
     // creates the pipes
     int ret;
-    if ((ret = mkfifo (fifopathin, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)))
+    if ((ret = mkfifo (p->path_in, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)))
     {
         switch (errno) {
             case EACCES :
-                printf ("file %s : EACCES\n", fifopathin);
+                printf ("file %s : EACCES\n", p->path_in);
                 return 1;
             case EEXIST :
-                printf ("file %s : EEXIST\n", fifopathin);
+                printf ("file %s : EEXIST\n", p->path_in);
                 break;
             case ENAMETOOLONG :
-                printf ("file %s : ENAMETOOLONG\n", fifopathin);
+                printf ("file %s : ENAMETOOLONG\n", p->path_in);
                 return 2;
             case ENOENT :
-                printf ("file %s : ENOENT\n", fifopathin);
+                printf ("file %s : ENOENT\n", p->path_in);
                 return 3;
             case ENOSPC :
-                printf ("file %s : ENOSPC\n", fifopathin);
+                printf ("file %s : ENOSPC\n", p->path_in);
                 return 4;
             case ENOTDIR :
-                printf ("file %s : ENOTDIR\n", fifopathin);
+                printf ("file %s : ENOTDIR\n", p->path_in);
                 return 5;
             case EROFS :
-                printf ("file %s : EROFS\n", fifopathin);
+                printf ("file %s : EROFS\n", p->path_in);
                 return 6;
             default :
-                printf ("err file %s unknown\n", fifopathin);
+                printf ("err file %s unknown\n", p->path_in);
                 return 7;
         }
     }
 
-    if ((ret = mkfifo (fifopathout, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
+    if ((ret = mkfifo (p->path_out, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
         switch (errno) {
             case EACCES :
-                printf ("file %s : EACCES\n", fifopathout);
+                printf ("file %s : EACCES\n", p->path_out);
                 return 1;
             case EEXIST :
-                printf ("file %s : EEXIST\n", fifopathout);
+                printf ("file %s : EEXIST\n", p->path_out);
                 break;
             case ENAMETOOLONG :
-                printf ("file %s : ENAMETOOLONG\n", fifopathout);
+                printf ("file %s : ENAMETOOLONG\n", p->path_out);
                 return 2;
             case ENOENT :
-                printf ("file %s : ENOENT\n", fifopathout);
+                printf ("file %s : ENOENT\n", p->path_out);
                 return 3;
             case ENOSPC :
-                printf ("file %s : ENOSPC\n", fifopathout);
+                printf ("file %s : ENOSPC\n", p->path_out);
                 return 4;
             case ENOTDIR :
-                printf ("file %s : ENOTDIR\n", fifopathout);
+                printf ("file %s : ENOTDIR\n", p->path_out);
                 return 5;
             case EROFS :
-                printf ("file %s : EROFS\n", fifopathout);
+                printf ("file %s : EROFS\n", p->path_out);
                 return 6;
             default :
-                printf ("err file %s unknown\n", fifopathout);
+                printf ("err file %s unknown\n", p->path_out);
                 return 7;
         }
     }
 
-    // then creates the structure
-    gen_process_structure (p, pid, index, COMMUNICATION_VERSION);
-
     return 0;
 }
 
-int process_destroy (struct process *p)
+int app_destroy (struct process *p)
 {
-    char fifopathin[PATH_MAX];
-    char fifopathout[PATH_MAX];
-    process_paths (fifopathin, fifopathout, p->pid, p->index);
-
-    if (unlink (fifopathin)) {
+    if (unlink (p->path_in)) {
         return 1;
     }
 
-    if (unlink (fifopathout)) {
+    if (unlink (p->path_out)) {
         return 1;
     }
 
     return 0;
 }
 
-int process_open_in (struct process *proc)
+int app_read (struct process *p, void * buf, size_t * msize)
 {
-    char fifopathin[PATH_MAX];
-    char fifopathout[PATH_MAX];
-    process_paths (fifopathin, fifopathout, proc->pid, proc->index);
-
-    printf ("opening in %s\n", fifopathin);
-    proc->in = fopen (fifopathin, "rb");
-    if (proc->in == NULL) {
-        fprintf (stderr, "\033[31mnot opened\033[00m\n");
-        return -1;
-    }
-    printf ("opened : %d\n", proc->in);
-
-    return 0;
-}
-
-int service_proc_open_in (struct process *proc)
-{
-    char fifopathin[PATH_MAX];
-    char fifopathout[PATH_MAX];
-    process_paths (fifopathin, fifopathout, proc->pid, proc->index);
-
-    printf ("opening in %s\n", fifopathin);
-    proc->in = fopen (fifopathin, "wb");
-    if (proc->in == NULL) {
-        fprintf (stderr, "\033[31mnot opened\033[00m\n");
-        return -1;
-    }
-    printf ("opened : %d\n", proc->in);
-
-    return 0;
-}
-
-int service_proc_open_out (struct process *proc)
-{
-    char fifopathin[PATH_MAX];
-    char fifopathout[PATH_MAX];
-    process_paths (fifopathin, fifopathout, proc->pid, proc->index);
-
-    printf ("opening out %s\n", fifopathout);
-    proc->out = fopen (fifopathout, "rb");
-    if (proc->out == NULL) {
-        fprintf (stderr, "\033[31mnot opened\033[00m\n");
-        return -1;
-    }
-    printf ("opened\n");
-
-    return 0;
-}
-
-int process_open_out (struct process *proc)
-{
-    char fifopathin[PATH_MAX];
-    char fifopathout[PATH_MAX];
-    process_paths (fifopathin, fifopathout, proc->pid, proc->index);
-
-    printf ("opening out %s\n", fifopathout);
-    proc->out = fopen (fifopathout, "wb");
-    if (proc->out == NULL) {
-        fprintf (stderr, "\033[31mnot opened\033[00m\n");
-        return -1;
-    }
-    printf ("opened\n");
-
-    return 0;
-}
-
-int process_close_in (struct process *proc)
-{
-    printf ("closing in\n");
-    if (proc->in != 0) {
-        printf ("before fclose in\n");
-        fclose (proc->in);
-        printf ("after fclose in\n");
-        proc->in = 0;
-    }
-    return 0;
-}
-
-int process_close_out (struct process *proc)
-{
-    printf ("closing out\n");
-    if (proc->out != 0) {
-        fclose (proc->out);
-        proc->out = 0;
-    }
-    return 0;
-}
-
-
-int process_read (struct process *proc, void * buf, size_t * msize)
-{
-    int ret;
-    if ((ret = process_open_in (proc))) {
+    if (file_open (&p->in, p->path_in, "rb"))
         return 1;
-    }
 
-    *msize = fread (buf, 1, *msize, proc->in); // FIXME check errors
+    *msize = fread (buf, 1, *msize, p->in); // FIXME check errors
     // printf ("DEBUG read, size %ld : %s\n", *msize, buf);
 
-    if ((ret = process_close_in (proc))) {
+    if (file_close (p->in))
         return 1;
-    }
 
     return 0;
 }
 
-int process_write (struct process *proc, void * buf, size_t msize)
+int app_write (struct process *p, void * buf, size_t msize)
 {
-    int ret;
-    if ((ret = process_open_out (proc))) {
+    if (file_open (&p->out, p->path_out, "wb"))
         return 1;
-    }
 
-    fwrite (buf, 1, msize, proc->out); // FIXME check errors
+    fwrite (buf, 1, msize, p->out); // FIXME check errors
 
-    if ((ret = process_close_out (proc))) {
+    if (file_close (p->out))
         return 1;
-    }
-    return 0;
-}
 
-int service_read (struct process *proc, void * buf, size_t * msize)
-{
-    int ret;
-    if ((ret = service_proc_open_out (proc))) {
-        return 1;
-    }
-
-    *msize = fread (buf, 1, *msize, proc->out); // FIXME check errors
-    // printf ("DEBUG read, size %ld : %s\n", *msize, buf);
-
-    if ((ret = process_close_out (proc))) {
-        return 1;
-    }
-
-    return 0;
-}
-
-int service_write (struct process *proc, void * buf, size_t msize)
-{
-    int ret;
-    if ((ret = service_proc_open_in (proc))) {
-        return 1;
-    }
-
-    fwrite (buf, 1, msize, proc->in); // FIXME check errors
-
-    if ((ret = process_close_in (proc))) {
-        return 1;
-    }
     return 0;
 }

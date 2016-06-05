@@ -17,7 +17,7 @@ void main_loop (const char *spath)
 
     while (cnt--) {
         // -1 : error, 0 = no new process, 1 = new process
-        ret = service_get_new_process (&proc, spath);
+        ret = srv_get_new_process (&proc, spath);
         if (ret == -1) {
             fprintf (stderr, "error service_get_new_process\n");
             continue;
@@ -35,7 +35,7 @@ void main_loop (const char *spath)
         bzero(buf, BUFSIZ);
 
         // printf ("before read\n");
-        if ((ret = service_read (&proc, &buf, &msize))) {
+        if ((ret = srv_read (&proc, &buf, &msize))) {
             fprintf(stdout, "error service_read %d\n", ret);
             continue;
         }
@@ -43,7 +43,7 @@ void main_loop (const char *spath)
         printf ("read, size %ld : %s\n", msize, buf);
 
         // printf ("before proc write\n");
-        if ((ret = service_write (&proc, &buf, msize))) {
+        if ((ret = srv_write (&proc, &buf, msize))) {
             fprintf(stdout, "error service_write %d\n", ret);
             continue;
         }
@@ -66,11 +66,11 @@ int main(int argc, char * argv[])
 {
     // gets the service path, such as /tmp/<service>
     char spath[PATH_MAX];
-    service_path (spath, "pingpong");
+    srv_path (spath, "pingpong");
 
     // creates the service named pipe, that listens to client applications
     int ret;
-    if ((ret = service_create (spath))) {
+    if ((ret = srv_create (spath))) {
         fprintf(stdout, "error service_create %d\n", ret);
         exit (1);
     }
@@ -79,7 +79,7 @@ int main(int argc, char * argv[])
     main_loop (spath);
 
     // the application will shut down, and remove the service named pipe
-    if ((ret = service_close (spath))) {
+    if ((ret = srv_close (spath))) {
         fprintf(stdout, "error service_close %d\n", ret);
         exit (1);
     }

@@ -1,4 +1,4 @@
-#include "../lib/communication.h"
+#include "pubsubd.h"
 #include <stdlib.h>
 
 const char* service_name = "pubsub";

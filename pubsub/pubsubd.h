@@ -1,7 +1,10 @@
 #ifndef __PUBSUBD_H__
 #define __PUBSUBD_H__
 
-#include "queue.h"
+#include "../lib/communication.h"
+#include "../lib/process.h"
+
+#include "../lib/queue.h"
 
 struct message {
     unsigned char *chan;
