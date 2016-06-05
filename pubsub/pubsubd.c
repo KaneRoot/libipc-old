@@ -1,7 +1,5 @@
-#include "pubsubd.h"
+#include "../lib/pubsubd.h"
 #include <stdlib.h>
-
-const char* service_name = "pubsub";
 
 void
 ohshit(int rvalue, const char* str) {
@@ -9,108 +7,15 @@ ohshit(int rvalue, const char* str) {
     exit(rvalue);
 }
 
-// CHANNELS
-
-void pubsubd_channels_init (struct channels *chans) { LIST_INIT(chans); }
-
-void
-pubsubd_channels_add (struct channels *chans, struct channel *c)
-{
-    if(!chans || !c)
-        return;
-
-    struct channel *n = pubsubd_channel_copy (c);
-    LIST_INSERT_HEAD(al, n, entries);
-}
-
-void
-pubsubd_channels_del (struct app_list *al, struct channel *c)
-{
-    struct channel *todel = pubsubd_channel_get (al, c);
-    if(todel != NULL) {
-        LIST_REMOVE(todel, entries);
-        srv_process_free (mfree, todel);
-        mfree (todel);
-        todel = NULL;
-    }
-}
-
-struct channel * pubsubd_channel_copy (struct channel *c)
-{
-    struct channel *copy;
-    copy = malloc (sizeof(struct channel));
-    memcpy (copy, c, sizeof(struct channel));
-    return copy;
-}
-
-int
-pubsubd_channels_eq (const struct channel *c1, const struct channel *c2)
-{
-    return (strncmp (c1->chan, c2->chan, c1->chanlen) == 0);
-}
-
-// SUBSCRIBER
-
-void pubsubd_subscriber_init (struct app_list *al) { LIST_INIT(al); } 
-
-void
-pubsubd_subscriber_add (struct app_list *al, struct process *p)
-{
-    if(!al || !p)
-        return;
-
-    struct process *n = srv_process_copy (p);
-    LIST_INSERT_HEAD(al, n, entries);
-}
-
-struct process *
-pubsubd_subscriber_get (const struct app_list *al
-        , const struct process *p)
-{
-    struct process *np, *res = NULL;
-    LIST_FOREACH(np, al, entries) {
-        if(srv_process_eq (np, p)) {
-            res = np;
-        }
-    }
-    return res;
-}
-
-void
-pubsubd_subscriber_del (struct app_list *al, struct process *p)
-{
-    struct process *todel = pubsubd_subscriber_get (al, p);
-    if(todel != NULL) {
-        LIST_REMOVE(todel, entries);
-        srv_process_free (mfree, todel);
-        mfree (todel);
-        todel = NULL;
-    }
-}
-
-void pubsubd_msg_send (struct service *s, struct message * m, struct process *p)
-{
-}
-void pubsubd_msg_recv (struct service *s, struct message * m, struct process *p)
-{
-}
-void pubsub_msg_send (struct service *s, struct message * m)
-{
-}
-void pubsub_msg_recv (struct service *s, struct message * m)
-{
-}
-
     int
 main(int argc, char* argv[])
 {
-    // gets the service path, such as /tmp/<service>
-    char s_path[PATH_MAX];
-    service_path (s_path, service_name);
-    printf ("Listening on %s.\n", s_path);
+    struct service srv;
+    srv_init (&srv, PUBSUB_SERVICE_NAME);
+    printf ("Listening on %s.\n", srv->spath);
 
     // creates the service named pipe, that listens to client applications
-    if (service_create (s_path))
+    if (service_create (&srv))
         ohshit(1, "service_create error");
 
     struct channels chans;
@@ -120,7 +25,7 @@ main(int argc, char* argv[])
         struct process proc;
         int proc_count, i;
 
-        service_get_new_process (&proc, s_path);
+        service_get_new_process (&proc, &srv);
 
         printf("> %i proc\n", proc_count);
 
@@ -157,7 +62,7 @@ main(int argc, char* argv[])
  * then closes the pipes
  */
 
-void main_loop (const char *spath)
+void main_loop (const struct service *srv)
 {
     int ret;
     struct process proc;
@@ -166,7 +71,7 @@ void main_loop (const char *spath)
 
     while (cnt--) {
         // -1 : error, 0 = no new process, 1 = new process
-        ret = srv_get_new_process (&proc, spath);
+        ret = srv_get_new_process (&proc, srv);
         if (ret == -1) {
             fprintf (stderr, "error service_get_new_process\n");
             continue;

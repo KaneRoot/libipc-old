@@ -23,6 +23,7 @@ struct process {
 };
 
 struct process * srv_process_copy (const struct process *p);
+void srv_process_free (struct process * p);
 
 int srv_process_eq (const struct process *p1, const struct process *p2);
 

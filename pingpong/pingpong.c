@@ -1,5 +1,7 @@
 #include "../lib/communication.h"
 
+#define PONGD_SERVICE_NAME "pongd"
+
 /*
  * main loop
  *
@@ -8,7 +10,7 @@
  * then closes the pipes
  */
 
-void main_loop (const char *spath)
+void main_loop (const struct service *srv)
 {
     int ret;
     struct process proc;
@@ -17,7 +19,7 @@ void main_loop (const char *spath)
 
     while (cnt--) {
         // -1 : error, 0 = no new process, 1 = new process
-        ret = srv_get_new_process (&proc, spath);
+        ret = srv_get_new_process (&proc, srv);
         if (ret == -1) {
             fprintf (stderr, "error service_get_new_process\n");
             continue;
@@ -64,22 +66,22 @@ void main_loop (const char *spath)
 
 int main(int argc, char * argv[])
 {
-    // gets the service path, such as /tmp/<service>
-    char spath[PATH_MAX];
-    srv_path (spath, "pingpong");
+    struct service srv;
+    srv_init (&srv, PONGD_SERVICE_NAME);
+    printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications
     int ret;
-    if ((ret = srv_create (spath))) {
+    if ((ret = srv_create (&srv))) {
         fprintf(stdout, "error service_create %d\n", ret);
         exit (1);
     }
 
     // the service will loop until the end of time, a specific message, a signal
-    main_loop (spath);
+    main_loop (&srv);
 
     // the application will shut down, and remove the service named pipe
-    if ((ret = srv_close (spath))) {
+    if ((ret = srv_close (&srv))) {
         fprintf(stdout, "error service_close %d\n", ret);
         exit (1);
     }

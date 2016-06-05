@@ -25,54 +25,50 @@ int file_close (FILE *f)
     return 0;
 }
 
-// SERVICE
-
-int srv_path (char *buf, const char *sname)
+void srv_init (struct service *srv, const char *sname)
 {
-    if (buf == NULL) {
-        return 1;
-    }
+    if (srv == NULL)
+        return;
 
-    // already done in mkfifo
-    if (strlen(TMPDIR) + strlen(sname) > PATH_MAX) {
-        return 2;
-    }
+    // gets the service path, such as /tmp/<service>
+    bzero (srv->spath, PATH_MAX);
+    strncat (srv->spath, TMPDIR, PATH_MAX);
+    strncat (srv->spath, sname, PATH_MAX);
 
-    bzero (buf, PATH_MAX);
-    strncat (buf, TMPDIR, PATH_MAX);
-    strncat (buf, sname, PATH_MAX);
-
-    return 0;
+    srv->version = COMMUNICATION_VERSION;
+    srv->index = 0; // TODO
 }
 
-int srv_create (const char *fifopath)
+// SERVICE
+
+int srv_create (struct service *srv)
 {
     int ret;
-    if ((ret = mkfifo (fifopath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
+    if ((ret = mkfifo (srv->spath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
         switch (errno) {
             case EACCES :
-                printf ("file %s : EACCES\n", fifopath);
+                printf ("file %s : EACCES\n", srv->spath);
                 return 1;
             case EEXIST :
-                printf ("file %s : EEXIST\n", fifopath);
+                printf ("file %s : EEXIST\n", srv->spath);
                 break;
             case ENAMETOOLONG :
-                printf ("file %s : ENAMETOOLONG\n", fifopath);
+                printf ("file %s : ENAMETOOLONG\n", srv->spath);
                 return 2;
             case ENOENT :
-                printf ("file %s : ENOENT\n", fifopath);
+                printf ("file %s : ENOENT\n", srv->spath);
                 return 3;
             case ENOSPC :
-                printf ("file %s : ENOSPC\n", fifopath);
+                printf ("file %s : ENOSPC\n", srv->spath);
                 return 4;
             case ENOTDIR :
-                printf ("file %s : ENOTDIR\n", fifopath);
+                printf ("file %s : ENOTDIR\n", srv->spath);
                 return 5;
             case EROFS :
-                printf ("file %s : EROFS\n", fifopath);
+                printf ("file %s : EROFS\n", srv->spath);
                 return 6;
             default :
-                printf ("err file %s unknown\n", fifopath);
+                printf ("err file %s unknown\n", srv->spath);
                 return 7;
         }
     }
@@ -80,18 +76,18 @@ int srv_create (const char *fifopath)
     return 0;
 }
 
-int srv_close (const char *fifopath)
+int srv_close (struct service *srv)
 {
-    if (unlink (fifopath)) {
+    if (unlink (srv->spath)) {
         return 1;
     }
 
     return 0;
 }
 
-int srv_get_new_process (struct process *p, const char * spath)
+int srv_get_new_process (struct process *p, const struct service *srv)
 {
-    if (spath == NULL) {
+    if (srv->spath == NULL) {
         return -1;
     }
 
@@ -102,7 +98,7 @@ int srv_get_new_process (struct process *p, const char * spath)
     struct timespec ts = { 0 };
     struct timespec ts2 = { 0 };
 
-    FILE * f = fopen (spath, "r");
+    FILE * f = fopen (srv->spath, "r");
     clock_gettime(CLOCK_REALTIME, &ts);
     fgets (buf, BUFSIZ, f);
     clock_gettime(CLOCK_REALTIME, &ts2);

@@ -19,11 +19,13 @@
 struct service {
     unsigned int version;
     unsigned int index;
+    char spath[PATH_MAX];
+    FILE *spipe;
 };
 
-int srv_path (char *buf, const char *sname);
+void srv_init (struct service *srv, const char *sname);
 
-int srv_get_new_process (struct process *proc, const char * spath);
+int srv_get_new_process (struct process *proc, const struct service *srv);
 
 /*
  * returns
@@ -32,8 +34,8 @@ int srv_get_new_process (struct process *proc, const char * spath);
  *  2 : service name too long
  *  3 : unable to create fifo
  */
-int srv_create (const char *sname);
-int srv_close (const char *sname);
+int srv_create (struct service *srv);
+int srv_close (struct service *srv);
 
 int srv_read (struct process *, void * buf, size_t *);
 int srv_write (struct process *, void * buf, size_t);

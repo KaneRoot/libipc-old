@@ -1,7 +1,7 @@
 #!/bin/dash
 
 REP=/tmp/ipc/
-SERVICE="pingpong"
+SERVICE="pongd"
 NB=3
 
 # CLEAN UP !
