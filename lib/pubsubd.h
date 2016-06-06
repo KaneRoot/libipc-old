@@ -33,11 +33,12 @@ LIST_HEAD(channels, channel);
 
 // element of the list
 struct channel {
-    unsigned char *chan;
+    char *chan;
     size_t chanlen;
     LIST_ENTRY(channel) entries;
 };
 
+void pubsubd_channels_init (struct channels *chans);
 struct channel * pubsubd_channel_copy (struct channel *c);
 struct channel * pubsubd_channel_get (struct channels *chans, struct channel *c);
 
@@ -55,13 +56,16 @@ struct app_list_elm {
     LIST_ENTRY(app_list_elm) entries;
 };
 
-void pubsubd_subscriber_add (const struct app_list_head *
+int
+pubsubd_subscriber_eq (const struct app_list_elm *, const struct app_list_elm *);
+
+void pubsubd_subscriber_add (struct app_list_head *
         , const struct app_list_elm *);
 struct app_list_elm * pubsubd_subscriber_get (const struct app_list_head *
         , const struct app_list_elm *);
 void pubsubd_subscriber_del (struct app_list_head *al, struct app_list_elm *p);
 
-struct app_list_elm * pubsubd_app_list_elm_copy (struct app_list_elm *ale);
+struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale);
 void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p);
 void pubsubd_app_list_elm_free (struct app_list_elm *todel);
 

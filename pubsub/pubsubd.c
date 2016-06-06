@@ -12,10 +12,10 @@ main(int argc, char* argv[])
 {
     struct service srv;
     srv_init (&srv, PUBSUB_SERVICE_NAME);
-    printf ("Listening on %s.\n", srv->spath);
+    printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications
-    if (service_create (&srv))
+    if (srv_create (&srv))
         ohshit(1, "service_create error");
 
     struct channels chans;
@@ -23,45 +23,18 @@ main(int argc, char* argv[])
 
     for (;;) {
         struct process proc;
-        int proc_count, i;
-
-        service_get_new_process (&proc, &srv);
-
-        printf("> %i proc\n", proc_count);
-
-        for (i = 0; i < proc_count; i++) {
-            size_t message_size = BUFSIZ;
-            char buffer[BUFSIZ];
-
-            process_print(proc + i);
-
-            if (process_read (&proc[i], &buffer, &message_size))
-                ohshit(1, "process_read error");
-
-            printf(": %s\n", buffer);
-
-
-        }
-
-        service_free_processes(&proc, proc_count);
+        srv_get_new_process (&proc, &srv);
+        process_print (&proc);
     }
 
     // the application will shut down, and remove the service named pipe
-    if (service_close (s_path))
+    if (srv_close (&srv))
         ohshit(1, "service_close error");
 
     return EXIT_SUCCESS;
 }
 
-
-/*
- * main loop
- *
- * opens the application pipes,
- * reads then writes the same message,
- * then closes the pipes
- */
-
+#if 0
 void main_loop (const struct service *srv)
 {
     int ret;
@@ -106,3 +79,4 @@ void main_loop (const struct service *srv)
         printf ("\033[32mStill \033[31m%d\033[32m applications to serve\n",cnt);
     }
 }
+#endif

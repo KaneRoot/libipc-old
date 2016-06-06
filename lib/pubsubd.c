@@ -1,12 +1,6 @@
 #include "pubsubd.h"
 #include <stdlib.h>
 
-void
-ohshit(int rvalue, const char* str) {
-    fprintf(stderr, "%s\n", str);
-    exit(rvalue);
-}
-
 // CHANNELS
 
 void pubsubd_channels_init (struct channels *chans) { LIST_INIT(chans); }
@@ -27,7 +21,7 @@ pubsubd_channels_del (struct channels *chans, struct channel *c)
     struct channel *todel = pubsubd_channel_get (chans, c);
     if(todel != NULL) {
         LIST_REMOVE(todel, entries);
-        srv_process_free (todel);
+        pubsubd_channel_free (todel);
         free (todel);
         todel = NULL;
     }
@@ -41,18 +35,22 @@ struct channel * pubsubd_channel_copy (struct channel *c)
     return copy;
 }
 
+void pubsubd_channel_free (struct channel * c)
+{
+}
+
 struct channel * pubsubd_channel_get (struct channels *chans, struct channel *c)
 {
     struct channel * np = NULL;
     LIST_FOREACH(np, chans, entries) {
-        if (pubsubd_channels_eq (np, c))
+        if (pubsubd_channel_eq (np, c))
             return np;
     }
     return NULL;
 }
 
 int
-pubsubd_channels_eq (const struct channel *c1, const struct channel *c2)
+pubsubd_channel_eq (const struct channel *c1, const struct channel *c2)
 {
     return (strncmp (c1->chan, c2->chan, c1->chanlen) == 0);
 }
@@ -61,7 +59,7 @@ pubsubd_channels_eq (const struct channel *c1, const struct channel *c2)
 
 void pubsubd_subscriber_init (struct app_list_head *chans) { LIST_INIT(chans); } 
 
-struct app_list_elm * pubsubd_app_list_elm_copy (struct app_list_elm *ale)
+struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale)
 {
     if (ale == NULL)
         return NULL;
@@ -74,8 +72,15 @@ struct app_list_elm * pubsubd_app_list_elm_copy (struct app_list_elm *ale)
     return n;
 }
 
+int
+pubsubd_subscriber_eq (const struct app_list_elm *ale1, const struct app_list_elm *ale2)
+{
+    return srv_process_eq (ale1->p, ale2->p);
+}
+
+
 void
-pubsubd_subscriber_add (struct app_list_head *alh, struct app_list_elm *ale)
+pubsubd_subscriber_add (struct app_list_head *alh, const struct app_list_elm *ale)
 {
     if(!alh || !ale)
         return;
@@ -89,7 +94,7 @@ pubsubd_subscriber_get (const struct app_list_head *chans, const struct app_list
 {
     struct app_list_elm *np, *res = NULL;
     LIST_FOREACH(np, chans, entries) {
-        if(srv_process_eq (np, p)) {
+        if(pubsubd_subscriber_eq (np, p)) {
             res = np;
         }
     }
@@ -119,7 +124,7 @@ void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p)
 void pubsubd_app_list_elm_free (struct app_list_elm *todel)
 {
     if (todel == NULL)
-        return NULL;
+        return;
     srv_process_free (todel->p);
 }
 
@@ -137,10 +142,10 @@ void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *l
     size_t i = 0;
 
     data[0][i] = msg->type;                             i++;
-    memcpy (data[0][i], msg->chanlen, sizeof(size_t));   i += sizeof(size_t);
-    memcpy (data[0][i], msg->chan, msg->chanlen);        i += msg->chanlen;
-    memcpy (data[0][i], msg->datalen, sizeof(size_t));   i += sizeof(size_t);
-    memcpy (data[0][i], msg->data, msg->datalen);        i += msg->datalen;
+    memcpy (&data[0][i], &msg->chanlen, sizeof(size_t)); i += sizeof(size_t);
+    memcpy (&data[0][i], msg->chan, msg->chanlen);       i += msg->chanlen;
+    memcpy (&data[0][i], &msg->datalen, sizeof(size_t)); i += sizeof(size_t);
+    memcpy (&data[0][i], msg->data, msg->datalen);       i += msg->datalen;
 }
 
 void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t len)
@@ -149,7 +154,7 @@ void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t l
         return;
 
     size_t i = 0;
-    msg->type = data[0][i];                             i++;
+    msg->type = data[i];                             i++;
     memcpy (&msg->chanlen, data + i, sizeof(size_t));   i += sizeof(size_t);
     msg->chan = malloc (msg->chanlen);
     memcpy (msg->chan, data + i, msg->chanlen);         i += msg->chanlen;
