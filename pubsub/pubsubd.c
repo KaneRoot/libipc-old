@@ -11,6 +11,7 @@ ohshit(int rvalue, const char* str) {
 main(int argc, char* argv[])
 {
     struct service srv;
+    bzero (&srv, sizeof (struct service));
     srv_init (&srv, PUBSUB_SERVICE_NAME);
     printf ("Listening on %s.\n", srv.spath);
 
@@ -20,29 +21,45 @@ main(int argc, char* argv[])
 
     // init chans list
     struct channels chans;
+    bzero (&chans, sizeof (struct channels));
     pubsubd_channels_init (&chans);
 
     for (;;) {
         // for each new process
         struct app_list_elm ale;
-        pubsubd_get_new_process (&srv, &ale);
-        pubsubd_app_list_elm_print (&ale);
+        bzero (&ale, sizeof (struct app_list_elm));
 
-        // stop the application ? (action 3)
-        if (ale.action == 3) {
-            pubsubd_channels_del_all (&chans);
+        pubsubd_get_new_process (&srv, &ale, &chans);
+        pubsubd_channels_print (&chans);
+
+        // end the application
+        if (ale.action == PUBSUB_QUIT) {
             printf ("Quitting ...\n");
+
+            pubsubd_channels_del_all (&chans);
+            srv_close (&srv);
+            
+            // TODO end the threads
+
             exit (0);
         }
 
-        // add the chan to the list
+        // TODO thread to handle multiple clients at a time
 
+        // TODO register the subscriber
         // each chan has a list of subscribers
         // someone who only push a msg doesn't need to be registered
+        if (ale.action == PUBSUB_SUB || ale.action == PUBSUB_BOTH) {
+            // TODO
+        }
+        else if (ale.action == PUBSUB_PUB) {
+            // TODO add it to the application to follow
+            // TODO publish a message
 
-        // 
+            // then 
+        }
 
-        // TODO thread to handle multiple clients at a time
+        pubsubd_app_list_elm_free (&ale);
     }
 
     // the application will shut down, and remove the service named pipe

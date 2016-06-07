@@ -5,14 +5,16 @@
 
 void pubsubd_channels_init (struct channels *chans) { LIST_INIT(chans); }
 
-void
+struct channel *
 pubsubd_channels_add (struct channels *chans, struct channel *c)
 {
     if(!chans || !c)
-        return;
+        return NULL;
 
     struct channel *n = pubsubd_channel_copy (c);
     LIST_INSERT_HEAD(chans, n, entries);
+
+    return n;
 }
 
 void
@@ -20,8 +22,8 @@ pubsubd_channels_del (struct channels *chans, struct channel *c)
 {
     struct channel *todel = pubsubd_channel_get (chans, c);
     if(todel != NULL) {
-        LIST_REMOVE(todel, entries);
         pubsubd_channel_free (todel);
+        LIST_REMOVE(todel, entries);
         free (todel);
         todel = NULL;
     }
@@ -45,14 +47,38 @@ void pubsubd_channels_del_all (struct channels *chans)
 
 struct channel * pubsubd_channel_copy (struct channel *c)
 {
+    if (c == NULL)
+        return NULL;
+
     struct channel *copy;
     copy = malloc (sizeof(struct channel));
+    bzero (copy, sizeof (struct channel));
+
     memcpy (copy, c, sizeof(struct channel));
+
+    if (c->chan != NULL) {
+        copy->chan = strndup (c->chan, c->chanlen);
+        copy->chanlen = c->chanlen;
+    }
+
     return copy;
 }
 
 void pubsubd_channel_free (struct channel * c)
 {
+    // TODO
+    if (c == NULL)
+        return;
+
+    if (c->chan != NULL) {
+        free (c->chan);
+        c->chan = NULL;
+    }
+
+    if (c->alh != NULL) {
+        pubsubd_subscriber_del_all (c->alh);
+        free (c->alh);
+    }
 }
 
 struct channel * pubsubd_channel_get (struct channels *chans, struct channel *c)
@@ -73,15 +99,42 @@ pubsubd_channel_eq (const struct channel *c1, const struct channel *c2)
 
 // SUBSCRIBER
 
-void pubsubd_subscriber_init (struct app_list_head *chans) { LIST_INIT(chans); } 
+void pubsubd_subscriber_init (struct app_list_head **chans) {
+    if (chans == NULL)
+        return;
 
-void pubsubd_app_list_elm_print (const struct app_list_elm *ale)
+    if (*chans == NULL)
+        *chans = malloc (sizeof(struct channels));
+    LIST_INIT(*chans);
+} 
+
+void pubsubd_channels_print (const struct channels *chans)
 {
-    printf ( "app_list_elm\n\t");
-    srv_process_print (ale->p);
+    printf ("\033[36mmchannels\033[00m\n\n");
 
-    printf ( "\tchan : %s\n", ale->chan);
-    printf ( "\taction : %d\n", (int) ale->action);
+    if (chans == NULL)
+        return ;
+
+    struct channel *chan = NULL;
+    LIST_FOREACH(chan, chans, entries) {
+        pubsubd_channel_print (chan);
+    }
+}
+
+void pubsubd_channel_print (const struct channel *c)
+{
+    if (c == NULL || c->chan == NULL)
+        return;
+
+    printf ( "\033[32mchan %s\033[00m\n\t", c->chan);
+
+    if (c->alh == NULL)
+        return;
+
+    struct app_list_elm *ale = NULL;
+    LIST_FOREACH(ale, c->alh, entries) {
+        srv_process_print (ale->p);
+    }
 }
 
 struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale)
@@ -92,7 +145,8 @@ struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale)
     struct app_list_elm * n;
     n = malloc (sizeof (struct app_list_elm));
 
-    n->p = srv_process_copy(ale->p);
+    if (ale->p != NULL)
+        n->p = srv_process_copy (ale->p);
 
     return n;
 }
@@ -131,12 +185,29 @@ pubsubd_subscriber_del (struct app_list_head *chans, struct app_list_elm *p)
 {
     struct app_list_elm *todel = pubsubd_subscriber_get (chans, p);
     if(todel != NULL) {
-        LIST_REMOVE(todel, entries);
         pubsubd_app_list_elm_free (todel);
+        LIST_REMOVE(todel, entries);
         free (todel);
         todel = NULL;
     }
 }
+
+void pubsubd_subscriber_del_all (struct app_list_head *alh)
+{
+    if (!alh)
+        return;
+
+    struct app_list_elm *ale;
+
+    while (!LIST_EMPTY(alh)) {
+        ale = LIST_FIRST(alh);
+        LIST_REMOVE(ale, entries);
+        pubsubd_app_list_elm_free (ale);
+        free (ale);
+        ale = NULL;
+    }
+}
+
 
 void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p)
 {
@@ -148,7 +219,7 @@ void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p)
 
 void pubsubd_app_list_elm_free (struct app_list_elm *todel)
 {
-    if (todel == NULL)
+    if (todel == NULL || todel->p == NULL)
         return;
     srv_process_free (todel->p);
 }
@@ -202,12 +273,16 @@ void pubsubd_msg_free (struct pubsub_msg *msg)
 
 // COMMUNICATION
 
-int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale)
+int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
+        , struct channels *chans)
 {
+    if (srv == NULL || ale == NULL || chans == NULL)
+        return -1;
+
     if (ale->p != NULL) {
         free (ale->p);
+        ale->p = NULL;
     }
-
     ale->p = malloc (sizeof (struct process));
 
     char *buf;
@@ -217,7 +292,7 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale)
     // parse pubsubd init msg (sent in TMPDIR/<service>)
     //
     // line fmt : pid index version chan action
-    // action : pub | sub
+    // action : quit | pub | sub
 
     size_t i;
     char *str, *token, *saveptr;
@@ -225,6 +300,9 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale)
     pid_t pid;
     int index;
     int version;
+
+    char chan[BUFSIZ];
+    bzero (chan, BUFSIZ);
 
     for (str = buf, i = 1; ; str = NULL, i++) {
         token = strtok_r(str, " ", &saveptr);
@@ -235,26 +313,53 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale)
             case 1 : pid = strtoul(token, NULL, 10); break;
             case 2 : index = strtoul(token, NULL, 10); break;
             case 3 : version = strtoul(token, NULL, 10); break;
-            case 4 : memcpy (ale->chan, token, strlen (token)); break;
+            case 4 : {
+                         memcpy (chan, token, (strlen (token) < BUFSIZ) ?
+                                 strlen (token) : BUFSIZ);
+                         break;
+                     }
             case 5 : {
-                         if (strncmp("pub", token, 3) == 0) {
-                             ale->action = 0;
+                         if (strncmp("both", token, 4) == 0) {
+                             ale->action = PUBSUB_BOTH;
                          }
+                         else if (strncmp("pub", token, 3) == 0) {
+                             ale->action = PUBSUB_PUB;
+                         } 
                          else if (strncmp("sub", token, 3) == 0) {
-                             ale->action = 1;
-                         }
-                         else if (strncmp("both", token, 4) == 0) {
-                             ale->action = 2;
+                             ale->action = PUBSUB_SUB;
                          }
                          else { // everything else is about killing the service
-                             ale->action = 3;
+                             ale->action = PUBSUB_QUIT;
                          }
                      }
         }
     }
 
+    if (buf != NULL) {
+        free (buf);
+        buf = NULL;
+    }
+
+    chan[BUFSIZ -1] = '\0';
+
+    struct channel c;
+    bzero (&c, sizeof (struct channel));
+    c.chan = strndup (chan, BUFSIZ);
+    c.chanlen = strlen (chan);
+
+    struct channel *new_chan;
+    new_chan = pubsubd_channel_get (chans, &c);
+    if (new_chan == NULL) {
+        new_chan = pubsubd_channels_add (chans, &c);
+        pubsubd_subscriber_init (&new_chan->alh);
+    }
+    pubsubd_channel_free (&c);
+
     srv_process_gen (ale->p, pid, index, version);
-    ale->chanlen = strlen (ale->chan);
+
+    // add the subscriber
+    if (ale->action == PUBSUB_SUB || ale->action == PUBSUB_BOTH)
+        pubsubd_subscriber_add (new_chan->alh, ale);
 
     return 0;
 }
@@ -293,6 +398,10 @@ int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize)
     memcpy (&cbuf[i], chan, chanlen);                i += chanlen;
     memcpy (&cbuf[i], &datalen, sizeof(size_t));     i += sizeof(size_t);
     memcpy (&cbuf[i], data, datalen);                i += datalen;
+
+    free (chan);
+    free (data);
+
     return 0;
 }
 
