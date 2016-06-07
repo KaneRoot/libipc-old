@@ -279,19 +279,13 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     if (srv == NULL || ale == NULL || chans == NULL)
         return -1;
 
-    if (ale->p != NULL) {
-        free (ale->p);
-        ale->p = NULL;
-    }
-    ale->p = malloc (sizeof (struct process));
-
     char *buf;
     size_t msize;
     srv_get_listen_raw (srv, &buf, &msize);
 
     // parse pubsubd init msg (sent in TMPDIR/<service>)
     //
-    // line fmt : pid index version chan action
+    // line fmt : pid index version action chan
     // action : quit | pub | sub
 
     size_t i;
@@ -314,11 +308,6 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
             case 2 : index = strtoul(token, NULL, 10); break;
             case 3 : version = strtoul(token, NULL, 10); break;
             case 4 : {
-                         memcpy (chan, token, (strlen (token) < BUFSIZ) ?
-                                 strlen (token) : BUFSIZ);
-                         break;
-                     }
-            case 5 : {
                          if (strncmp("both", token, 4) == 0) {
                              ale->action = PUBSUB_BOTH;
                          }
@@ -331,6 +320,13 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
                          else { // everything else is about killing the service
                              ale->action = PUBSUB_QUIT;
                          }
+                         break;
+                     }
+            case 5 : {
+                         if (ale->action != PUBSUB_QUIT)
+                             memcpy (chan, token, (strlen (token) < BUFSIZ) ?
+                                     strlen (token) : BUFSIZ);
+                         break;
                      }
         }
     }
@@ -355,7 +351,15 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     }
     pubsubd_channel_free (&c);
 
-    srv_process_gen (ale->p, pid, index, version);
+    if (ale->p != NULL) {
+        free (ale->p);
+        ale->p = NULL;
+    }
+    
+    if (ale->action != PUBSUB_QUIT) {
+        ale->p = malloc (sizeof (struct process));
+        srv_process_gen (ale->p, pid, index, version);
+    }
 
     // add the subscriber
     if (ale->action == PUBSUB_SUB || ale->action == PUBSUB_BOTH)

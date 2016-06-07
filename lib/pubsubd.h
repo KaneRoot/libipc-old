@@ -26,6 +26,10 @@ void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *l
 void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t len);
 void pubsubd_msg_free (struct pubsub_msg *msg);
 
+// parse pubsubd init msg (sent in TMPDIR/<service>)
+//
+// line fmt : pid index version action chan
+// action : quit | pub | sub
 int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
         , struct channels *chans);
 int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize);
@@ -68,7 +72,7 @@ void pubsubd_channels_del_all (struct channels *chans);
 // head of the list
 LIST_HEAD(app_list_head, app_list_elm);
 
-enum app_list_elm_action { PUBSUB_QUIT, PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BOTH };
+enum app_list_elm_action {PUBSUB_QUIT = 1, PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BOTH};
 
 // element of the list
 struct app_list_elm {

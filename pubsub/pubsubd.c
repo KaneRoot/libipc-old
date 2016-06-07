@@ -37,6 +37,7 @@ main(int argc, char* argv[])
             printf ("Quitting ...\n");
 
             pubsubd_channels_del_all (&chans);
+            // pubsubd_app_list_elm_free (&ale);
             srv_close (&srv);
             
             // TODO end the threads
