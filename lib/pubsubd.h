@@ -49,6 +49,8 @@ struct channel {
 void pubsubd_channels_init (struct channels *chans);
 struct channel * pubsubd_channel_copy (struct channel *c);
 struct channel * pubsubd_channel_get (struct channels *chans, struct channel *c);
+void pubsubd_channels_del (struct channels *chans, struct channel *c);
+void pubsubd_channels_del_all (struct channels *chans);
 
 void pubsubd_channel_free (struct channel *c);
 int pubsubd_channel_eq (const struct channel *c1, const struct channel *c2);
@@ -63,7 +65,7 @@ struct app_list_elm {
     struct process *p;
     char chan[BUFSIZ];
     size_t chanlen;
-    char action; // 0 : pub, 1 : sub, 2 : both
+    char action; // 0 : pub, 1 : sub, 2 : both, kill the service : 3
     LIST_ENTRY(app_list_elm) entries;
 };
 
@@ -79,5 +81,6 @@ void pubsubd_subscriber_del (struct app_list_head *al, struct app_list_elm *p);
 struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale);
 void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p);
 void pubsubd_app_list_elm_free (struct app_list_elm *todel);
+void pubsubd_app_list_elm_print (const struct app_list_elm *ale);
 
 #endif

@@ -27,6 +27,22 @@ pubsubd_channels_del (struct channels *chans, struct channel *c)
     }
 }
 
+void pubsubd_channels_del_all (struct channels *chans)
+{
+    if (!chans)
+        return;
+
+    struct channel *c;
+
+    while (!LIST_EMPTY(chans)) {
+        c = LIST_FIRST(chans);
+        LIST_REMOVE(c, entries);
+        pubsubd_channel_free (c);
+        free (c);
+        c = NULL;
+    }
+}
+
 struct channel * pubsubd_channel_copy (struct channel *c)
 {
     struct channel *copy;
@@ -58,6 +74,15 @@ pubsubd_channel_eq (const struct channel *c1, const struct channel *c2)
 // SUBSCRIBER
 
 void pubsubd_subscriber_init (struct app_list_head *chans) { LIST_INIT(chans); } 
+
+void pubsubd_app_list_elm_print (const struct app_list_elm *ale)
+{
+    printf ( "app_list_elm\n\t");
+    srv_process_print (ale->p);
+
+    printf ( "\tchan : %s\n", ale->chan);
+    printf ( "\taction : %d\n", (int) ale->action);
+}
 
 struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale)
 {
@@ -218,8 +243,11 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale)
                          else if (strncmp("sub", token, 3) == 0) {
                              ale->action = 1;
                          }
-                         else {
-                             ale->action = 2; // both
+                         else if (strncmp("both", token, 4) == 0) {
+                             ale->action = 2;
+                         }
+                         else { // everything else is about killing the service
+                             ale->action = 3;
                          }
                      }
         }

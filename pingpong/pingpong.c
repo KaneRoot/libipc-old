@@ -28,7 +28,7 @@ void main_loop (const struct service *srv)
         }
 
         // printf ("before print\n");
-        process_print (&proc);
+        srv_process_print (&proc);
         // printf ("after print\n");
 
         // about the message

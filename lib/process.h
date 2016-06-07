@@ -31,6 +31,6 @@ int srv_process_eq (const struct process *p1, const struct process *p2);
 void srv_process_gen (struct process *p
         , pid_t pid, unsigned int index, unsigned int version);
 
-void process_print (struct process *);
+void srv_process_print (struct process *);
 
 #endif

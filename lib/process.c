@@ -37,7 +37,7 @@ void srv_process_free (struct process * p)
     free (p);
 }
 
-void process_print (struct process *p)
+void srv_process_print (struct process *p)
 {
     printf ("process %d : index %d\n", p->pid, p->index);
 }

@@ -26,14 +26,28 @@ main(int argc, char* argv[])
         // for each new process
         struct app_list_elm ale;
         pubsubd_get_new_process (&srv, &ale);
-        process_print (ale.p);
+        pubsubd_app_list_elm_print (&ale);
+
+        // stop the application ? (action 3)
+        if (ale.action == 3) {
+            pubsubd_channels_del_all (&chans);
+            printf ("Quitting ...\n");
+            exit (0);
+        }
+
+        // add the chan to the list
+
+        // each chan has a list of subscribers
+        // someone who only push a msg doesn't need to be registered
+
+        // 
 
         // TODO thread to handle multiple clients at a time
     }
 
     // the application will shut down, and remove the service named pipe
     if (srv_close (&srv))
-        ohshit(1, "service_close error");
+        ohshit (1, "service_close error");
 
     return EXIT_SUCCESS;
 }
