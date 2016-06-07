@@ -19,7 +19,7 @@ void main_loop (const struct service *srv)
 
     while (cnt--) {
         // -1 : error, 0 = no new process, 1 = new process
-        ret = srv_get_new_process (&proc, srv);
+        ret = srv_get_new_process (srv, &proc);
         if (ret == -1) {
             fprintf (stderr, "error service_get_new_process\n");
             continue;
@@ -33,8 +33,7 @@ void main_loop (const struct service *srv)
 
         // about the message
         size_t msize = BUFSIZ;
-        char buf[BUFSIZ];
-        bzero(buf, BUFSIZ);
+        char *buf;
 
         // printf ("before read\n");
         if ((ret = srv_read (&proc, &buf, &msize))) {
@@ -45,7 +44,7 @@ void main_loop (const struct service *srv)
         printf ("read, size %ld : %s\n", msize, buf);
 
         // printf ("before proc write\n");
-        if ((ret = srv_write (&proc, &buf, msize))) {
+        if ((ret = srv_write (&proc, buf, msize))) {
             fprintf(stdout, "error service_write %d\n", ret);
             continue;
         }

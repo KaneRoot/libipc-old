@@ -177,16 +177,115 @@ void pubsubd_msg_free (struct pubsub_msg *msg)
 
 // COMMUNICATION
 
-void pubsubd_msg_send (struct service *s, struct pubsub_msg * m, struct process *p)
+int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale)
+{
+    if (ale->p != NULL) {
+        free (ale->p);
+    }
+
+    ale->p = malloc (sizeof (struct process));
+
+    char *buf;
+    size_t msize;
+    srv_get_listen_raw (srv, &buf, &msize);
+
+    // parse pubsubd init msg (sent in TMPDIR/<service>)
+    //
+    // line fmt : pid index version chan action
+    // action : pub | sub
+
+    size_t i;
+    char *str, *token, *saveptr;
+
+    pid_t pid;
+    int index;
+    int version;
+
+    for (str = buf, i = 1; ; str = NULL, i++) {
+        token = strtok_r(str, " ", &saveptr);
+        if (token == NULL)
+            break;
+
+        switch (i) {
+            case 1 : pid = strtoul(token, NULL, 10); break;
+            case 2 : index = strtoul(token, NULL, 10); break;
+            case 3 : version = strtoul(token, NULL, 10); break;
+            case 4 : memcpy (ale->chan, token, strlen (token)); break;
+            case 5 : {
+                         if (strncmp("pub", token, 3) == 0) {
+                             ale->action = 0;
+                         }
+                         else if (strncmp("sub", token, 3) == 0) {
+                             ale->action = 1;
+                         }
+                         else {
+                             ale->action = 2; // both
+                         }
+                     }
+        }
+    }
+
+    srv_process_gen (ale->p, pid, index, version);
+    ale->chanlen = strlen (ale->chan);
+
+    return 0;
+}
+
+// TODO CBOR
+int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize)
+{
+    // msg: "type(1) chanlen(8) chan datalen(8) data
+
+    // read 
+    char type;
+    fread (&type, 1, 1, f);
+
+    size_t chanlen;
+    fread (&chanlen, sizeof (size_t), 1, f);
+
+    char *chan = malloc (chanlen);
+    fread (chan, chanlen, 1, f);
+
+    size_t datalen;
+    fread (&datalen, sizeof (size_t), 1, f);
+
+    char *data = malloc (datalen);
+    fread (data, datalen, 1, f);
+
+    *msize = 1 + chanlen;
+    *buf = malloc(*msize);
+
+    // TODO CHECK THIS
+    size_t i = 0;
+
+    char *cbuf = *buf;
+
+    cbuf[i] = type;                                  i++;
+    memcpy (&cbuf[i], &chanlen, sizeof(size_t));     i += sizeof(size_t);
+    memcpy (&cbuf[i], chan, chanlen);                i += chanlen;
+    memcpy (&cbuf[i], &datalen, sizeof(size_t));     i += sizeof(size_t);
+    memcpy (&cbuf[i], data, datalen);                i += datalen;
+    return 0;
+}
+
+void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg * m)
 {
 }
-void pubsubd_msg_recv (struct service *s, struct pubsub_msg * m, struct process *p)
+void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m)
+{
+    // read the message from the process
+    size_t mlen;
+    char *buf;
+    srv_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
+
+    pubsubd_msg_unserialize (m, buf, mlen);
+    free (buf);
+}
+
+void pubsub_msg_send (const struct service *s, const struct pubsub_msg * m)
 {
 }
-void pubsub_msg_send (struct service *s, struct pubsub_msg * m)
-{
-}
-void pubsub_msg_recv (struct service *s, struct pubsub_msg * m)
+void pubsub_msg_recv (const struct service *s, struct pubsub_msg * m)
 {
 }
 

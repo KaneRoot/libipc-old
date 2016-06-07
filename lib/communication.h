@@ -25,7 +25,8 @@ struct service {
 
 void srv_init (struct service *srv, const char *sname);
 
-int srv_get_new_process (struct process *proc, const struct service *srv);
+int srv_get_listen_raw (const struct service *srv, char **buf, size_t *msize);
+int srv_get_new_process (const struct service *srv, struct process *proc);
 
 /*
  * returns
@@ -37,7 +38,9 @@ int srv_get_new_process (struct process *proc, const struct service *srv);
 int srv_create (struct service *srv);
 int srv_close (struct service *srv);
 
-int srv_read (struct process *, void * buf, size_t *);
+int srv_read_cb (struct process *p, char ** buf, size_t * msize
+        , int (*cb)(FILE *f, char ** buf, size_t * msize));
+int srv_read (struct process *, char ** buf, size_t *);
 int srv_write (struct process *, void * buf, size_t);
 
 // APPLICATION

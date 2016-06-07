@@ -85,7 +85,22 @@ int srv_close (struct service *srv)
     return 0;
 }
 
-int srv_get_new_process (struct process *p, const struct service *srv)
+// only get a raw line from TMPDIR/<service>
+int srv_get_listen_raw (const struct service *srv, char **buf, size_t *msize)
+{
+    *buf = malloc(BUFSIZ);
+    bzero (*buf, BUFSIZ);
+
+    FILE * f = fopen (srv->spath, "r");
+    fgets (*buf, BUFSIZ, f);
+    fclose (f);
+
+    *msize = strlen (*buf);
+
+    return 0;
+}
+
+int srv_get_new_process (const struct service *srv, struct process *p)
 {
     if (srv->spath == NULL) {
         return -1;
@@ -135,15 +150,33 @@ int srv_get_new_process (struct process *p, const struct service *srv)
 
     srv_process_gen (p, pid, index, version);
 
-    return 1;
+    return 0;
 }
 
-int srv_read (struct process *p, void * buf, size_t * msize)
+int srv_read_cb (struct process *p, char ** buf, size_t * msize
+        , int (*cb)(FILE *f, char ** buf, size_t * msize))
 {
     if (file_open (&p->out, p->path_out, "rb"))
         return 1;
 
-    *msize = fread (buf, 1, *msize, p->out); // FIXME check errors
+    if (cb != NULL)
+        (*cb) (p->out, buf, msize);
+    else
+        *msize = fread (*buf, 1, *msize, p->out); // FIXME check errors
+    // printf ("DEBUG read, size %ld : %s\n", *msize, *buf);
+
+    if (file_close (p->out))
+        return 1;
+
+    return 0;
+}
+
+int srv_read (struct process *p, char ** buf, size_t * msize)
+{
+    if (file_open (&p->out, p->path_out, "rb"))
+        return 1;
+
+    *msize = fread (*buf, 1, *msize, p->out); // FIXME check errors
     // printf ("DEBUG read, size %ld : %s\n", *msize, buf);
 
     if (file_close (p->out))

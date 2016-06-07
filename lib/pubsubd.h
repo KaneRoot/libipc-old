@@ -8,6 +8,12 @@
 
 #define PUBSUB_SERVICE_NAME "pubsub"
 
+struct channel;
+struct channels;
+struct app_list_head;
+struct app_list_elm;
+struct pubsub_msg;
+
 struct pubsub_msg {
     unsigned char *chan;
     size_t chanlen;
@@ -20,11 +26,13 @@ void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *l
 void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t len);
 void pubsubd_msg_free (struct pubsub_msg *msg);
 
-void pubsubd_msg_send (struct service *, struct pubsub_msg *msg, struct process *p);
-void pubsubd_msg_recv (struct service *, struct pubsub_msg *msg, struct process *p);
+int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale);
+int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize);
+void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg *m);
+void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m);
 
-void pubsub_msg_send (struct service *, struct pubsub_msg *msg);
-void pubsub_msg_recv (struct service *, struct pubsub_msg *msg);
+void pubsub_msg_send (const struct service *, const struct pubsub_msg *msg);
+void pubsub_msg_recv (const struct service *, struct pubsub_msg *msg);
 
 // CHANNEL
 
@@ -53,6 +61,9 @@ LIST_HEAD(app_list_head, app_list_elm);
 // element of the list
 struct app_list_elm {
     struct process *p;
+    char chan[BUFSIZ];
+    size_t chanlen;
+    char action; // 0 : pub, 1 : sub, 2 : both
     LIST_ENTRY(app_list_elm) entries;
 };
 

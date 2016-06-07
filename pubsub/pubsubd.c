@@ -18,13 +18,17 @@ main(int argc, char* argv[])
     if (srv_create (&srv))
         ohshit(1, "service_create error");
 
+    // init chans list
     struct channels chans;
     pubsubd_channels_init (&chans);
 
     for (;;) {
-        struct process proc;
-        srv_get_new_process (&proc, &srv);
-        process_print (&proc);
+        // for each new process
+        struct app_list_elm ale;
+        pubsubd_get_new_process (&srv, &ale);
+        process_print (ale.p);
+
+        // TODO thread to handle multiple clients at a time
     }
 
     // the application will shut down, and remove the service named pipe
