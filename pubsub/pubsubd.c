@@ -1,10 +1,57 @@
 #include "../lib/pubsubd.h"
 #include <stdlib.h>
+#include <pthread.h>
 
 void
 ohshit(int rvalue, const char* str) {
     fprintf(stderr, "%s\n", str);
     exit(rvalue);
+}
+
+// give this structure to the thread worker function
+struct worker_params {
+    struct channels *chans;
+    struct channel *chan;
+    struct app_list_elm *ale;
+};
+
+void * pubsubd_worker_thread (void *params)
+{
+    struct worker_params *wp = (struct worker_params *) params;
+
+    // each chan has a list of subscribers
+    // someone who only push a msg doesn't need to be registered
+    if (wp->ale->action == PUBSUB_BOTH || wp->ale->action == PUBSUB_PUB) {
+        // TODO add it to the application to follow
+        // TODO publish a message
+        printf ("publish or publish and subscribe to something\n");
+
+        struct pubsub_msg m;
+        bzero (&m, sizeof (struct pubsub_msg));
+        pubsubd_msg_recv (wp->ale->p, &m);
+
+        pubsubd_msg_print (&m);
+
+        if (m.type == PUBSUB_TYPE_DISCONNECT) {
+            // TODO remove the application from the subscribers
+        }
+        else {
+            struct channel *chan = pubsubd_channel_get (wp->chans, wp->chan);
+            pubsubd_msg_send (chan->alh, &m);
+        }
+    }
+    else if (wp->ale->action == PUBSUB_SUB) {
+        // TODO
+        printf ("subscribe to something\n");
+    }
+    else {
+        printf ("\033[31mdo not know what you want to do\033[00m\n");
+        printf ("\tale->p : %p\n", wp->ale->p);
+    }
+
+    pubsubd_app_list_elm_free (wp->ale);
+
+    pthread_exit (NULL);
 }
 
     int
@@ -28,8 +75,8 @@ main(int argc, char* argv[])
         // for each new process
         struct app_list_elm ale;
         bzero (&ale, sizeof (struct app_list_elm));
-
-        pubsubd_get_new_process (&srv, &ale, &chans);
+        struct channel *chan;
+        pubsubd_get_new_process (&srv, &ale, &chans, &chan);
         pubsubd_channels_print (&chans);
 
         // end the application
@@ -37,7 +84,6 @@ main(int argc, char* argv[])
             printf ("Quitting ...\n");
 
             pubsubd_channels_del_all (&chans);
-            // pubsubd_app_list_elm_free (&ale);
             srv_close (&srv);
             
             // TODO end the threads
@@ -46,19 +92,16 @@ main(int argc, char* argv[])
         }
 
         // TODO thread to handle multiple clients at a time
+        struct worker_params *wp;
+        wp = malloc (sizeof (struct worker_params));
+        wp->ale = pubsubd_app_list_elm_copy (&ale);
+        wp->chans = &chans;
+        wp->chan = chan;
 
-        // TODO register the subscriber
-        // each chan has a list of subscribers
-        // someone who only push a msg doesn't need to be registered
-        if (ale.action == PUBSUB_SUB || ale.action == PUBSUB_BOTH) {
-            // TODO
-        }
-        else if (ale.action == PUBSUB_PUB) {
-            // TODO add it to the application to follow
-            // TODO publish a message
+        pthread_t thr;
 
-            // then 
-        }
+        pthread_create (&thr, NULL, pubsubd_worker_thread, wp);
+        pthread_detach (thr);
 
         pubsubd_app_list_elm_free (&ale);
     }

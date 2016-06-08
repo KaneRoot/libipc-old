@@ -6,6 +6,11 @@
 
 #include "queue.h"
 
+#define PUBSUB_TYPE_DISCONNECT                                     1 << 0
+#define PUBSUB_TYPE_INFO                                           1 << 1
+#define PUBSUB_TYPE_DEBUG                                          1 << 2
+#define PUBSUB_TYPE_MESSAGE                                        1 << 3
+
 #define PUBSUB_SERVICE_NAME "pubsub"
 
 struct channel;
@@ -25,19 +30,20 @@ struct pubsub_msg {
 void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *len);
 void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t len);
 void pubsubd_msg_free (struct pubsub_msg *msg);
+void pubsubd_msg_print (const struct pubsub_msg *msg);
 
 // parse pubsubd init msg (sent in TMPDIR/<service>)
 //
 // line fmt : pid index version action chan
 // action : quit | pub | sub
 int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
-        , struct channels *chans);
+        , struct channels *chans, struct channel **c);
 int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize);
 void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg *m);
 void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m);
 
-void pubsub_msg_send (const struct service *, const struct pubsub_msg *msg);
-void pubsub_msg_recv (const struct service *, struct pubsub_msg *msg);
+void pubsub_msg_send (const struct service *, struct process *p, const struct pubsub_msg *msg);
+void pubsub_msg_recv (const struct service *, struct process *p, struct pubsub_msg *msg);
 
 // CHANNEL
 
@@ -95,5 +101,7 @@ void pubsubd_subscriber_del_all (struct app_list_head *alh);
 struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale);
 void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p);
 void pubsubd_app_list_elm_free (struct app_list_elm *todel);
+
+void pubsub_connection (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame);
 
 #endif

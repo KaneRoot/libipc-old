@@ -156,8 +156,11 @@ int srv_get_new_process (const struct service *srv, struct process *p)
 int srv_read_cb (struct process *p, char ** buf, size_t * msize
         , int (*cb)(FILE *f, char ** buf, size_t * msize))
 {
-    if (file_open (&p->out, p->path_out, "rb"))
+    if (file_open (&p->out, p->path_out, "rb")) {
+        fprintf (stderr, "\033[31merr: srv_read_cb, file_open\033[00m\n");
+        file_close (p->out);
         return 1;
+    }
 
     if (cb != NULL)
         (*cb) (p->out, buf, msize);
@@ -280,6 +283,26 @@ int app_destroy (struct process *p)
     if (unlink (p->path_out)) {
         return 1;
     }
+
+    return 0;
+}
+
+int app_read_cb (struct process *p, char ** buf, size_t * msize
+        , int (*cb)(FILE *f, char ** buf, size_t * msize))
+{
+    if (file_open (&p->in, p->path_in, "rb")) {
+        fprintf (stderr, "\033[31merr: srv_read_cb, file_open\033[00m\n");
+        file_close (p->in);
+        return 1;
+    }
+
+    if (cb != NULL)
+        (*cb) (p->in, buf, msize);
+    else
+        *msize = fread (*buf, 1, *msize, p->in); // FIXME check errors
+
+    if (file_close (p->in))
+        return 1;
 
     return 0;
 }

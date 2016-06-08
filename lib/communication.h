@@ -48,6 +48,8 @@ int srv_write (struct process *, void * buf, size_t);
 int app_create (struct process *, int index); // called by the application
 int app_destroy (struct process *); // called by the application
 
+int app_read_cb (struct process *p, char ** buf, size_t * msize
+        , int (*cb)(FILE *f, char ** buf, size_t * msize));
 int app_read (struct process *, void * buf, size_t *);
 int app_write (struct process *, void * buf, size_t);
 
