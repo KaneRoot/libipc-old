@@ -33,7 +33,7 @@ void main_loop (const struct service *srv)
 
         // about the message
         size_t msize = BUFSIZ;
-        char *buf;
+        char *buf = NULL;
 
         // printf ("before read\n");
         if ((ret = srv_read (&proc, &buf, &msize))) {

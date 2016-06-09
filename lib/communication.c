@@ -5,6 +5,10 @@
 int file_open (FILE **f, const char *path, const char *mode)
 {
     printf ("opening %s\n", path);
+    if (*f != NULL) {
+        printf ("f != NULL : %p\n", *f);
+        fclose (*f);
+    }
     *f = fopen (path, mode);
     if (*f == NULL) {
         fprintf (stderr, "\033[31mnot opened\033[00m\n");
@@ -124,13 +128,13 @@ int srv_get_new_process (const struct service *srv, struct process *p)
 
     printf("diff nsec: %ld\n", ts2.tv_nsec - ts.tv_nsec);
 
-    char *token, *saveptr;
-    char *str;
-    int i;
+    char *token = NULL, *saveptr = NULL;
+    char *str = NULL;
+    int i = 0;
 
-    pid_t pid;
-    int index;
-    int version;
+    pid_t pid = 0;
+    int index = 0;
+    int version = 0;
 
     for (str = buf, i = 1; ; str = NULL, i++) {
         token = strtok_r(str, " ", &saveptr);
@@ -170,6 +174,7 @@ int srv_read_cb (struct process *p, char ** buf, size_t * msize
 
     if (file_close (p->out))
         return 1;
+    p->out = NULL;
 
     return 0;
 }
@@ -184,6 +189,7 @@ int srv_read (struct process *p, char ** buf, size_t * msize)
 
     if (file_close (p->out))
         return 1;
+    p->out = NULL;
 
     return 0;
 }
@@ -197,11 +203,31 @@ int srv_write (struct process *p, void * buf, size_t msize)
 
     if (file_close (p->in))
         return 1;
+    p->in = NULL;
 
     return 0;
 }
 
 // APPLICATION
+
+// send the connection string to $TMP/<service>
+int app_srv_connection (struct service *srv, const char *connectionstr, size_t msize)
+{
+    if (srv == NULL) {
+        return 1;
+    }
+
+    FILE * f = NULL;
+    if (file_open (&f, srv->spath, "wb"))
+        return 2;
+
+    fwrite (connectionstr, msize, 1, f); // FIXME check errors
+
+    if (file_close (f))
+        return 3;
+
+    return 0;
+}
 
 int app_create (struct process *p, int index)
 {
@@ -303,6 +329,7 @@ int app_read_cb (struct process *p, char ** buf, size_t * msize
 
     if (file_close (p->in))
         return 1;
+    p->in = NULL;
 
     return 0;
 }
@@ -317,6 +344,7 @@ int app_read (struct process *p, void * buf, size_t * msize)
 
     if (file_close (p->in))
         return 1;
+    p->in = NULL;
 
     return 0;
 }
@@ -330,6 +358,7 @@ int app_write (struct process *p, void * buf, size_t msize)
 
     if (file_close (p->out))
         return 1;
+    p->out = NULL;
 
     return 0;
 }

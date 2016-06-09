@@ -45,6 +45,9 @@ int srv_write (struct process *, void * buf, size_t);
 
 // APPLICATION
 
+// send the connection string to $TMP/<service>
+int app_srv_connection (struct service *, const char *, size_t);
+
 int app_create (struct process *, int index); // called by the application
 int app_destroy (struct process *); // called by the application
 

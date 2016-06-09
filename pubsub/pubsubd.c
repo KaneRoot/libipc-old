@@ -75,7 +75,7 @@ main(int argc, char* argv[])
         // for each new process
         struct app_list_elm ale;
         bzero (&ale, sizeof (struct app_list_elm));
-        struct channel *chan;
+        struct channel *chan = NULL;
         pubsubd_get_new_process (&srv, &ale, &chans, &chan);
         pubsubd_channels_print (&chans);
 
@@ -92,13 +92,13 @@ main(int argc, char* argv[])
         }
 
         // TODO thread to handle multiple clients at a time
-        struct worker_params *wp;
+        struct worker_params *wp = NULL;
         wp = malloc (sizeof (struct worker_params));
         wp->ale = pubsubd_app_list_elm_copy (&ale);
         wp->chans = &chans;
         wp->chan = chan;
 
-        pthread_t thr;
+        pthread_t thr = 0;
 
         pthread_create (&thr, NULL, pubsubd_worker_thread, wp);
         pthread_detach (thr);

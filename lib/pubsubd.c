@@ -34,7 +34,7 @@ void pubsubd_channels_del_all (struct channels *chans)
     if (!chans)
         return;
 
-    struct channel *c;
+    struct channel *c = NULL;
 
     while (!LIST_EMPTY(chans)) {
         c = LIST_FIRST(chans);
@@ -50,7 +50,7 @@ struct channel * pubsubd_channel_copy (struct channel *c)
     if (c == NULL)
         return NULL;
 
-    struct channel *copy;
+    struct channel *copy = NULL;
     copy = malloc (sizeof(struct channel));
     bzero (copy, sizeof (struct channel));
 
@@ -142,7 +142,7 @@ struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale)
     if (ale == NULL)
         return NULL;
 
-    struct app_list_elm * n;
+    struct app_list_elm * n = NULL;
     n = malloc (sizeof (struct app_list_elm));
 
     if (ale->p != NULL)
@@ -173,7 +173,7 @@ pubsubd_subscriber_add (struct app_list_head *alh, const struct app_list_elm *al
 struct app_list_elm *
 pubsubd_subscriber_get (const struct app_list_head *chans, const struct app_list_elm *p)
 {
-    struct app_list_elm *np, *res = NULL;
+    struct app_list_elm *np = NULL, *res = NULL;
     LIST_FOREACH(np, chans, entries) {
         if(pubsubd_subscriber_eq (np, p)) {
             res = np;
@@ -199,7 +199,7 @@ void pubsubd_subscriber_del_all (struct app_list_head *alh)
     if (!alh)
         return;
 
-    struct app_list_elm *ale;
+    struct app_list_elm *ale = NULL;
 
     while (!LIST_EMPTY(alh)) {
         ale = LIST_FIRST(alh);
@@ -317,8 +317,8 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     if (srv == NULL || ale == NULL || chans == NULL)
         return -1;
 
-    char *buf;
-    size_t msize;
+    char *buf = NULL;
+    size_t msize = 0;
     srv_get_listen_raw (srv, &buf, &msize);
 
     // parse pubsubd init msg (sent in TMPDIR/<service>)
@@ -326,12 +326,12 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     // line fmt : pid index version action chan
     // action : quit | pub | sub
 
-    size_t i;
-    char *str, *token, *saveptr;
+    size_t i = 0;
+    char *str = NULL, *token = NULL, *saveptr = NULL;
 
-    pid_t pid;
-    int index;
-    int version;
+    pid_t pid = 0;
+    int index = 0;
+    int version = 0;
 
     char chan[BUFSIZ];
     bzero (chan, BUFSIZ);
@@ -399,7 +399,7 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     c[0]->chan = strndup (chan, BUFSIZ);
     c[0]->chanlen = strlen (chan);
 
-    struct channel *new_chan;
+    struct channel *new_chan = NULL;
     new_chan = pubsubd_channel_get (chans, *c);
     if (new_chan == NULL) {
         new_chan = pubsubd_channels_add (chans, *c);
@@ -424,27 +424,29 @@ int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize)
     printf ("\033[36m ON PASSE DANS pubsubd_msg_read_cb \033[00m \n");
 
     // read 
-    char type;
+    char type = ' ';
     fread (&type, 1, 1, f);
 
-    size_t chanlen;
+    size_t chanlen = 0;
     fread (&chanlen, sizeof (size_t), 1, f);
 
     if (chanlen > BUFSIZ) {
         return 1;
     }
 
-    char *chan = malloc (chanlen);
+    char *chan = NULL;
+    chan = malloc (chanlen);
     fread (chan, chanlen, 1, f);
 
-    size_t datalen;
+    size_t datalen = 0;
     fread (&datalen, sizeof (size_t), 1, f);
 
     if (datalen > BUFSIZ) {
         return 1;
     }
 
-    char *data = malloc (datalen);
+    char *data = NULL;
+    data = malloc (datalen);
     fread (data, datalen, 1, f);
 
     *msize = 1 + 2 * sizeof (size_t) + chanlen + datalen;
@@ -476,8 +478,8 @@ void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg 
 {
     struct app_list_elm * ale = NULL;
 
-    char *buf;
-    size_t msize;
+    char *buf = NULL;
+    size_t msize = 0;
     pubsubd_msg_serialize (m, &buf, &msize);
 
     LIST_FOREACH(ale, alh, entries) {
@@ -504,8 +506,8 @@ void pubsubd_msg_print (const struct pubsub_msg *msg)
 void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m)
 {
     // read the message from the process
-    size_t mlen;
-    char *buf;
+    size_t mlen = 0;
+    char *buf = NULL;
     srv_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
 
     pubsubd_msg_unserialize (m, buf, mlen);
@@ -515,11 +517,52 @@ void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m)
     }
 }
 
+#define PUBSUB_SUBSCRIBER_ACTION_STR_PUB    "pub"
+#define PUBSUB_SUBSCRIBER_ACTION_STR_SUB    "sub"
+#define PUBSUB_SUBSCRIBER_ACTION_STR_BOTH   "both"
+#define PUBSUB_SUBSCRIBER_ACTION_STR_QUIT   "quit"
+
+// enum app_list_elm_action {PUBSUB_QUIT = 1, PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BOTH};
+
+char * pubsub_action_to_str (enum app_list_elm_action action)
+{
+    switch (action) {
+        case PUBSUB_PUB : return strdup (PUBSUB_SUBSCRIBER_ACTION_STR_PUB);
+        case PUBSUB_SUB : return strdup (PUBSUB_SUBSCRIBER_ACTION_STR_SUB);
+        case PUBSUB_BOTH : return strdup (PUBSUB_SUBSCRIBER_ACTION_STR_BOTH);
+        case PUBSUB_QUIT : return strdup (PUBSUB_SUBSCRIBER_ACTION_STR_QUIT);
+    }
+
+    return NULL;
+}
+
+void pubsub_connection (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame)
+{
+    char * straction = NULL;
+    straction = pubsub_action_to_str (action);
+
+    char line[BUFSIZ];
+    bzero (line, BUFSIZ);
+
+    // line fmt : pid index version action chan
+    // "quit" action is also possible (see pubsub_disconnect)
+    snprintf (line, BUFSIZ, "%d %d %d %s %s\n"
+            , p->pid, p->index, p->version
+            , straction
+            , channame);
+    line[BUFSIZ -1] = '\0'; // to be sure
+
+    // send the connection line in the $TMP/<service> pipe
+    app_srv_connection (srv, line, strlen (line));
+
+    if (straction != NULL)
+        free (straction);
+}
+
 void pubsub_msg_send (const struct service *s, struct process *p, const struct pubsub_msg * m)
 {
-
-    char *buf;
-    size_t msize;
+    char *buf = NULL;
+    size_t msize = 0;
     pubsubd_msg_serialize (m, &buf, &msize);
 
     app_write (p, buf, msize);
@@ -532,8 +575,8 @@ void pubsub_msg_send (const struct service *s, struct process *p, const struct p
 void pubsub_msg_recv (const struct service *s, struct process *p, struct pubsub_msg * m)
 {
     // read the message from the process
-    size_t mlen;
-    char *buf;
+    size_t mlen = 0;
+    char *buf = NULL;
     app_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
 
     pubsubd_msg_unserialize (m, buf, mlen);
