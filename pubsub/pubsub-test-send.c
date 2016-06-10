@@ -15,12 +15,12 @@ ohshit(int rvalue, const char* str) {
 main(int argc, char* argv[])
 {
     struct service srv;
-    bzero (&srv, sizeof (struct service));
+    memset (&srv, 0, sizeof (struct service));
     srv_init (&srv, PUBSUB_SERVICE_NAME);
     printf ("Writing on %s.\n", srv.spath);
 
     struct process p;
-    bzero (&p, sizeof (struct process));
+    memset (&p, 0, sizeof (struct process));
     int index = 1;
 
     if (app_create (&p, index)) // called by the application
@@ -31,7 +31,7 @@ main(int argc, char* argv[])
     pubsub_connection (&srv, &p, PUBSUB_PUB, MYCHAN);
 
     struct pubsub_msg m;
-    bzero (&m, sizeof (struct pubsub_msg));
+    memset (&m, 0, sizeof (struct pubsub_msg));
 
     // first message, "coucou"
     m.type = PUBSUB_TYPE_INFO;

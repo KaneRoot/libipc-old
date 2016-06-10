@@ -10,12 +10,12 @@ INCLUDEDIR := $(PREFIX)/include
 CC := cc
 AR := ar
 RANLIB := ranlib
-CFLAGS := -O2 -Wall -Wextra -Wshadow -ansi -pedantic -std=c99
+CFLAGS := -O2 -Wall -Wextra -Wshadow -ansi -pedantic -std=c99 -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=199309L
 LDFLAGS := 
 
 Q := @
 
-all: libposj init-connection open-read-close-fifo open-write-close-fifo service-test pubsub/pubsubd
+all: libposj pingpong/pingpong pubsub/pubsub pubsub/pubsub-test-send
 
 libposj: libposj.so libposj.a
 	@:
@@ -25,94 +25,60 @@ libposj.clean: libposj.so.clean libposj.a.clean
 
 libposj.uninstall: libposj.so.uninstall libposj.a.uninstall
 
-init-connection: init-connection.o lib/communication.o libposj.a
-	@echo '[01;32m  [LD]    [01;37minit-connection[00m'
-	$(Q)$(CC) -o init-connection $(LDFLAGS) init-connection.o lib/communication.o libposj.a
+pingpong/pingpong: pingpong/pingpong.o libposj.a
+	@echo '[01;32m  [LD]    [01;37mpingpong/pingpong[00m'
+	$(Q)$(CC) -o pingpong/pingpong $(LDFLAGS) pingpong/pingpong.o libposj.a -lpthread
 
-init-connection.install: init-connection
-	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/init-connection[00m'
+pingpong/pingpong.install: pingpong/pingpong
+	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/pingpong[00m'
 	$(Q)mkdir -p '$(DESTDIR)$(BINDIR)'
-	$(Q)install -m0755 init-connection $(DESTDIR)$(BINDIR)/init-connection
+	$(Q)install -m0755 pingpong/pingpong $(DESTDIR)$(BINDIR)/pingpong
 
-init-connection.clean:  init-connection.o.clean lib/communication.o.clean
-	@echo '[01;37m  [RM]    [01;37minit-connection[00m'
-	$(Q)rm -f init-connection
+pingpong/pingpong.clean:  pingpong/pingpong.o.clean
+	@echo '[01;37m  [RM]    [01;37mpingpong/pingpong[00m'
+	$(Q)rm -f pingpong/pingpong
 
-init-connection.uninstall:
-	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/init-connection[00m'
-	$(Q)rm -f '$(DESTDIR)$(BINDIR)/init-connection'
+pingpong/pingpong.uninstall:
+	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/pingpong[00m'
+	$(Q)rm -f '$(DESTDIR)$(BINDIR)/pingpong'
 
-open-read-close-fifo: open-read-close-fifo.o lib/communication.o libposj.a
-	@echo '[01;32m  [LD]    [01;37mopen-read-close-fifo[00m'
-	$(Q)$(CC) -o open-read-close-fifo $(LDFLAGS) open-read-close-fifo.o lib/communication.o libposj.a
+pubsub/pubsub: pubsub/pubsubd.o libposj.a
+	@echo '[01;32m  [LD]    [01;37mpubsub/pubsub[00m'
+	$(Q)$(CC) -o pubsub/pubsub $(LDFLAGS) pubsub/pubsubd.o libposj.a -lpthread
 
-open-read-close-fifo.install: open-read-close-fifo
-	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/open-read-close-fifo[00m'
+pubsub/pubsub.install: pubsub/pubsub
+	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/pubsub[00m'
 	$(Q)mkdir -p '$(DESTDIR)$(BINDIR)'
-	$(Q)install -m0755 open-read-close-fifo $(DESTDIR)$(BINDIR)/open-read-close-fifo
+	$(Q)install -m0755 pubsub/pubsub $(DESTDIR)$(BINDIR)/pubsub
 
-open-read-close-fifo.clean:  open-read-close-fifo.o.clean lib/communication.o.clean
-	@echo '[01;37m  [RM]    [01;37mopen-read-close-fifo[00m'
-	$(Q)rm -f open-read-close-fifo
+pubsub/pubsub.clean:  pubsub/pubsubd.o.clean
+	@echo '[01;37m  [RM]    [01;37mpubsub/pubsub[00m'
+	$(Q)rm -f pubsub/pubsub
 
-open-read-close-fifo.uninstall:
-	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/open-read-close-fifo[00m'
-	$(Q)rm -f '$(DESTDIR)$(BINDIR)/open-read-close-fifo'
+pubsub/pubsub.uninstall:
+	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/pubsub[00m'
+	$(Q)rm -f '$(DESTDIR)$(BINDIR)/pubsub'
 
-open-write-close-fifo: open-write-close-fifo.o lib/communication.o libposj.a
-	@echo '[01;32m  [LD]    [01;37mopen-write-close-fifo[00m'
-	$(Q)$(CC) -o open-write-close-fifo $(LDFLAGS) open-write-close-fifo.o lib/communication.o libposj.a
+pubsub/pubsub-test-send: pubsub/pubsub-test-send.o libposj.a
+	@echo '[01;32m  [LD]    [01;37mpubsub/pubsub-test-send[00m'
+	$(Q)$(CC) -o pubsub/pubsub-test-send $(LDFLAGS) pubsub/pubsub-test-send.o libposj.a -lpthread
 
-open-write-close-fifo.install: open-write-close-fifo
-	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/open-write-close-fifo[00m'
+pubsub/pubsub-test-send.install: pubsub/pubsub-test-send
+	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/pubsub-test-send[00m'
 	$(Q)mkdir -p '$(DESTDIR)$(BINDIR)'
-	$(Q)install -m0755 open-write-close-fifo $(DESTDIR)$(BINDIR)/open-write-close-fifo
+	$(Q)install -m0755 pubsub/pubsub-test-send $(DESTDIR)$(BINDIR)/pubsub-test-send
 
-open-write-close-fifo.clean:  open-write-close-fifo.o.clean lib/communication.o.clean
-	@echo '[01;37m  [RM]    [01;37mopen-write-close-fifo[00m'
-	$(Q)rm -f open-write-close-fifo
+pubsub/pubsub-test-send.clean:  pubsub/pubsub-test-send.o.clean
+	@echo '[01;37m  [RM]    [01;37mpubsub/pubsub-test-send[00m'
+	$(Q)rm -f pubsub/pubsub-test-send
 
-open-write-close-fifo.uninstall:
-	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/open-write-close-fifo[00m'
-	$(Q)rm -f '$(DESTDIR)$(BINDIR)/open-write-close-fifo'
+pubsub/pubsub-test-send.uninstall:
+	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/pubsub-test-send[00m'
+	$(Q)rm -f '$(DESTDIR)$(BINDIR)/pubsub-test-send'
 
-service-test: service-test.o lib/communication.o libposj.a
-	@echo '[01;32m  [LD]    [01;37mservice-test[00m'
-	$(Q)$(CC) -o service-test $(LDFLAGS) service-test.o lib/communication.o libposj.a
-
-service-test.install: service-test
-	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/service-test[00m'
-	$(Q)mkdir -p '$(DESTDIR)$(BINDIR)'
-	$(Q)install -m0755 service-test $(DESTDIR)$(BINDIR)/service-test
-
-service-test.clean:  service-test.o.clean lib/communication.o.clean
-	@echo '[01;37m  [RM]    [01;37mservice-test[00m'
-	$(Q)rm -f service-test
-
-service-test.uninstall:
-	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/service-test[00m'
-	$(Q)rm -f '$(DESTDIR)$(BINDIR)/service-test'
-
-pubsub/pubsubd: pubsub/list.o pubsub/pubsubd.o 
-	@echo '[01;32m  [LD]    [01;37mpubsub/pubsubd[00m'
-	$(Q)$(CC) -o pubsub/pubsubd $(LDFLAGS) pubsub/list.o pubsub/pubsubd.o libposj.a
-
-pubsub/pubsubd.install: pubsub/pubsubd
-	@echo '[01;31m  [IN]    [01;37m$(BINDIR)/pubsubd[00m'
-	$(Q)mkdir -p '$(DESTDIR)$(BINDIR)'
-	$(Q)install -m0755 pubsub/pubsubd $(DESTDIR)$(BINDIR)/pubsubd
-
-pubsub/pubsubd.clean:  pubsub/list.o.clean pubsub/pubsubd.o.clean
-	@echo '[01;37m  [RM]    [01;37mpubsub/pubsubd[00m'
-	$(Q)rm -f pubsub/pubsubd
-
-pubsub/pubsubd.uninstall:
-	@echo '[01;37m  [RM]    [01;37m$(BINDIR)/pubsubd[00m'
-	$(Q)rm -f '$(DESTDIR)$(BINDIR)/pubsubd'
-
-libposj.so: lib/communication.o 
+libposj.so: lib/communication.o lib/process.o lib/pubsubd.o 
 	@echo '[01;32m  [LD]    [01;37mlibposj.so[00m'
-	$(Q)$(CC) -o libposj.so -shared $(LDFLAGS) lib/communication.o 
+	$(Q)$(CC) -o libposj.so -shared $(LDFLAGS) lib/communication.o lib/process.o lib/pubsubd.o 
 
 libposj.so.install: libposj.so
 	@echo '[01;31m  [IN]    [01;37m$(LIBDIR)/libposj.so.0.0.1[00m'
@@ -139,9 +105,9 @@ libposj.so.uninstall:
 	@echo '[01;37m  [RM]    [01;37m$(LIBDIR)/libposj.so[00m'
 	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libposj.so'
 
-libposj.a: lib/communication.o 
+libposj.a: lib/communication.o lib/process.o lib/pubsubd.o 
 	@echo '[01;32m  [LD]    [01;37mlibposj.a[00m'
-	$(Q)$(AR) rc 'libposj.a' lib/communication.o
+	$(Q)$(AR) rc 'libposj.a' lib/communication.o lib/process.o lib/pubsubd.o
 
 libposj.a.install: libposj.a
 	@echo '[01;31m  [IN]    [01;37m$(LIBDIR)/libposj.a[00m'
@@ -156,17 +122,41 @@ libposj.a.uninstall:
 	@echo '[01;37m  [RM]    [01;37m$(LIBDIR)/libposj.a[00m'
 	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libposj.a'
 
-init-connection.o: init-connection.c ./lib/communication.h
-	@echo '[01;34m  [CC]    [01;37minit-connection.o[00m'
-	$(Q)$(CC) $(CFLAGS)  -c init-connection.c   -o init-connection.o
+pingpong/pingpong.o: pingpong/pingpong.c pingpong/../lib/communication.h
+	@echo '[01;34m  [CC]    [01;37mpingpong/pingpong.o[00m'
+	$(Q)$(CC) $(CFLAGS)  -c pingpong/pingpong.c   -o pingpong/pingpong.o
 
-init-connection.o.install:
+pingpong/pingpong.o.install:
 
-init-connection.o.clean:
-	@echo '[01;37m  [RM]    [01;37minit-connection.o[00m'
-	$(Q)rm -f init-connection.o
+pingpong/pingpong.o.clean:
+	@echo '[01;37m  [RM]    [01;37mpingpong/pingpong.o[00m'
+	$(Q)rm -f pingpong/pingpong.o
 
-init-connection.o.uninstall:
+pingpong/pingpong.o.uninstall:
+
+pubsub/pubsubd.o: pubsub/pubsubd.c pubsub/../lib/pubsubd.h
+	@echo '[01;34m  [CC]    [01;37mpubsub/pubsubd.o[00m'
+	$(Q)$(CC) $(CFLAGS)  -c pubsub/pubsubd.c   -o pubsub/pubsubd.o
+
+pubsub/pubsubd.o.install:
+
+pubsub/pubsubd.o.clean:
+	@echo '[01;37m  [RM]    [01;37mpubsub/pubsubd.o[00m'
+	$(Q)rm -f pubsub/pubsubd.o
+
+pubsub/pubsubd.o.uninstall:
+
+pubsub/pubsub-test-send.o: pubsub/pubsub-test-send.c pubsub/../lib/pubsubd.h
+	@echo '[01;34m  [CC]    [01;37mpubsub/pubsub-test-send.o[00m'
+	$(Q)$(CC) $(CFLAGS)  -c pubsub/pubsub-test-send.c   -o pubsub/pubsub-test-send.o
+
+pubsub/pubsub-test-send.o.install:
+
+pubsub/pubsub-test-send.o.clean:
+	@echo '[01;37m  [RM]    [01;37mpubsub/pubsub-test-send.o[00m'
+	$(Q)rm -f pubsub/pubsub-test-send.o
+
+pubsub/pubsub-test-send.o.uninstall:
 
 lib/communication.o: lib/communication.c lib/communication.h
 	@echo '[01;34m  [CC]    [01;37mlib/communication.o[00m'
@@ -180,65 +170,29 @@ lib/communication.o.clean:
 
 lib/communication.o.uninstall:
 
-open-read-close-fifo.o: open-read-close-fifo.c
-	@echo '[01;34m  [CC]    [01;37mopen-read-close-fifo.o[00m'
-	$(Q)$(CC) $(CFLAGS)  -c open-read-close-fifo.c   -o open-read-close-fifo.o
+lib/process.o: lib/process.c lib/process.h
+	@echo '[01;34m  [CC]    [01;37mlib/process.o[00m'
+	$(Q)$(CC) $(CFLAGS) -fPIC  -c lib/process.c  -fPIC  -o lib/process.o
 
-open-read-close-fifo.o.install:
+lib/process.o.install:
 
-open-read-close-fifo.o.clean:
-	@echo '[01;37m  [RM]    [01;37mopen-read-close-fifo.o[00m'
-	$(Q)rm -f open-read-close-fifo.o
+lib/process.o.clean:
+	@echo '[01;37m  [RM]    [01;37mlib/process.o[00m'
+	$(Q)rm -f lib/process.o
 
-open-read-close-fifo.o.uninstall:
+lib/process.o.uninstall:
 
-open-write-close-fifo.o: open-write-close-fifo.c
-	@echo '[01;34m  [CC]    [01;37mopen-write-close-fifo.o[00m'
-	$(Q)$(CC) $(CFLAGS)  -c open-write-close-fifo.c   -o open-write-close-fifo.o
+lib/pubsubd.o: lib/pubsubd.c lib/pubsubd.h
+	@echo '[01;34m  [CC]    [01;37mlib/pubsubd.o[00m'
+	$(Q)$(CC) $(CFLAGS) -fPIC  -c lib/pubsubd.c  -fPIC  -o lib/pubsubd.o
 
-open-write-close-fifo.o.install:
+lib/pubsubd.o.install:
 
-open-write-close-fifo.o.clean:
-	@echo '[01;37m  [RM]    [01;37mopen-write-close-fifo.o[00m'
-	$(Q)rm -f open-write-close-fifo.o
+lib/pubsubd.o.clean:
+	@echo '[01;37m  [RM]    [01;37mlib/pubsubd.o[00m'
+	$(Q)rm -f lib/pubsubd.o
 
-open-write-close-fifo.o.uninstall:
-
-service-test.o: service-test.c ./lib/communication.h
-	@echo '[01;34m  [CC]    [01;37mservice-test.o[00m'
-	$(Q)$(CC) $(CFLAGS)  -c service-test.c   -o service-test.o
-
-service-test.o.install:
-
-service-test.o.clean:
-	@echo '[01;37m  [RM]    [01;37mservice-test.o[00m'
-	$(Q)rm -f service-test.o
-
-service-test.o.uninstall:
-
-pubsub/list.o: pubsub/list.c pubsub/list.h
-	@echo '[01;34m  [CC]    [01;37mpubsub/list.o[00m'
-	$(Q)$(CC) $(CFLAGS) -I lib -c pubsub/list.c  -I lib -o pubsub/list.o
-
-pubsub/list.o.install:
-
-pubsub/list.o.clean:
-	@echo '[01;37m  [RM]    [01;37mpubsub/list.o[00m'
-	$(Q)rm -f pubsub/list.o
-
-pubsub/list.o.uninstall:
-
-pubsub/pubsubd.o: pubsub/pubsubd.c
-	@echo '[01;34m  [CC]    [01;37mpubsub/pubsubd.o[00m'
-	$(Q)$(CC) $(CFLAGS) -I lib -c pubsub/pubsubd.c  -I lib -o pubsub/pubsubd.o
-
-pubsub/pubsubd.o.install:
-
-pubsub/pubsubd.o.clean:
-	@echo '[01;37m  [RM]    [01;37mpubsub/pubsubd.o[00m'
-	$(Q)rm -f pubsub/pubsubd.o
-
-pubsub/pubsubd.o.uninstall:
+lib/pubsubd.o.uninstall:
 
 $(DESTDIR)$(PREFIX):
 	@echo '[01;35m  [DIR]   [01;37m$(PREFIX)[00m'
@@ -255,12 +209,12 @@ $(DESTDIR)$(SHAREDIR):
 $(DESTDIR)$(INCLUDEDIR):
 	@echo '[01;35m  [DIR]   [01;37m$(INCLUDEDIR)[00m'
 	$(Q)mkdir -p $(DESTDIR)$(INCLUDEDIR)
-install: subdirs.install libposj.install init-connection.install open-read-close-fifo.install open-write-close-fifo.install service-test.install pubsub/pubsubd.install libposj.so.install libposj.a.install init-connection.o.install lib/communication.o.install open-read-close-fifo.o.install lib/communication.o.install open-write-close-fifo.o.install lib/communication.o.install service-test.o.install lib/communication.o.install pubsub/list.o.install pubsub/pubsubd.o.install lib/communication.o.install lib/communication.o.install
+install: subdirs.install libposj.install pingpong/pingpong.install pubsub/pubsub.install pubsub/pubsub-test-send.install libposj.so.install libposj.a.install pingpong/pingpong.o.install pubsub/pubsubd.o.install pubsub/pubsub-test-send.o.install lib/communication.o.install lib/process.o.install lib/pubsubd.o.install lib/communication.o.install lib/process.o.install lib/pubsubd.o.install
 	@:
 
 subdirs.install:
 
-uninstall: subdirs.uninstall libposj.uninstall init-connection.uninstall open-read-close-fifo.uninstall open-write-close-fifo.uninstall service-test.uninstall pubsub/pubsubd.uninstall libposj.so.uninstall libposj.a.uninstall init-connection.o.uninstall lib/communication.o.uninstall open-read-close-fifo.o.uninstall lib/communication.o.uninstall open-write-close-fifo.o.uninstall lib/communication.o.uninstall service-test.o.uninstall lib/communication.o.uninstall pubsub/list.o.uninstall pubsub/pubsubd.o.uninstall lib/communication.o.uninstall lib/communication.o.uninstall
+uninstall: subdirs.uninstall libposj.uninstall pingpong/pingpong.uninstall pubsub/pubsub.uninstall pubsub/pubsub-test-send.uninstall libposj.so.uninstall libposj.a.uninstall pingpong/pingpong.o.uninstall pubsub/pubsubd.o.uninstall pubsub/pubsub-test-send.o.uninstall lib/communication.o.uninstall lib/process.o.uninstall lib/pubsubd.o.uninstall lib/communication.o.uninstall lib/process.o.uninstall lib/pubsubd.o.uninstall
 	@:
 
 subdirs.uninstall:
@@ -270,7 +224,7 @@ test: all subdirs subdirs.test
 
 subdirs.test:
 
-clean: libposj.clean init-connection.clean open-read-close-fifo.clean open-write-close-fifo.clean service-test.clean pubsub/pubsubd.clean libposj.so.clean libposj.a.clean init-connection.o.clean lib/communication.o.clean open-read-close-fifo.o.clean lib/communication.o.clean open-write-close-fifo.o.clean lib/communication.o.clean service-test.o.clean lib/communication.o.clean pubsub/list.o.clean pubsub/pubsubd.o.clean lib/communication.o.clean lib/communication.o.clean
+clean: libposj.clean pingpong/pingpong.clean pubsub/pubsub.clean pubsub/pubsub-test-send.clean libposj.so.clean libposj.a.clean pingpong/pingpong.o.clean pubsub/pubsubd.o.clean pubsub/pubsub-test-send.o.clean lib/communication.o.clean lib/process.o.clean lib/pubsubd.o.clean lib/communication.o.clean lib/process.o.clean lib/pubsubd.o.clean
 
 distclean: clean
 
@@ -285,46 +239,46 @@ dist-gz: $(PACKAGE)-$(VERSION).tar.gz
 $(PACKAGE)-$(VERSION).tar.gz: distdir
 	@echo '[01;33m  [TAR]   [01;37m$(PACKAGE)-$(VERSION).tar.gz[00m'
 	$(Q)tar czf $(PACKAGE)-$(VERSION).tar.gz \
-		$(PACKAGE)-$(VERSION)/init-connection.c \
-		$(PACKAGE)-$(VERSION)/pubsub/list.c \
-		$(PACKAGE)-$(VERSION)/pubsub/pubsubd.c \
-		$(PACKAGE)-$(VERSION)/service-test.c \
-		$(PACKAGE)-$(VERSION)/open-write-close-fifo.c \
-		$(PACKAGE)-$(VERSION)/open-read-close-fifo.c \
 		$(PACKAGE)-$(VERSION)/lib/communication.c \
+		$(PACKAGE)-$(VERSION)/lib/process.c \
+		$(PACKAGE)-$(VERSION)/lib/pubsubd.c \
+		$(PACKAGE)-$(VERSION)/pingpong/pingpong.c \
+		$(PACKAGE)-$(VERSION)/pubsub/pubsub-test-send.c \
+		$(PACKAGE)-$(VERSION)/pubsub/pubsubd.c \
 		$(PACKAGE)-$(VERSION)/libposj.a \
-		$(PACKAGE)-$(VERSION)/pubsub/list.h \
-		$(PACKAGE)-$(VERSION)/lib/communication.h
+		$(PACKAGE)-$(VERSION)/lib/communication.h \
+		$(PACKAGE)-$(VERSION)/lib/process.h \
+		$(PACKAGE)-$(VERSION)/lib/pubsubd.h
 
 dist-xz: $(PACKAGE)-$(VERSION).tar.xz
 $(PACKAGE)-$(VERSION).tar.xz: distdir
 	@echo '[01;33m  [TAR]   [01;37m$(PACKAGE)-$(VERSION).tar.xz[00m'
 	$(Q)tar cJf $(PACKAGE)-$(VERSION).tar.xz \
-		$(PACKAGE)-$(VERSION)/init-connection.c \
-		$(PACKAGE)-$(VERSION)/pubsub/list.c \
-		$(PACKAGE)-$(VERSION)/pubsub/pubsubd.c \
-		$(PACKAGE)-$(VERSION)/service-test.c \
-		$(PACKAGE)-$(VERSION)/open-write-close-fifo.c \
-		$(PACKAGE)-$(VERSION)/open-read-close-fifo.c \
 		$(PACKAGE)-$(VERSION)/lib/communication.c \
+		$(PACKAGE)-$(VERSION)/lib/process.c \
+		$(PACKAGE)-$(VERSION)/lib/pubsubd.c \
+		$(PACKAGE)-$(VERSION)/pingpong/pingpong.c \
+		$(PACKAGE)-$(VERSION)/pubsub/pubsub-test-send.c \
+		$(PACKAGE)-$(VERSION)/pubsub/pubsubd.c \
 		$(PACKAGE)-$(VERSION)/libposj.a \
-		$(PACKAGE)-$(VERSION)/pubsub/list.h \
-		$(PACKAGE)-$(VERSION)/lib/communication.h
+		$(PACKAGE)-$(VERSION)/lib/communication.h \
+		$(PACKAGE)-$(VERSION)/lib/process.h \
+		$(PACKAGE)-$(VERSION)/lib/pubsubd.h
 
 dist-bz2: $(PACKAGE)-$(VERSION).tar.bz2
 $(PACKAGE)-$(VERSION).tar.bz2: distdir
 	@echo '[01;33m  [TAR]   [01;37m$(PACKAGE)-$(VERSION).tar.bz2[00m'
 	$(Q)tar cjf $(PACKAGE)-$(VERSION).tar.bz2 \
-		$(PACKAGE)-$(VERSION)/init-connection.c \
-		$(PACKAGE)-$(VERSION)/pubsub/list.c \
-		$(PACKAGE)-$(VERSION)/pubsub/pubsubd.c \
-		$(PACKAGE)-$(VERSION)/service-test.c \
-		$(PACKAGE)-$(VERSION)/open-write-close-fifo.c \
-		$(PACKAGE)-$(VERSION)/open-read-close-fifo.c \
 		$(PACKAGE)-$(VERSION)/lib/communication.c \
+		$(PACKAGE)-$(VERSION)/lib/process.c \
+		$(PACKAGE)-$(VERSION)/lib/pubsubd.c \
+		$(PACKAGE)-$(VERSION)/pingpong/pingpong.c \
+		$(PACKAGE)-$(VERSION)/pubsub/pubsub-test-send.c \
+		$(PACKAGE)-$(VERSION)/pubsub/pubsubd.c \
 		$(PACKAGE)-$(VERSION)/libposj.a \
-		$(PACKAGE)-$(VERSION)/pubsub/list.h \
-		$(PACKAGE)-$(VERSION)/lib/communication.h
+		$(PACKAGE)-$(VERSION)/lib/communication.h \
+		$(PACKAGE)-$(VERSION)/lib/process.h \
+		$(PACKAGE)-$(VERSION)/lib/pubsubd.h
 
 help:
 	@echo '[01;37m :: perfect-os-junk-0.0.1[00m'
@@ -350,11 +304,9 @@ help:
 	@echo ''
 	@echo '[01;37mProject targets: [00m'
 	@echo '    - [01;33mlibposj       [37mlibrary[00m'
-	@echo '    - [01;33minit-connection[37mbinary[00m'
-	@echo '    - [01;33mopen-read-close-fifo[37mbinary[00m'
-	@echo '    - [01;33mopen-write-close-fifo[37mbinary[00m'
-	@echo '    - [01;33mservice-test  [37mbinary[00m'
-	@echo '    - [01;33mpubsub/pubsubd[37mbinary[00m'
+	@echo '    - [01;33mpingpong/pingpong[37mbinary[00m'
+	@echo '    - [01;33mpubsub/pubsub [37mbinary[00m'
+	@echo '    - [01;33mpubsub/pubsub-test-send[37mbinary[00m'
 	@echo ''
 	@echo '[01;37mMakefile options:[00m'
 	@echo '    - gnu:          true'

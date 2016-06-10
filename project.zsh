@@ -2,23 +2,30 @@
 package=perfect-os-junk
 version=0.0.1
 
-CFLAGS="-O2 -Wall -Wextra -Wshadow -ansi -pedantic -std=c99"
+CFLAGS="-O2 -Wall -Wextra -Wshadow -ansi -pedantic -std=c99 -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=199309L"
 
 targets=(libposj)
 type[libposj]=library
 sources[libposj]="$(echo lib/*.c)"
 
-for i in *.c; do
-	targets+=(${i%.c})
-	sources[${i%.c}]="$i $(echo lib/*.c)"
-	type[${i%.c}]=binary
-	depends[${i%.c}]="libposj.a"
-	ldflags[${i%.c}]="libposj.a"
-done
+target="pingpong/pingpong"
+targets+=(${target})
+sources[${target}]="$(echo pingpong/*.c)"
+type[${target}]=binary
+depends[${target}]="libposj.a"
+ldflags[${target}]="libposj.a -lpthread"
 
-targets+=(pubsub/pubsubd)
-type[pubsub/pubsubd]=binary
-sources[pubsub/pubsubd]="pubsub/list.c pubsub/pubsubd.c"
-cflags[pubsub/pubsubd]="-I lib"
-ldflags[pubsub/pubsubd]="libposj.a"
+target="pubsub/pubsub"
+targets+=(${target})
+sources[${target}]="$(ls pubsub/*.c | grep -v test-send)"
+type[${target}]=binary
+depends[${target}]="libposj.a"
+ldflags[${target}]="libposj.a -lpthread"
+
+target="pubsub/pubsub-test-send"
+targets+=(${target})
+sources[${target}]="pubsub/pubsub-test-send.c"
+type[${target}]=binary
+depends[${target}]="libposj.a"
+ldflags[${target}]="libposj.a -lpthread"
 

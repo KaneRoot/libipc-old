@@ -52,7 +52,7 @@ struct channel * pubsubd_channel_copy (struct channel *c)
 
     struct channel *copy = NULL;
     copy = malloc (sizeof(struct channel));
-    bzero (copy, sizeof (struct channel));
+    memset (copy, 0, sizeof (struct channel));
 
     memcpy (copy, c, sizeof(struct channel));
 
@@ -334,7 +334,7 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     int version = 0;
 
     char chan[BUFSIZ];
-    bzero (chan, BUFSIZ);
+    memset (chan, 0, BUFSIZ);
 
     for (str = buf, i = 1; ; str = NULL, i++) {
         token = strtok_r(str, " ", &saveptr);
@@ -542,7 +542,7 @@ void pubsub_connection (struct service *srv, struct process *p, enum app_list_el
     straction = pubsub_action_to_str (action);
 
     char line[BUFSIZ];
-    bzero (line, BUFSIZ);
+    memset (line, 0, BUFSIZ);
 
     // line fmt : pid index version action chan
     // "quit" action is also possible (see pubsub_disconnect)
