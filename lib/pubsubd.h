@@ -103,5 +103,6 @@ void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p);
 void pubsubd_app_list_elm_free (struct app_list_elm *todel);
 
 void pubsub_connection (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame);
+void pubsub_disconnect (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame);
 
 #endif

@@ -559,6 +559,14 @@ void pubsub_connection (struct service *srv, struct process *p, enum app_list_el
         free (straction);
 }
 
+void pubsub_disconnect (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame)
+{
+    // line fmt : pid index version quit
+    // "quit" action is also possible (see pubsub_disconnect)
+    char line[BUFSIZ];
+    snprintf (line, BUFSIZ, "%d %d %d quit\n" , p->pid, p->index, p->version);
+}
+
 void pubsub_msg_send (const struct service *s, struct process *p, const struct pubsub_msg * m)
 {
     char *buf = NULL;
