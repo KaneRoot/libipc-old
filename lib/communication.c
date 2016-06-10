@@ -6,7 +6,7 @@ int file_open (FILE **f, const char *path, const char *mode)
 {
     printf ("opening %s\n", path);
     if (*f != NULL) {
-        printf ("f != NULL : %p\n", *f);
+        printf ("f != NULL : %p\n", (void*) *f);
         fclose (*f);
     }
     *f = fopen (path, mode);
@@ -35,7 +35,7 @@ void srv_init (struct service *srv, const char *sname)
         return;
 
     // gets the service path, such as /tmp/<service>
-    bzero (srv->spath, PATH_MAX);
+    memset (srv->spath, 0, PATH_MAX);
     strncat (srv->spath, TMPDIR, PATH_MAX);
     strncat (srv->spath, sname, PATH_MAX);
 
@@ -93,7 +93,7 @@ int srv_close (struct service *srv)
 int srv_get_listen_raw (const struct service *srv, char **buf, size_t *msize)
 {
     *buf = malloc(BUFSIZ);
-    bzero (*buf, BUFSIZ);
+    memset (*buf, 0, BUFSIZ);
 
     FILE * f = fopen (srv->spath, "r");
     fgets (*buf, BUFSIZ, f);
@@ -111,7 +111,7 @@ int srv_get_new_process (const struct service *srv, struct process *p)
     }
 
     char buf[BUFSIZ];
-    bzero (buf, BUFSIZ);
+    memset (buf, 0, BUFSIZ);
 
     // read the pipe, get a process to work on
     struct timespec ts = { 0 };

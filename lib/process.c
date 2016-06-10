@@ -24,8 +24,8 @@ void srv_process_gen (struct process *p
     p->version = version;
     p->index = index;
 
-    bzero (p->path_in, PATH_MAX);
-    bzero (p->path_out, PATH_MAX);
+    memset (p->path_in, 0, PATH_MAX);
+    memset (p->path_out, 0, PATH_MAX);
     snprintf(p->path_in , PATH_MAX, "%s/%d-%d-in" , TMPDIR, pid, index);
     snprintf(p->path_out, PATH_MAX, "%s/%d-%d-out", TMPDIR, pid, index);
     p->in = NULL;

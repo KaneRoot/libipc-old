@@ -27,7 +27,7 @@ void * pubsubd_worker_thread (void *params)
         printf ("publish or publish and subscribe to something\n");
 
         struct pubsub_msg m;
-        bzero (&m, sizeof (struct pubsub_msg));
+        memset (&m, 0, sizeof (struct pubsub_msg));
         pubsubd_msg_recv (wp->ale->p, &m);
 
         pubsubd_msg_print (&m);
@@ -46,7 +46,7 @@ void * pubsubd_worker_thread (void *params)
     }
     else {
         printf ("\033[31mdo not know what you want to do\033[00m\n");
-        printf ("\tale->p : %p\n", wp->ale->p);
+        printf ("\tale->p : %p\n", (void*) wp->ale->p);
     }
 
     pubsubd_app_list_elm_free (wp->ale);
@@ -58,7 +58,7 @@ void * pubsubd_worker_thread (void *params)
 main(int argc, char* argv[])
 {
     struct service srv;
-    bzero (&srv, sizeof (struct service));
+    memset (&srv, 0, sizeof (struct service));
     srv_init (&srv, PUBSUB_SERVICE_NAME);
     printf ("Listening on %s.\n", srv.spath);
 
@@ -68,13 +68,13 @@ main(int argc, char* argv[])
 
     // init chans list
     struct channels chans;
-    bzero (&chans, sizeof (struct channels));
+    memset (&chans, 0, sizeof (struct channels));
     pubsubd_channels_init (&chans);
 
     for (;;) {
         // for each new process
         struct app_list_elm ale;
-        bzero (&ale, sizeof (struct app_list_elm));
+        memset (&ale, 0, sizeof (struct app_list_elm));
         struct channel *chan = NULL;
         pubsubd_get_new_process (&srv, &ale, &chans, &chan);
         pubsubd_channels_print (&chans);
