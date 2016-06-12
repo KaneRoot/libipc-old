@@ -16,7 +16,7 @@ void usage (char **argv)
     printf ( "usage : %s pid index (pub|sub|both|quit) [chan]\n", argv[0]);
 }
 
-void sim_connection (pid_t pid, int index, int version, char *cmd, char *chan)
+void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, int version, char *cmd, char *chan)
 {
 
     printf ("Simulate connnection : pid %d index %d version %d "
@@ -25,7 +25,7 @@ void sim_connection (pid_t pid, int index, int version, char *cmd, char *chan)
 
     struct service srv;
     bzero (&srv, sizeof (struct service));
-    srv_init (&srv, PUBSUB_SERVICE_NAME);
+    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME);
     printf ("Writing on %s.\n", srv.spath);
 
     struct process p;
@@ -47,11 +47,11 @@ void sim_connection (pid_t pid, int index, int version, char *cmd, char *chan)
     m.chanlen = strlen (MYCHAN);
     m.data = malloc (strlen (MYMESSAGE));
     m.datalen = strlen (MYMESSAGE);
-    pubsub_msg_send (&srv, &p, &m);
+    pubsub_msg_send (&p, &m);
 
     // second message, to disconnect from the server
     m.type = PUBSUB_TYPE_DISCONNECT;
-    pubsub_msg_send (&srv, &p, &m);
+    pubsub_msg_send (&p, &m);
 
     // free everything
 
@@ -64,7 +64,7 @@ void sim_connection (pid_t pid, int index, int version, char *cmd, char *chan)
     srv_process_free (&p);
 }
 
-void sim_disconnection (pid_t pid, int index, int version)
+void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index, int version)
 {
     struct service srv;
     bzero (&srv, sizeof (struct service));
@@ -85,7 +85,7 @@ void sim_disconnection (pid_t pid, int index, int version)
 }
 
     int
-main(int argc, char* argv[])
+main(int argc, char **argv, char **env)
 {
 
     if (argc < 3) {
@@ -108,10 +108,10 @@ main(int argc, char* argv[])
     if (strcmp(cmd, "quit") != 0) {
         char *chan = NULL;
         chan = argv[4];
-        sim_connection (pid, index, version, cmd, chan);
+        sim_connection (argc, argv, env, pid, index, version, cmd, chan);
     }
     else {
-        sim_disconnection (pid, index, version);
+        sim_disconnection (argc, argv, env, pid, index, version);
     }
 
     return EXIT_SUCCESS;

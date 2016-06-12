@@ -593,15 +593,16 @@ void pubsub_connection (struct service *srv, struct process *p, enum app_list_el
         free (straction);
 }
 
-void pubsub_disconnect (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame)
+// tell the service to stop
+void pubsub_disconnect (struct service *srv)
 {
-    // line fmt : pid index version quit
-    // "quit" action is also possible (see pubsub_disconnect)
+    // line fmt : 0 0 0 quit
     char line[BUFSIZ];
-    snprintf (line, BUFSIZ, "%d %d %d quit\n" , p->pid, p->index, p->version);
+    snprintf (line, BUFSIZ, "0 0 0 quit\n");
+    app_srv_connection (srv, line, strlen (line));
 }
 
-void pubsub_msg_send (const struct service *s, struct process *p, const struct pubsub_msg * m)
+void pubsub_msg_send (struct process *p, const struct pubsub_msg * m)
 {
     char *buf = NULL;
     size_t msize = 0;
@@ -614,7 +615,7 @@ void pubsub_msg_send (const struct service *s, struct process *p, const struct p
     }
 }
 
-void pubsub_msg_recv (const struct service *s, struct process *p, struct pubsub_msg * m)
+void pubsub_msg_recv (struct process *p, struct pubsub_msg * m)
 {
     // read the message from the process
     size_t mlen = 0;

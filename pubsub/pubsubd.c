@@ -55,11 +55,11 @@ void * pubsubd_worker_thread (void *params)
 }
 
     int
-main(int argc, char* argv[])
+main(int argc, char **argv, char **env)
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    srv_init (&srv, PUBSUB_SERVICE_NAME);
+    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME);
     printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications

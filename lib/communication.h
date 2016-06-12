@@ -30,7 +30,7 @@ struct service {
     FILE *spipe;
 };
 
-void srv_init (struct service *srv, const char *sname);
+void srv_init (int argc, char **argv, char **env, struct service *srv, const char *sname);
 
 int srv_get_listen_raw (const struct service *srv, char **buf, size_t *msize);
 int srv_get_new_process (const struct service *srv, struct process *proc);

@@ -12,11 +12,11 @@ ohshit(int rvalue, const char* str) {
 }
 
     int
-main(int argc, char* argv[])
+main(int argc, char **argv, char **env)
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    srv_init (&srv, PUBSUB_SERVICE_NAME);
+    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME);
     printf ("Writing on %s.\n", srv.spath);
 
     struct process p;
@@ -39,11 +39,11 @@ main(int argc, char* argv[])
     m.chanlen = strlen (MYCHAN);
     m.data = malloc (strlen (MYMESSAGE));
     m.datalen = strlen (MYMESSAGE);
-    pubsub_msg_send (&srv, &p, &m);
+    pubsub_msg_send (&p, &m);
 
     // second message, to disconnect from the server
     m.type = PUBSUB_TYPE_DISCONNECT;
-    pubsub_msg_send (&srv, &p, &m);
+    pubsub_msg_send (&p, &m);
 
     // free everything
 

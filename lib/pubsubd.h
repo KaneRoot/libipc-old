@@ -41,8 +41,8 @@ int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize);
 void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg *m);
 void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m);
 
-void pubsub_msg_send (const struct service *, struct process *p, const struct pubsub_msg *msg);
-void pubsub_msg_recv (const struct service *, struct process *p, struct pubsub_msg *msg);
+void pubsub_msg_send (struct process *p, const struct pubsub_msg *msg);
+void pubsub_msg_recv (struct process *p, struct pubsub_msg *msg);
 
 // CHANNEL
 
@@ -102,6 +102,6 @@ void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p);
 void pubsubd_app_list_elm_free (struct app_list_elm *todel);
 
 void pubsub_connection (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame);
-void pubsub_disconnect (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame);
+void pubsub_disconnect (struct service *srv);
 
 #endif

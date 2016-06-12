@@ -63,10 +63,10 @@ void main_loop (const struct service *srv)
  * 5. removes the named pipe /tmp/<service>
  */
 
-int main(int argc, char * argv[])
+int main(int argc, char * argv[], char **env)
 {
     struct service srv;
-    srv_init (&srv, PONGD_SERVICE_NAME);
+    srv_init (argc, argv, env, &srv, PONGD_SERVICE_NAME);
     printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications
