@@ -3,7 +3,6 @@
 
 #include "communication.h"
 #include "process.h"
-
 #include "queue.h"
 
 #define PUBSUB_TYPE_DISCONNECT                                     1 << 0

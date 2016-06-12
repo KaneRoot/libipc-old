@@ -1,6 +1,8 @@
 #include "pubsubd.h"
 #include <stdlib.h>
 
+#include <string.h> // strndup
+
 // CHANNELS
 
 void pubsubd_channels_init (struct channels *chans) { LIST_INIT(chans); }
@@ -57,7 +59,9 @@ struct channel * pubsubd_channel_copy (struct channel *c)
     memcpy (copy, c, sizeof(struct channel));
 
     if (c->chan != NULL) {
-        copy->chan = strndup (c->chan, c->chanlen);
+        // copy->chan = strndup (c->chan, c->chanlen);
+        copy->chan = malloc (BUFSIZ);
+        memcpy (copy->chan, c->chan, BUFSIZ);
         copy->chanlen = c->chanlen;
     }
 
@@ -396,7 +400,9 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     }
 
     chan[BUFSIZ -1] = '\0';
-    c[0]->chan = strndup (chan, BUFSIZ);
+    // c[0]->chan = strndup (chan, BUFSIZ);
+    c[0]->chan = malloc (BUFSIZ);
+    memcpy(c[0]->chan, chan, BUFSIZ);
     c[0]->chanlen = strlen (chan);
 
     struct channel *new_chan = NULL;
@@ -425,21 +431,35 @@ int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize)
 
     // read 
     char type = ' ';
-    fread (&type, 1, 1, f);
+    if (0 == fread (&type, 1, 1, f)) {
+        return ER_FILE_READ;
+    }
 
     size_t chanlen = 0;
-    fread (&chanlen, sizeof (size_t), 1, f);
+    if (0 == fread (&chanlen, sizeof (size_t), 1, f)) {
+        return ER_FILE_READ;
+    }
 
     if (chanlen > BUFSIZ) {
-        return 1;
+        return ER_FILE_READ;
     }
 
     char *chan = NULL;
     chan = malloc (chanlen);
-    fread (chan, chanlen, 1, f);
+
+    if (chan == NULL) {
+        return ER_MEM_ALLOC;
+    }
+
+    if (0 == fread (chan, chanlen, 1, f)) {
+        return ER_FILE_READ;
+    }
 
     size_t datalen = 0;
-    fread (&datalen, sizeof (size_t), 1, f);
+    if (0 == fread (&datalen, sizeof (size_t), 1, f)) {
+        free (chan);
+        return ER_FILE_READ;
+    }
 
     if (datalen > BUFSIZ) {
         return 1;
@@ -447,11 +467,25 @@ int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize)
 
     char *data = NULL;
     data = malloc (datalen);
-    fread (data, datalen, 1, f);
+    if (data == NULL) {
+        free (chan);
+        return ER_MEM_ALLOC;
+    }
+
+    if (0 == fread (data, datalen, 1, f)) {
+        free (chan);
+        free (data);
+        return ER_FILE_READ;
+    }
 
     *msize = 1 + 2 * sizeof (size_t) + chanlen + datalen;
     if (*buf == NULL) {
         *buf = malloc(*msize);
+        if (*buf == NULL) {
+            free (chan);
+            free (data);
+            return ER_MEM_ALLOC;
+        }
     }
 
     // TODO CHECK THIS

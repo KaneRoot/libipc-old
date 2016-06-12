@@ -16,6 +16,13 @@
 
 #define COMMUNICATION_VERSION 1
 
+#define ER_FILE_OPEN        1
+#define ER_FILE_CLOSE       2
+#define ER_FILE_READ        3
+#define ER_FILE_WRITE       4
+
+#define ER_MEM_ALLOC        100
+
 struct service {
     unsigned int version;
     unsigned int index;
@@ -41,7 +48,7 @@ int srv_close (struct service *srv);
 int srv_read_cb (struct process *p, char ** buf, size_t * msize
         , int (*cb)(FILE *f, char ** buf, size_t * msize));
 int srv_read (struct process *, char ** buf, size_t *);
-int srv_write (struct process *, void * buf, size_t);
+int srv_write (struct process *, char * buf, size_t);
 
 // APPLICATION
 
@@ -53,7 +60,13 @@ int app_destroy (struct process *); // called by the application
 
 int app_read_cb (struct process *p, char ** buf, size_t * msize
         , int (*cb)(FILE *f, char ** buf, size_t * msize));
-int app_read (struct process *, void * buf, size_t *);
-int app_write (struct process *, void * buf, size_t);
+int app_read (struct process *, char ** buf, size_t *);
+int app_write (struct process *, char * buf, size_t);
+
+// wrappers
+int file_open (FILE **f, const char *path, const char *mode);
+int file_close (FILE *f);
+int file_read (FILE *f, char **buf, size_t *msize);
+int file_write (FILE *f, const char *buf, size_t msize);
 
 #endif
