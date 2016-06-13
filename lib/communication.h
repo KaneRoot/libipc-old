@@ -16,12 +16,14 @@
 
 #define COMMUNICATION_VERSION 1
 
-#define ER_FILE_OPEN        1
-#define ER_FILE_CLOSE       2
-#define ER_FILE_READ        3
-#define ER_FILE_WRITE       4
+#define ER_FILE_OPEN                                1
+#define ER_FILE_CLOSE                               2
+#define ER_FILE_READ                                3
+#define ER_FILE_WRITE                               4
+#define ER_FILE_WRITE_PARAMS                        5
 
 #define ER_MEM_ALLOC        100
+#define ER_PARAMS           101
 
 struct service {
     unsigned int version;
@@ -30,7 +32,10 @@ struct service {
     FILE *spipe;
 };
 
-void srv_init (int argc, char **argv, char **env, struct service *srv, const char *sname);
+int srv_init (int argc, char **argv, char **env
+        , struct service *srv, const char *sname
+        , int (*cb)(int argc, char **argv, char **env
+            , struct service *srv, const char *sname));
 
 int srv_get_listen_raw (const struct service *srv, char **buf, size_t *msize);
 int srv_get_new_process (const struct service *srv, struct process *proc);
@@ -55,8 +60,8 @@ int srv_write (struct process *, char * buf, size_t);
 // send the connection string to $TMP/<service>
 int app_srv_connection (struct service *, const char *, size_t);
 
-int app_create (struct process *, int index); // called by the application
-int app_destroy (struct process *); // called by the application
+int app_create (struct process *, pid_t pid, int index, int version);
+int app_destroy (struct process *);
 
 int app_read_cb (struct process *p, char ** buf, size_t * msize
         , int (*cb)(FILE *f, char ** buf, size_t * msize));

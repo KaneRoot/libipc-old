@@ -19,34 +19,47 @@ void * pubsubd_worker_thread (void *params)
 {
     struct worker_params *wp = (struct worker_params *) params;
 
-    // each chan has a list of subscribers
-    // someone who only push a msg doesn't need to be registered
-    if (wp->ale->action == PUBSUB_BOTH || wp->ale->action == PUBSUB_PUB) {
-        // TODO add it to the application to follow
-        // TODO publish a message
-        printf ("publish or publish and subscribe to something\n");
+    while (1) {
+        // each chan has a list of subscribers
+        // someone who only push a msg doesn't need to be registered
+        if (wp->ale->action == PUBSUB_BOTH || wp->ale->action == PUBSUB_PUB) {
+            // publish a message
+            printf ("publish or publish and subscribe to chan %s\n"
+                    , wp->chan->chan);
 
-        struct pubsub_msg m;
-        memset (&m, 0, sizeof (struct pubsub_msg));
-        pubsubd_msg_recv (wp->ale->p, &m);
+            struct pubsub_msg m;
+            memset (&m, 0, sizeof (struct pubsub_msg));
 
-        pubsubd_msg_print (&m);
+            sleep (5);
+            pubsubd_msg_recv (wp->ale->p, &m);
 
-        if (m.type == PUBSUB_TYPE_DISCONNECT) {
-            // TODO remove the application from the subscribers
+            pubsubd_msg_print (&m);
+
+            if (m.type == PUBSUB_TYPE_DISCONNECT) {
+                // TODO remove the application from the subscribers
+                if ( 0 != pubsubd_subscriber_del (wp->chan->alh, wp->ale)) {
+                    fprintf (stderr, "err : subscriber not registered\n");
+                }
+                break;
+            }
+            else {
+                struct channel *chan = pubsubd_channel_get (wp->chans, wp->chan);
+                pubsubd_msg_send (chan->alh, &m);
+            }
+        }
+        else if (wp->ale->action == PUBSUB_SUB) {
+            // subscribe to a channel, no need to loop
+            // already subscribed
+            // printf ("subscribe to %s\n", wp->chan->chan);
+            // pubsubd_subscriber_add (wp->chan->alh, wp->ale);
+            break;
         }
         else {
-            struct channel *chan = pubsubd_channel_get (wp->chans, wp->chan);
-            pubsubd_msg_send (chan->alh, &m);
+            // unrecognized command, no need to loop
+            printf ("\033[31mdo not know what you want to do\033[00m\n");
+            printf ("\tale->p : %p\n", (void*) wp->ale->p);
+            break;
         }
-    }
-    else if (wp->ale->action == PUBSUB_SUB) {
-        // TODO
-        printf ("subscribe to something\n");
-    }
-    else {
-        printf ("\033[31mdo not know what you want to do\033[00m\n");
-        printf ("\tale->p : %p\n", (void*) wp->ale->p);
     }
 
     pubsubd_app_list_elm_free (wp->ale);
@@ -59,7 +72,7 @@ main(int argc, char **argv, char **env)
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME);
+    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications

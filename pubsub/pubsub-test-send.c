@@ -16,14 +16,16 @@ main(int argc, char **argv, char **env)
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME);
+    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Writing on %s.\n", srv.spath);
 
     struct process p;
     memset (&p, 0, sizeof (struct process));
     int index = 1;
 
-    if (app_create (&p, index)) // called by the application
+    pid_t pid = getpid();
+
+    if (app_create (&p, pid, index, COMMUNICATION_VERSION))
         ohshit (1, "app_create");
 
     // send a message to warn the service we want to do something

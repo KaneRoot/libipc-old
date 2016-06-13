@@ -3,7 +3,6 @@
 #include <pthread.h>
 
 #define MYMESSAGE "coucou"
-#define MYCHAN    "chan1"
 
 void
 ohshit(int rvalue, const char* str) {
@@ -18,44 +17,43 @@ void usage (char **argv)
 
 void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, int version, char *cmd, char *chan)
 {
-
     printf ("Simulate connnection : pid %d index %d version %d "
             "cmd %s chan %s\n"
           , pid, index, version, cmd, chan );
 
     struct service srv;
-    bzero (&srv, sizeof (struct service));
-    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME);
+    memset (&srv, 0, sizeof (struct service));
+    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Writing on %s.\n", srv.spath);
 
     struct process p;
-    bzero (&p, sizeof (struct process));
+    memset (&p, 0, sizeof (struct process));
 
-    if (app_create (&p, index)) // called by the application
+    if (app_create (&p, pid, index, version)) // called by the application
         ohshit (1, "app_create");
 
     // send a message to warn the service we want to do something
     // line : pid index version action chan
-    pubsub_connection (&srv, &p, PUBSUB_PUB, MYCHAN);
+    pubsub_connection (&srv, &p, PUBSUB_PUB, chan);
 
     struct pubsub_msg m;
-    bzero (&m, sizeof (struct pubsub_msg));
+    memset (&m, 0, sizeof (struct pubsub_msg));
 
     // first message, "coucou"
     m.type = PUBSUB_TYPE_INFO;
-    m.chan = malloc (strlen (MYCHAN));
-    m.chanlen = strlen (MYCHAN);
-    m.data = malloc (strlen (MYMESSAGE));
+    m.chan = malloc (strlen (chan) + 1);
+    m.chan[strlen (chan)] = '\0';
+    m.chanlen = strlen (chan);
+    m.data = malloc (strlen (MYMESSAGE) + 1);
+    m.datalen = strlen (MYMESSAGE);
     m.datalen = strlen (MYMESSAGE);
     pubsub_msg_send (&p, &m);
 
-    // second message, to disconnect from the server
-    m.type = PUBSUB_TYPE_DISCONNECT;
-    pubsub_msg_send (&p, &m);
-
     // free everything
-
     pubsubd_msg_free (&m);
+
+    // disconnect from the server
+    pubsub_disconnect (&p);
 
     // the application will shut down, and remove the application named pipes
     if (app_destroy (&p))
@@ -67,19 +65,19 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
 void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index, int version)
 {
     struct service srv;
-    bzero (&srv, sizeof (struct service));
-    srv_init (&srv, PUBSUB_SERVICE_NAME);
+    memset (&srv, 0, sizeof (struct service));
+    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Disconnecting from %s.\n", srv.spath);
 
     struct process p;
-    bzero (&p, sizeof (struct process));
+    memset (&p, 0, sizeof (struct process));
 
     // create the fake process
     srv_process_gen (&p, pid, index, version);
 
     // send a message to disconnect
     // line : pid index version action chan
-    pubsub_disconnect (&srv, &p, PUBSUB_PUB, MYCHAN);
+    pubsub_disconnect (&p);
 
     srv_process_free (&p);
 }

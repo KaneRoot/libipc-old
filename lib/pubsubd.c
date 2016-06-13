@@ -175,10 +175,10 @@ pubsubd_subscriber_add (struct app_list_head *alh, const struct app_list_elm *al
 }
 
 struct app_list_elm *
-pubsubd_subscriber_get (const struct app_list_head *chans, const struct app_list_elm *p)
+pubsubd_subscriber_get (const struct app_list_head *alh, const struct app_list_elm *p)
 {
     struct app_list_elm *np = NULL, *res = NULL;
-    LIST_FOREACH(np, chans, entries) {
+    LIST_FOREACH(np, alh, entries) {
         if(pubsubd_subscriber_eq (np, p)) {
             res = np;
         }
@@ -186,16 +186,19 @@ pubsubd_subscriber_get (const struct app_list_head *chans, const struct app_list
     return res;
 }
 
-void
-pubsubd_subscriber_del (struct app_list_head *chans, struct app_list_elm *p)
+int
+pubsubd_subscriber_del (struct app_list_head *alh, struct app_list_elm *p)
 {
-    struct app_list_elm *todel = pubsubd_subscriber_get (chans, p);
+    struct app_list_elm *todel = pubsubd_subscriber_get (alh, p);
     if(todel != NULL) {
         pubsubd_app_list_elm_free (todel);
         LIST_REMOVE(todel, entries);
         free (todel);
         todel = NULL;
+        return 0;
     }
+
+    return 1;
 }
 
 void pubsubd_subscriber_del_all (struct app_list_head *alh)
@@ -238,7 +241,20 @@ void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *l
         return;
 
     // msg: "type(1) chanlen(8) chan datalen(8) data
-    *len = 1 + sizeof(size_t) + msg->chanlen + sizeof(size_t) + msg->datalen;
+    if (msg->type == PUBSUB_TYPE_DISCONNECT) {
+        *len = 1;
+        if (*data != NULL) {
+            free (*data);
+            *data = NULL;
+        }
+        *data = malloc(*len);
+        data[0][0] = msg->type;
+        return;
+    }
+    else {
+        // type + size chan + chan + size data + data
+        *len = 1 + 2 * sizeof(size_t) + msg->chanlen + msg->datalen;
+    }
 
     if (*data != NULL) {
         free (*data);
@@ -278,6 +294,14 @@ void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t l
 
     size_t i = 0;
     msg->type = data[i];                                i++;
+
+    if (msg->type == PUBSUB_TYPE_DISCONNECT) {
+        msg->chanlen = 0;
+        msg->chan = NULL;
+        msg->datalen = 0;
+        msg->data = NULL;
+        return ;
+    }
 
     memcpy (&msg->chanlen, data + i, sizeof(size_t));   i += sizeof(size_t);
     if (msg->chanlen > BUFSIZ) {
@@ -579,7 +603,7 @@ void pubsub_connection (struct service *srv, struct process *p, enum app_list_el
     memset (line, 0, BUFSIZ);
 
     // line fmt : pid index version action chan
-    // "quit" action is also possible (see pubsub_disconnect)
+    // "quit" action is also possible (see pubsubd_quit)
     snprintf (line, BUFSIZ, "%d %d %d %s %s\n"
             , p->pid, p->index, p->version
             , straction
@@ -593,8 +617,40 @@ void pubsub_connection (struct service *srv, struct process *p, enum app_list_el
         free (straction);
 }
 
+void pubsub_disconnect (struct process *p)
+{
+    struct pubsub_msg m;
+    memset (&m, 0, sizeof (struct pubsub_msg));
+    m.type = PUBSUB_TYPE_DISCONNECT;
+
+    char *buf = NULL;
+    size_t msize = 0;
+    pubsubd_msg_serialize (&m, &buf, &msize);
+
+    int ret = app_write (p, buf, msize);
+    switch (ret) {
+        case ER_FILE_WRITE :
+            fprintf (stderr, "err: ER_FILE_WRITE\n");
+            break;
+        case ER_FILE_WRITE_PARAMS :
+            fprintf (stderr, "err: ER_FILE_WRITE_PARAMS\n");
+            break;
+        case ER_FILE_OPEN :
+            fprintf (stderr, "err: ER_FILE_OPEN\n");
+            break;
+        case ER_FILE_CLOSE :
+            fprintf (stderr, "err: ER_FILE_CLOSE\n");
+            break;
+    }
+
+    pubsubd_msg_free (&m);
+    if (buf != NULL) {
+        free (buf);
+    }
+}
+
 // tell the service to stop
-void pubsub_disconnect (struct service *srv)
+void pubsubd_quit (struct service *srv)
 {
     // line fmt : 0 0 0 quit
     char line[BUFSIZ];

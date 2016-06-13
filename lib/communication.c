@@ -13,7 +13,7 @@ int file_open (FILE **f, const char *path, const char *mode)
     }
     *f = fopen (path, mode);
     if (*f == NULL) {
-        fprintf (stderr, "\033[31mnot opened\033[00m\n");
+        fprintf (stderr, "\033[31mnot opened %s\033[00m\n", path);
         return ER_FILE_OPEN;
     }
     printf ("opened : %ld\n", (long) *f);
@@ -75,10 +75,10 @@ int file_write (FILE *f, const char *buf, size_t msize)
     return 0;
 }
 
-void srv_init (int argc, char **argv, char **env, struct service *srv, const char *sname)
+int srv_init (int argc, char **argv, char **env, struct service *srv, const char *sname, int (*cb)(int argc, char **argv, char **env, struct service *srv, const char *sname))
 {
     if (srv == NULL)
-        return;
+        return ER_PARAMS;
 
     // TODO
     //      use the argc, argv and env parameters
@@ -97,6 +97,14 @@ void srv_init (int argc, char **argv, char **env, struct service *srv, const cha
 
     srv->version = COMMUNICATION_VERSION;
     srv->index = 0; // TODO
+
+    if (cb != NULL) {
+        int ret = (*cb) (argc, argv, env, srv, sname);
+        if (ret != 0)
+            return ret;
+    }
+
+    return 0;
 }
 
 // SERVICE
@@ -352,12 +360,14 @@ int app_srv_connection (struct service *srv, const char *connectionstr, size_t m
     return 0;
 }
 
-int app_create (struct process *p, int index)
+int app_create (struct process *p, pid_t pid, int index, int version)
 {
-    pid_t pid = getpid();
+    if (version == 0) {
+        version = COMMUNICATION_VERSION;
+    }
 
     // then creates the structure
-    srv_process_gen (p, pid, index, COMMUNICATION_VERSION);
+    srv_process_gen (p, pid, index, version);
 
     // creates the pipes
     int ret;
@@ -492,6 +502,10 @@ int app_read (struct process *p, char ** buf, size_t * msize)
 
 int app_write (struct process *p, char * buf, size_t msize)
 {
+    if (buf == NULL) {
+        return ER_FILE_WRITE_PARAMS;
+    }
+
     if (ER_FILE_OPEN == file_open (&p->out, p->path_out, "wb")) {
         fprintf (stderr, "err opening the file %s\n", p->path_out);
         return ER_FILE_OPEN;

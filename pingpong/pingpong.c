@@ -66,7 +66,7 @@ void main_loop (const struct service *srv)
 int main(int argc, char * argv[], char **env)
 {
     struct service srv;
-    srv_init (argc, argv, env, &srv, PONGD_SERVICE_NAME);
+    srv_init (argc, argv, env, &srv, PONGD_SERVICE_NAME, NULL);
     printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications

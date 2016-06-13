@@ -34,9 +34,7 @@ void srv_process_gen (struct process *p
 
 void srv_process_free (struct process * p)
 {
-    if (! p)
-        return;
-    free (p);
+    // TODO nothing to do now
 }
 
 void srv_process_print (struct process *p)

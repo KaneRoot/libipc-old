@@ -41,6 +41,7 @@ int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize);
 void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg *m);
 void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m);
 
+void pubsub_disconnect (struct process *p);
 void pubsub_msg_send (struct process *p, const struct pubsub_msg *msg);
 void pubsub_msg_recv (struct process *p, struct pubsub_msg *msg);
 
@@ -72,6 +73,14 @@ struct channel * pubsubd_channels_add (struct channels *chans, struct channel *c
 void pubsubd_channels_del (struct channels *chans, struct channel *c);
 void pubsubd_channels_del_all (struct channels *chans);
 
+// remove an app_list_elm from the list (msg type DISCONNECT received)
+int pubsubd_channels_del_subscriber (struct channels *chans
+        , struct channel *c);
+
+struct channel *
+pubsubd_channels_search_from_app_list_elm (struct channels *chans
+        , struct app_list_elm *ale);
+
 // APPLICATION
 
 // head of the list
@@ -94,7 +103,7 @@ void pubsubd_subscriber_add (struct app_list_head *
         , const struct app_list_elm *);
 struct app_list_elm * pubsubd_subscriber_get (const struct app_list_head *
         , const struct app_list_elm *);
-void pubsubd_subscriber_del (struct app_list_head *al, struct app_list_elm *p);
+int pubsubd_subscriber_del (struct app_list_head *al, struct app_list_elm *p);
 void pubsubd_subscriber_del_all (struct app_list_head *alh);
 
 struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale);
@@ -102,6 +111,6 @@ void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p);
 void pubsubd_app_list_elm_free (struct app_list_elm *todel);
 
 void pubsub_connection (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame);
-void pubsub_disconnect (struct service *srv);
+void pubsubd_quit (struct service *srv);
 
 #endif
