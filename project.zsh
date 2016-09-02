@@ -2,7 +2,7 @@
 package=perfect-os-junk
 version=0.0.1
 
-CFLAGS="-O2 -Wall -Wextra -Wshadow -ansi -pedantic -std=c99 -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=199309L"
+CFLAGS="-O2 -Wall -Wextra -Wshadow -ansi -pedantic -std=c99 -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=200809L"
 
 targets=(libposj)
 type[libposj]=library
