@@ -114,7 +114,7 @@ void pubsubd_subscriber_init (struct app_list_head **chans) {
 
 void pubsubd_channels_print (const struct channels *chans)
 {
-    printf ("\033[36mmchannels\033[00m\n\n");
+    printf ("\033[36mmchannels\033[00m\n");
 
     if (chans == NULL)
         return ;
@@ -130,13 +130,19 @@ void pubsubd_channel_print (const struct channel *c)
     if (c == NULL || c->chan == NULL)
         return;
 
-    printf ( "\033[32mchan %s\033[00m\n\t", c->chan);
+    if (c->chan == NULL) {
+        printf ( "\033[32mchan name not available\033[00m\n");
+    }
+    else {
+        printf ( "\033[32mchan %s\033[00m\n", c->chan);
+    }
 
     if (c->alh == NULL)
         return;
 
     struct app_list_elm *ale = NULL;
     LIST_FOREACH(ale, c->alh, entries) {
+        printf ("\t");
         srv_process_print (ale->p);
     }
 }
@@ -361,6 +367,7 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     int index = 0;
     int version = 0;
 
+    // chan name
     char chan[BUFSIZ];
     memset (chan, 0, BUFSIZ);
 
