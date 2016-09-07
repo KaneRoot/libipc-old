@@ -3,20 +3,6 @@
 
 #define TEST_NAME "test-chan-lists"
 
-int
-create_chan (struct channel *c, const char * name) {
-    if (c == NULL) {
-        return 1;
-    }
-
-    if (c->chan == NULL)
-        c->chan = malloc (BUFSIZ);
-    memset (c->chan, 0, BUFSIZ);
-    memcpy (c->chan, name, strlen (name));
-    c->chanlen = strlen (name);
-    return 0;
-}
-
 void
 ohshit(int rvalue, const char* str) {
     fprintf(stderr, "%s\n", str);
@@ -47,7 +33,7 @@ main(int argc, char **argv, char **env)
     // warning : this is a local structure, not exactly the same in the prog.
     struct channel chan;
     memset (&chan, 0, sizeof (struct channel));
-    create_chan (&chan, "coucou");
+    pubsubd_channel_new (&chan, "coucou");
 
     // to emulate
     // pubsubd_get_new_process (&srv, &ale1, &chans, &chan);
@@ -71,7 +57,7 @@ main(int argc, char **argv, char **env)
     printf ("--\n");
 
     // SAME CHAN, SHOULD NOT BE ADDED
-    create_chan (&chan, "coucou");
+    pubsubd_channel_new (&chan, "coucou");
     // search for the chan in channels, add it if not found
     new_chan = pubsubd_channel_get (&chans, &chan);
     if (new_chan == NULL) {
@@ -87,7 +73,7 @@ main(int argc, char **argv, char **env)
     printf ("--\n");
 
     // NEW CHAN, SHOULD BE ADDED
-    create_chan (&chan, "salut");
+    pubsubd_channel_new (&chan, "salut");
     // search for the chan in channels, add it if not found
     new_chan = pubsubd_channel_get (&chans, &chan);
     if (new_chan == NULL) {

@@ -59,13 +59,32 @@ struct channel * pubsubd_channel_copy (struct channel *c)
     memcpy (copy, c, sizeof(struct channel));
 
     if (c->chan != NULL) {
-        // copy->chan = strndup (c->chan, c->chanlen);
-        copy->chan = malloc (BUFSIZ);
-        memcpy (copy->chan, c->chan, BUFSIZ);
+        copy->chan = malloc (c->chanlen);
+        memset (copy->chan, 0, c->chanlen);
+        memcpy (copy->chan, c->chan, c->chanlen);
         copy->chanlen = c->chanlen;
     }
 
     return copy;
+}
+
+int pubsubd_channel_new (struct channel *c, const char * name)
+{
+    if (c == NULL) {
+        return 1;
+    }
+
+    size_t nlen = (strlen (name) > BUFSIZ) ? BUFSIZ : strlen (name) + 1;
+
+    printf ("NAME : %s, SIZE : %ld\n", name, nlen);
+
+    if (c->chan == NULL)
+        c->chan = malloc (nlen);
+
+    memset (c->chan, 0, nlen);
+    memcpy (c->chan, name, nlen);
+    c->chanlen = nlen;
+    return 0;
 }
 
 void pubsubd_channel_free (struct channel * c)
@@ -425,16 +444,9 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
         *c = malloc (sizeof (struct channel));
     }
 
-    if (c[0]->chan != NULL) {
-        free (c[0]->chan);
-        c[0]->chan = NULL;
-    }
-
     chan[BUFSIZ -1] = '\0';
-    // c[0]->chan = strndup (chan, BUFSIZ);
-    c[0]->chan = malloc (BUFSIZ);
-    memcpy(c[0]->chan, chan, BUFSIZ);
-    c[0]->chanlen = strlen (chan);
+    pubsubd_channel_new (*c, chan);
+
 
     struct channel *new_chan = NULL;
     new_chan = pubsubd_channel_get (chans, *c);

@@ -60,6 +60,7 @@ struct channel {
 };
 
 //  simple channel
+int pubsubd_channel_new (struct channel *c, const char *name);
 struct channel * pubsubd_channel_copy (struct channel *c);
 struct channel * pubsubd_channel_get (struct channels *chans, struct channel *c);
 void pubsubd_channel_free (struct channel *c);
