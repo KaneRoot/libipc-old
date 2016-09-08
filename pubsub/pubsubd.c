@@ -18,6 +18,10 @@ struct worker_params {
 void * pubsubd_worker_thread (void *params)
 {
     struct worker_params *wp = (struct worker_params *) params;
+    if (wp == NULL) {
+        fprintf (stderr, "error pubsubd_worker_thread : params NULL\n");
+        return NULL;
+    }
 
     while (1) {
         // each chan has a list of subscribers
@@ -30,7 +34,7 @@ void * pubsubd_worker_thread (void *params)
             struct pubsub_msg m;
             memset (&m, 0, sizeof (struct pubsub_msg));
 
-            sleep (5);
+            sleep (5); // TODO DEBUG
             pubsubd_msg_recv (wp->ale->p, &m);
 
             pubsubd_msg_print (&m);
@@ -67,7 +71,7 @@ void * pubsubd_worker_thread (void *params)
     pthread_exit (NULL);
 }
 
-    int
+int
 main(int argc, char **argv, char **env)
 {
     struct service srv;
