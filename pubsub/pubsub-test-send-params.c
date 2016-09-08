@@ -41,19 +41,26 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
     struct pubsub_msg m;
     memset (&m, 0, sizeof (struct pubsub_msg));
 
-    // first message, "coucou"
-    m.type = PUBSUB_TYPE_INFO;
-    m.chan = malloc (strlen (chan) + 1);
-    memset (m.chan, 0, strlen (chan) + 1);
-    m.chan[strlen (chan)] = '\0';
-    m.chanlen = strlen (chan);
-    m.data = malloc (strlen (MYMESSAGE) + 1);
-    memset (m.data, 0, strlen (MYMESSAGE) + 1);
-    strncpy ((char *) m.data, MYMESSAGE, strlen (MYMESSAGE) + 1);
-    m.datalen = strlen (MYMESSAGE);
+    if (strcmp (cmd, "pub") == 0) {
+        // first message, "coucou"
+        m.type = PUBSUB_TYPE_MESSAGE;
+        m.chan = malloc (strlen (chan) + 1);
+        memset (m.chan, 0, strlen (chan) + 1);
+        m.chan[strlen (chan)] = '\0';
+        m.chanlen = strlen (chan);
 
-    printf ("send message\n");
-    pubsub_msg_send (&p, &m);
+        m.data = malloc (strlen (MYMESSAGE) + 1);
+        memset (m.data, 0, strlen (MYMESSAGE) + 1);
+        strncpy ((char *) m.data, MYMESSAGE, strlen (MYMESSAGE) + 1);
+        m.datalen = strlen (MYMESSAGE);
+
+        printf ("send message\n");
+        pubsub_msg_send (&p, &m);
+    }
+    else {
+        pubsub_msg_recv (&p, &m);
+        pubsubd_msg_print (&m);
+    }
 
     // free everything
     pubsubd_msg_free (&m);

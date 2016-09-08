@@ -13,13 +13,6 @@ void usage (char **argv)
     printf ( "usage: cat msg | %s\n", argv[0]);
 }
 
-void msg_print (struct pubsub_msg *msg) {
-    printf ("msg: type=%d chan=%.*s, data=%.*s\n"
-            , msg->type
-            , msg->chanlen, msg->chan
-            , msg->datalen, msg->data);
-}
-
 int
 main(int argc, char **argv)
 {
@@ -36,7 +29,7 @@ main(int argc, char **argv)
 
     struct pubsub_msg msg;
     pubsubd_msg_unserialize (&msg, data, len);
-    msg_print (&msg);
+    pubsubd_msg_print (&msg);
     pubsubd_msg_free (&msg);
 
     return EXIT_SUCCESS;

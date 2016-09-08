@@ -390,6 +390,8 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     char chan[BUFSIZ];
     memset (chan, 0, BUFSIZ);
 
+    printf ("INIT: %s\n", buf);
+
     for (str = buf, i = 1; ; str = NULL, i++) {
         token = strtok_r(str, " ", &saveptr);
         if (token == NULL)
@@ -417,7 +419,7 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
             case 5 : {
                          if (ale->action != PUBSUB_QUIT)
                              memcpy (chan, token, (strlen (token) < BUFSIZ) ?
-                                     strlen (token) : BUFSIZ);
+                                     strlen (token) -1 : BUFSIZ);
                          break;
                      }
         }
@@ -465,6 +467,7 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     return 0;
 }
 
+#if 0
 // TODO CBOR
 int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize)
 {
@@ -550,6 +553,8 @@ int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize)
     return 0;
 }
 
+#endif
+
 // alh from the channel, message to send
 void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg * m)
 {
@@ -570,14 +575,8 @@ void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg 
 
 void pubsubd_msg_print (const struct pubsub_msg *msg)
 {
-    if (msg == NULL) {
-        return;
-    }
-
-    printf ("\t\t\033[36mMessage\033[00m\n");
-    printf ("\t\ttype %d\n", msg->type);
-    printf ("\t\tchan %s\n", msg->chan);
-    printf ("\t\tdata %s\n", msg->data);
+    printf ("msg: type=%d chan=%s, data=%s\n"
+            , msg->type, msg->chan, msg->data);
 }
 
 void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m)
@@ -585,7 +584,11 @@ void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m)
     // read the message from the process
     size_t mlen = 0;
     char *buf = NULL;
+#if 0
     srv_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
+#else
+    srv_read (p, &buf, &mlen);
+#endif
 
     pubsubd_msg_unserialize (m, buf, mlen);
 
@@ -695,7 +698,11 @@ void pubsub_msg_recv (struct process *p, struct pubsub_msg * m)
     // read the message from the process
     size_t mlen = 0;
     char *buf = NULL;
+#if 0
     app_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
+#else
+    app_read_cb (p, &buf, &mlen, NULL);
+#endif
 
     pubsubd_msg_unserialize (m, buf, mlen);
 

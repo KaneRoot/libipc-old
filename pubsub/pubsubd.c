@@ -24,12 +24,35 @@ void * pubsubd_worker_thread (void *params)
     }
 
     while (1) {
+        struct pubsub_msg m;
+        memset (&m, 0, sizeof (struct pubsub_msg));
+
+        sleep (5); // TODO DEBUG
+        printf ("MESSAGE : ");
+        pubsubd_msg_recv (wp->ale->p, &m);
+
+        pubsubd_msg_print (&m);
+
+        if (m.type == PUBSUB_TYPE_DISCONNECT) {
+            if ( 0 != pubsubd_subscriber_del (wp->chan->alh, wp->ale)) {
+                fprintf (stderr, "err : subscriber not registered\n");
+            }
+            break;
+        }
+        else {
+            struct channel *chan = pubsubd_channel_get (wp->chans, wp->chan);
+            pubsubd_msg_send (chan->alh, &m);
+        }
+    }
+
+#if 0
+    while (1) {
         // each chan has a list of subscribers
         // someone who only push a msg doesn't need to be registered
-        if (wp->ale->action == PUBSUB_BOTH || wp->ale->action == PUBSUB_PUB) {
+        // if (wp->ale->action == PUBSUB_BOTH || wp->ale->action == PUBSUB_PUB) {
+        if (wp->ale->action == PUBSUB_PUB) {
             // publish a message
-            printf ("publish or publish and subscribe to chan %s\n"
-                    , wp->chan->chan);
+            printf ("publish to chan %s\n", wp->chan->chan);
 
             struct pubsub_msg m;
             memset (&m, 0, sizeof (struct pubsub_msg));
@@ -65,6 +88,7 @@ void * pubsubd_worker_thread (void *params)
             break;
         }
     }
+#endif
 
     pubsubd_app_list_elm_free (wp->ale);
 
