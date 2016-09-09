@@ -74,14 +74,14 @@ int pubsubd_channel_new (struct channel *c, const char * name)
         return 1;
     }
 
-    size_t nlen = (strlen (name) > BUFSIZ) ? BUFSIZ : strlen (name) + 1;
+    size_t nlen = (strlen (name) > BUFSIZ) ? BUFSIZ : strlen (name);
 
     printf ("NAME : %s, SIZE : %ld\n", name, nlen);
 
     if (c->chan == NULL)
-        c->chan = malloc (nlen);
+        c->chan = malloc (nlen +1);
 
-    memset (c->chan, 0, nlen);
+    memset (c->chan, 0, nlen +1);
     memcpy (c->chan, name, nlen);
     c->chanlen = nlen;
     return 0;
@@ -89,7 +89,6 @@ int pubsubd_channel_new (struct channel *c, const char * name)
 
 void pubsubd_channel_free (struct channel * c)
 {
-    // TODO
     if (c == NULL)
         return;
 
@@ -255,7 +254,7 @@ void pubsubd_app_list_elm_free (struct app_list_elm *todel)
 {
     if (todel == NULL || todel->p == NULL)
         return;
-    srv_process_free (todel->p);
+    free (todel->p);
 }
 
 // MESSAGE, TODO CBOR
@@ -467,94 +466,6 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     return 0;
 }
 
-#if 0
-// TODO CBOR
-int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize)
-{
-    // msg: "type(1) chanlen(8) chan datalen(8) data
-
-    printf ("\033[36m ON PASSE DANS pubsubd_msg_read_cb \033[00m \n");
-
-    // read 
-    char type = ' ';
-    if (0 == fread (&type, 1, 1, f)) {
-        return ER_FILE_READ;
-    }
-
-    size_t chanlen = 0;
-    if (0 == fread (&chanlen, sizeof (size_t), 1, f)) {
-        return ER_FILE_READ;
-    }
-
-    if (chanlen > BUFSIZ) {
-        return ER_FILE_READ;
-    }
-
-    char *chan = NULL;
-    chan = malloc (chanlen);
-
-    if (chan == NULL) {
-        return ER_MEM_ALLOC;
-    }
-
-    if (0 == fread (chan, chanlen, 1, f)) {
-        return ER_FILE_READ;
-    }
-
-    size_t datalen = 0;
-    if (0 == fread (&datalen, sizeof (size_t), 1, f)) {
-        free (chan);
-        return ER_FILE_READ;
-    }
-
-    if (datalen > BUFSIZ) {
-        return 1;
-    }
-
-    char *data = NULL;
-    data = malloc (datalen);
-    if (data == NULL) {
-        free (chan);
-        return ER_MEM_ALLOC;
-    }
-
-    if (0 == fread (data, datalen, 1, f)) {
-        free (chan);
-        free (data);
-        return ER_FILE_READ;
-    }
-
-    *msize = 1 + 2 * sizeof (size_t) + chanlen + datalen;
-    if (*buf == NULL) {
-        *buf = malloc(*msize);
-        if (*buf == NULL) {
-            free (chan);
-            free (data);
-            return ER_MEM_ALLOC;
-        }
-    }
-
-    // TODO CHECK THIS
-    size_t i = 0;
-
-    char *cbuf = *buf;
-
-    cbuf[i] = type;                                  i++;
-    memcpy (cbuf + i, &chanlen, sizeof(size_t));     i += sizeof(size_t);
-    memcpy (cbuf + i, chan, chanlen);                i += chanlen;
-    memcpy (cbuf + i, &datalen, sizeof(size_t));     i += sizeof(size_t);
-    memcpy (cbuf + i, data, datalen);                i += datalen;
-
-    free (chan);
-    free (data);
-
-    printf ("\033[36m ON SORT de pubsubd_msg_read_cb \033[00m \n");
-
-    return 0;
-}
-
-#endif
-
 // alh from the channel, message to send
 void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg * m)
 {
@@ -698,11 +609,7 @@ void pubsub_msg_recv (struct process *p, struct pubsub_msg * m)
     // read the message from the process
     size_t mlen = 0;
     char *buf = NULL;
-#if 0
-    app_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
-#else
-    app_read_cb (p, &buf, &mlen, NULL);
-#endif
+    app_read (p, &buf, &mlen);
 
     pubsubd_msg_unserialize (m, buf, mlen);
 

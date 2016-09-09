@@ -50,8 +50,6 @@ int srv_get_new_process (const struct service *srv, struct process *proc);
 int srv_create (struct service *srv);
 int srv_close (struct service *srv);
 
-int srv_read_cb (struct process *p, char ** buf, size_t * msize
-        , int (*cb)(FILE *f, char ** buf, size_t * msize));
 int srv_read (struct process *, char ** buf, size_t *);
 int srv_write (struct process *, char * buf, size_t);
 
@@ -63,15 +61,11 @@ int app_srv_connection (struct service *, const char *, size_t);
 int app_create (struct process *, pid_t pid, int index, int version);
 int app_destroy (struct process *);
 
-int app_read_cb (struct process *p, char ** buf, size_t * msize
-        , int (*cb)(FILE *f, char ** buf, size_t * msize));
 int app_read (struct process *, char ** buf, size_t *);
 int app_write (struct process *, char * buf, size_t);
 
 // wrappers
-int file_open (FILE **f, const char *path, const char *mode);
-int file_close (FILE *f);
-int file_read (FILE *f, char **buf, size_t *msize);
-int file_write (FILE *f, const char *buf, size_t msize);
+int file_read (const char *path, char **buf, size_t *msize);
+int file_write (const char *path, const char *buf, size_t msize);
 
 #endif

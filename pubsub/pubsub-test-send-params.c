@@ -73,8 +73,6 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
     // the application will shut down, and remove the application named pipes
     if (app_destroy (&p))
         ohshit (1, "app_destroy");
-
-    srv_process_free (&p);
 }
 
 void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index, int version)
@@ -93,8 +91,6 @@ void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index,
     // send a message to disconnect
     // line : pid index version action chan
     pubsub_disconnect (&p);
-
-    srv_process_free (&p);
 }
 
     int
