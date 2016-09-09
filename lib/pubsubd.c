@@ -561,19 +561,8 @@ void pubsub_disconnect (struct process *p)
     pubsubd_msg_serialize (&m, &buf, &msize);
 
     int ret = app_write (p, buf, msize);
-    switch (ret) {
-        case ER_FILE_WRITE :
-            fprintf (stderr, "err: ER_FILE_WRITE\n");
-            break;
-        case ER_FILE_WRITE_PARAMS :
-            fprintf (stderr, "err: ER_FILE_WRITE_PARAMS\n");
-            break;
-        case ER_FILE_OPEN :
-            fprintf (stderr, "err: ER_FILE_OPEN\n");
-            break;
-        case ER_FILE_CLOSE :
-            fprintf (stderr, "err: ER_FILE_CLOSE\n");
-            break;
+    if (ret != (int) msize) {
+        fprintf (stderr, "err: can't disconnect\n");
     }
 
     pubsubd_msg_free (&m);

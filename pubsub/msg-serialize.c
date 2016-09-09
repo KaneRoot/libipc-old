@@ -40,7 +40,7 @@ main(int argc, char **argv)
     pubsubd_msg_serialize (&msg, &data, &len);
     pubsubd_msg_free (&msg);
 
-    if (len != write (1, data, len)) {
+    if ((int) len != write (1, data, len)) {
         ohshit (1, "unable to write the data");
     }
 
