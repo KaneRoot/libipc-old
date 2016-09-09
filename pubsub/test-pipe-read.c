@@ -42,6 +42,7 @@ main(int argc, char **argv)
         struct pubsub_msg m;
         pubsubd_msg_unserialize (&m, buf, msize);
         pubsubd_msg_print (&m);
+        pubsubd_msg_free (&m);
         sleep (1);
     }
 
