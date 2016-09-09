@@ -34,16 +34,23 @@ main(int argc, char **argv)
 
     while (nb--) {
         ret = file_read (path, &buf, &msize);
-        if (ret == 0) {
-            printf ("no msg\n");
+        if (ret <= 0) {
+            fprintf (stderr, "no msg");
+            if (ret == ER_FILE_OPEN) {
+                fprintf (stderr, " ER_FILE_OPEN");
+            }
+            fprintf (stderr, "\n");
             nb++;
             continue;
         }
-        struct pubsub_msg m;
-        pubsubd_msg_unserialize (&m, buf, msize);
-        pubsubd_msg_print (&m);
-        pubsubd_msg_free (&m);
-        sleep (1);
+        if (msize > 0) {
+            printf ("msg size %ld\t", msize);
+            struct pubsub_msg m;
+            memset (&m, 0, sizeof (struct pubsub_msg));
+            pubsubd_msg_unserialize (&m, buf, msize);
+            pubsubd_msg_print (&m);
+            pubsubd_msg_free (&m);
+        }
     }
 
     return EXIT_SUCCESS;

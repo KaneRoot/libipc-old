@@ -48,10 +48,9 @@ main(int argc, char **argv)
         pubsubd_msg_print (&msg);
         pubsubd_msg_free (&msg);
         ret = file_write (path, buf, msize);
-        if (ret != msize) {
+        if (ret != (int) msize) {
             fprintf (stderr, "msg not written\n");
         }
-        sleep (1);
     }
 
     return EXIT_SUCCESS;

@@ -24,15 +24,24 @@ int file_read (const char *path, char **buf, size_t *msize)
         return ER_FILE_OPEN;
     }
 
+    if (*buf == NULL)
+        *buf = malloc (BUFSIZ);
+
     int ret = 0;
+    int ret2 = 0;
     ret = read (fd, *buf, BUFSIZ);
-    if (ret < 0) {
-        return ret;
+    if (ret <= 0) {
+        fprintf (stderr, "err: read %s\n", path);
+    }
+    else {
+        *msize = ret;
     }
 
-    *msize = ret;
-
-    close (fd);
+    ret2 = close (fd);
+    if (ret2 < 0) {
+        fprintf (stderr, "err: close [err: %d] %s\n", ret2, path);
+        perror ("closing");
+    }
 
     return ret;
 }
