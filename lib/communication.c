@@ -124,12 +124,6 @@ int srv_close (struct service *srv)
     return 0;
 }
 
-// TODO remove, replace by file_read
-int srv_get_listen_raw (const struct service *srv, char **buf, size_t *msize)
-{
-    return file_read (srv->spath, buf, msize);
-}
-
 int srv_get_new_process (const struct service *srv, struct process *p)
 {
     if (srv->spath == NULL) {

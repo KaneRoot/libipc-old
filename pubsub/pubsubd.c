@@ -117,7 +117,7 @@ main(int argc, char **argv, char **env)
         struct app_list_elm ale;
         memset (&ale, 0, sizeof (struct app_list_elm));
         struct channel *chan = NULL;
-        pubsubd_get_new_process (&srv, &ale, &chans, &chan);
+        pubsubd_get_new_process (srv.spath, &ale, &chans, &chan);
         pubsubd_channels_print (&chans);
 
         // end the application

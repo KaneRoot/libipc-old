@@ -35,7 +35,7 @@ void pubsubd_msg_print (const struct pubsub_msg *msg);
 //
 // line fmt : pid index version action chan
 // action : quit | pub | sub
-int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
+int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
         , struct channels *chans, struct channel **c);
 int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize);
 void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg *m);

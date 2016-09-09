@@ -363,16 +363,15 @@ void pubsubd_msg_free (struct pubsub_msg *msg)
 
 // COMMUNICATION
 
-int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
+int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
         , struct channels *chans, struct channel **c)
 {
-    if (srv == NULL || ale == NULL || chans == NULL)
+    if (spath == NULL || ale == NULL || chans == NULL)
         return -1;
 
     char *buf = NULL;
     size_t msize = 0;
-    srv_get_listen_raw (srv, &buf, &msize);
-
+    file_read (spath, &buf, &msize);
     // parse pubsubd init msg (sent in TMPDIR/<service>)
     //
     // line fmt : pid index version action chan
@@ -416,6 +415,8 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
                          break;
                      }
             case 5 : {
+                         // for the last element of the line
+                         // drop the following \n
                          if (ale->action != PUBSUB_QUIT)
                              memcpy (chan, token, (strlen (token) < BUFSIZ) ?
                                      strlen (token) -1 : BUFSIZ);
