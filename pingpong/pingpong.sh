@@ -22,15 +22,18 @@ fi
 
 for pid in `seq 1 ${NB}`
 do
+    echo "${pid}"
+
     # we make the application pipes
-    mkfifo ${REP}/${pid}-1-in 2>/dev/null
-    mkfifo ${REP}/${pid}-1-out 2>/dev/null
+    mkfifo ${REP}${pid}-1-in 2>/dev/null
+    mkfifo ${REP}${pid}-1-out 2>/dev/null
 
     # pid index version
-    echo "${pid} 1 1" > ${REP}/${SERVICE}
+    echo "${pid} 1 5" > ${REP}${SERVICE}
 
     # the purpose is to send something in the pipe
-    cat /dev/urandom | base64 | head -n 1 > ${REP}/${pid}-1-out
+    cat /dev/urandom | base64 | head -n 1 > ${REP}${pid}-1-out
+    # echo "hello world" > ${REP}${pid}-1-out
 
     # the the service will answer with our message
     cat ${REP}/${pid}-1-in

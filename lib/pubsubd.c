@@ -59,7 +59,6 @@ struct channel * pubsubd_channel_copy (struct channel *c)
     memcpy (copy, c, sizeof(struct channel));
 
     if (c->chan != NULL) {
-        printf ("COPY CHAN : %d\n", c->chanlen);
         copy->chan = malloc (c->chanlen);
         memset (copy->chan, 0, c->chanlen);
         memcpy (copy->chan, c->chan, c->chanlen);
@@ -467,6 +466,7 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
     pubsubd_channel_new (*c, chan);
 
     struct channel *new_chan = NULL;
+
     new_chan = pubsubd_channel_get (chans, *c);
     if (new_chan == NULL) {
         new_chan = pubsubd_channels_add (chans, *c);
