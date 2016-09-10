@@ -32,16 +32,14 @@ void srv_process_gen (struct process *p
     //printf("path-in : %s\n", p->path_in );
     //printf("path-out : %s\n", p->path_out );
 
-    p->in = NULL;
-    p->out = NULL;
 }
 
 void srv_process_free (struct process * p)
 {
     // TODO nothing to do now
 
-    snprintf(p->path_in , PATH_MAX, "%s/%d-%d-in" , TMPDIR, pid, index);
-    snprintf(p->path_out, PATH_MAX, "%s/%d-%d-out", TMPDIR, pid, index);
+    // snprintf(p->path_in , PATH_MAX, "%s/%d-%d-in" , TMPDIR, pid, index);
+    // snprintf(p->path_out, PATH_MAX, "%s/%d-%d-out", TMPDIR, pid, index);
 
 }
 

@@ -17,80 +17,7 @@ int file_write (const char *path, const char *buf, size_t msize)
     return ret;
 }
 
-/*int file_read (const char *path, char **buf, size_t *msize)
-{
-<<<<<<< HEAD
-    if (f != 0) {
-        if (fclose (f)) {
-            return ER_FILE_CLOSE;
-        }
-        printf ("FILE_CLOSE: closed file\n");
-=======
-    int fd = open (path, O_RDONLY);
-    if (fd <= 0) {
-        return ER_FILE_OPEN;
->>>>>>> 99ca565bb6bf3729df3a1ec6ceeb2a58211751f5
-    }
 
-<<<<<<< HEAD
-int file_read (FILE *f, char **buf, size_t *msize) {
-    size_t n =0;
-
-    if (*msize == 0) {
-        *msize = BUFSIZ; // default value
-    }
-
-    if (*buf == NULL) {
-        *buf = malloc (*msize);
-        if (*buf == NULL) {
-            fprintf (stderr, "FILE_READ: err can't allocate enough memory (%ld)\n", *msize);
-            int ret = file_close (f);
-            if (ret != 0)
-                return ret;
-        }
-    }
-
-    //*msize = fread (*buf, *msize, 1, f);
-    // if (*msize == 0) {
-    //     fprintf (stderr, "FILE_READ: err can't read a file\n");
-    //     if (ER_FILE_CLOSE == file_close (f)) {
-    //         fprintf (stderr, "FILE_READ: err closing the file\n");
-    //         return ER_FILE_CLOSE;
-    //     }
-    //     return ER_FILE_READ;
-    // }
-
-    *msize = getline (buf, &n, f);
-    if (*msize == 0) {
-        fprintf (stderr, "FILE_READ: err can't read a file\n");
-        if (ER_FILE_CLOSE == file_close (f)) {
-            fprintf (stderr, "FILE_READ: err closing the file\n");
-            return ER_FILE_CLOSE;
-        }
-        return ER_FILE_READ;
-=======
-    if (*buf == NULL)
-        *buf = malloc (BUFSIZ);
-
-    int ret = 0;
-    int ret2 = 0;
-    ret = read (fd, *buf, BUFSIZ);
-    if (ret <= 0) {
-        fprintf (stderr, "err: read %s\n", path);
-    }
-    else {
-        *msize = ret;
->>>>>>> 99ca565bb6bf3729df3a1ec6ceeb2a58211751f5
-    }
-
-    ret2 = close (fd);
-    if (ret2 < 0) {
-        fprintf (stderr, "err: close [err: %d] %s\n", ret2, path);
-        perror ("closing");
-    }
-
-    return ret;
-}*/
 
 int file_read (const char *path, char **buf, size_t *msize)
 {
@@ -113,7 +40,8 @@ int file_read (const char *path, char **buf, size_t *msize)
     if (ret2 < 0) {
         fprintf (stderr, "err: close [err: %d] %s\n", ret2, path);
         perror ("closing");
-    }
+    } 
+
     return ret;
 }
 
