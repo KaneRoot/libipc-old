@@ -24,16 +24,17 @@ int file_open (FILE **f, const char *path, const char *mode)
 int file_close (FILE *f)
 {
     if (f != 0) {
-        printf ("before fclosing\n");
         if (fclose (f)) {
             return ER_FILE_CLOSE;
         }
-        printf ("after fclosing\n");
+        printf ("FILE_CLOSE: closed file\n");
     }
     return 0;
 }
 
 int file_read (FILE *f, char **buf, size_t *msize) {
+    size_t n =0;
+
     if (*msize == 0) {
         *msize = BUFSIZ; // default value
     }
@@ -41,18 +42,28 @@ int file_read (FILE *f, char **buf, size_t *msize) {
     if (*buf == NULL) {
         *buf = malloc (*msize);
         if (*buf == NULL) {
-            fprintf (stderr, "err can't allocate enough memory (%ld)\n", *msize);
+            fprintf (stderr, "FILE_READ: err can't allocate enough memory (%ld)\n", *msize);
             int ret = file_close (f);
             if (ret != 0)
                 return ret;
         }
     }
 
-    *msize = fread (*buf, *msize, 1, f);
+    //*msize = fread (*buf, *msize, 1, f);
+    // if (*msize == 0) {
+    //     fprintf (stderr, "FILE_READ: err can't read a file\n");
+    //     if (ER_FILE_CLOSE == file_close (f)) {
+    //         fprintf (stderr, "FILE_READ: err closing the file\n");
+    //         return ER_FILE_CLOSE;
+    //     }
+    //     return ER_FILE_READ;
+    // }
+
+    *msize = getline (buf, &n, f);
     if (*msize == 0) {
-        fprintf (stderr, "err can't read a file\n");
+        fprintf (stderr, "FILE_READ: err can't read a file\n");
         if (ER_FILE_CLOSE == file_close (f)) {
-            fprintf (stderr, "err closing the file\n");
+            fprintf (stderr, "FILE_READ: err closing the file\n");
             return ER_FILE_CLOSE;
         }
         return ER_FILE_READ;
@@ -243,9 +254,10 @@ int srv_get_new_process (const struct service *srv, struct process *p)
         }
     }
 
+    // printf("pid = %d, index = %d, version = %d \n",pid, index, version );
     srv_process_gen (p, pid, index, version);
 
-    return 0;
+    return 1;
 }
 
 int srv_read_cb (struct process *p, char ** buf, size_t * msize
