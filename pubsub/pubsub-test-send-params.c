@@ -17,7 +17,7 @@ void usage (char **argv)
 
 void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, int version, char *cmd, char *chan)
 {
-    printf ("Simulate connnection : pid %d index %d version %d "
+    printf ("Simulate connection : pid %d index %d version %d "
             "cmd %s chan %s\n"
           , pid, index, version, cmd, chan );
 
@@ -29,9 +29,11 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
     struct process p;
     memset (&p, 0, sizeof (struct process));
 
+    printf ("app creation\n");
     if (app_create (&p, pid, index, version)) // called by the application
         ohshit (1, "app_create");
 
+    printf ("connection\n");
     // send a message to warn the service we want to do something
     // line : pid index version action chan
     pubsub_connection (&srv, &p, PUBSUB_PUB, chan);
@@ -39,27 +41,38 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
     struct pubsub_msg m;
     memset (&m, 0, sizeof (struct pubsub_msg));
 
-    // first message, "coucou"
-    m.type = PUBSUB_TYPE_INFO;
-    m.chan = malloc (strlen (chan) + 1);
-    m.chan[strlen (chan)] = '\0';
-    m.chanlen = strlen (chan);
-    m.data = malloc (strlen (MYMESSAGE) + 1);
-    m.datalen = strlen (MYMESSAGE);
-    m.datalen = strlen (MYMESSAGE);
-    pubsub_msg_send (&p, &m);
+    if (strcmp (cmd, "pub") == 0) {
+        // first message, "coucou"
+        m.type = PUBSUB_TYPE_MESSAGE;
+        m.chan = malloc (strlen (chan) + 1);
+        memset (m.chan, 0, strlen (chan) + 1);
+        m.chan[strlen (chan)] = '\0';
+        m.chanlen = strlen (chan);
+
+        m.data = malloc (strlen (MYMESSAGE) + 1);
+        memset (m.data, 0, strlen (MYMESSAGE) + 1);
+        strncpy ((char *) m.data, MYMESSAGE, strlen (MYMESSAGE) + 1);
+        m.datalen = strlen (MYMESSAGE);
+
+        printf ("send message\n");
+        pubsub_msg_send (&p, &m);
+    }
+    else {
+        pubsub_msg_recv (&p, &m);
+        pubsubd_msg_print (&m);
+    }
 
     // free everything
     pubsubd_msg_free (&m);
 
+    printf ("disconnection\n");
     // disconnect from the server
     pubsub_disconnect (&p);
 
+    printf ("destroying app\n");
     // the application will shut down, and remove the application named pipes
     if (app_destroy (&p))
         ohshit (1, "app_destroy");
-
-    srv_process_free (&p);
 }
 
 void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index, int version)
@@ -78,8 +91,6 @@ void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index,
     // send a message to disconnect
     // line : pid index version action chan
     pubsub_disconnect (&p);
-
-    srv_process_free (&p);
 }
 
     int

@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -g
+CFLAGS=-Wall -g -Wextra
 LDFLAGS= -pthread
 CFILES=$(wildcard *.c) # CFILES => recompiles everything on a C file change
 EXEC=$(basename $(wildcard *.c))
@@ -15,8 +15,11 @@ $(EXEC): $(OBJECTS) $(CFILES)
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
 
+$(TESTS):
+	valgrind --show-leak-kinds=all --leak-check=full -v --track-origins=yes ./$(basename $@)
+
 clean:
-	-rm $(OBJECTS)
+	@-rm $(OBJECTS) *.o
 
 mrproper: clean
-	rm $(EXEC)
+	@-rm $(EXEC)

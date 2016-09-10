@@ -39,10 +39,15 @@ void srv_process_gen (struct process *p
 void srv_process_free (struct process * p)
 {
     // TODO nothing to do now
+
+    snprintf(p->path_in , PATH_MAX, "%s/%d-%d-in" , TMPDIR, pid, index);
+    snprintf(p->path_out, PATH_MAX, "%s/%d-%d-out", TMPDIR, pid, index);
+
 }
 
 void srv_process_print (struct process *p)
 {
     if (p != NULL)
-        printf ("process %d : index %d\n", p->pid, p->index);
+        printf ("process %d : index %d, version %d\n"
+                , p->pid, p->index, p->version);
 }

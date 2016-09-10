@@ -55,7 +55,5 @@ main(int argc, char **argv, char **env)
     if (app_destroy (&p))
         ohshit (1, "app_destroy");
 
-    srv_process_free (&p);
-
     return EXIT_SUCCESS;
 }

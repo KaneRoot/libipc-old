@@ -2,36 +2,37 @@
 #include <stdio.h>
 #include <time.h>
 
-int file_open (FILE **f, const char *path, const char *mode)
+int file_write (const char *path, const char *buf, size_t msize)
 {
-    printf ("opening %s\n", path);
-    if (*f != NULL) {
-        printf ("f != NULL : %p\n", (void*) *f);
-        if (file_close (*f)) {
-            return ER_FILE_CLOSE;
-        }
-    }
-    *f = fopen (path, mode);
-    if (*f == NULL) {
-        fprintf (stderr, "\033[31mnot opened %s\033[00m\n", path);
+    int fd = open (path, O_WRONLY);
+    if (fd <= 0) {
         return ER_FILE_OPEN;
     }
-    printf ("opened : %ld\n", (long) *f);
+    
+    int ret = 0;
+    ret = write (fd, buf, msize);
 
-    return 0;
+    close (fd);
+
+    return ret;
 }
 
-int file_close (FILE *f)
+/*int file_read (const char *path, char **buf, size_t *msize)
 {
+<<<<<<< HEAD
     if (f != 0) {
         if (fclose (f)) {
             return ER_FILE_CLOSE;
         }
         printf ("FILE_CLOSE: closed file\n");
+=======
+    int fd = open (path, O_RDONLY);
+    if (fd <= 0) {
+        return ER_FILE_OPEN;
+>>>>>>> 99ca565bb6bf3729df3a1ec6ceeb2a58211751f5
     }
-    return 0;
-}
 
+<<<<<<< HEAD
 int file_read (FILE *f, char **buf, size_t *msize) {
     size_t n =0;
 
@@ -67,23 +68,53 @@ int file_read (FILE *f, char **buf, size_t *msize) {
             return ER_FILE_CLOSE;
         }
         return ER_FILE_READ;
+=======
+    if (*buf == NULL)
+        *buf = malloc (BUFSIZ);
+
+    int ret = 0;
+    int ret2 = 0;
+    ret = read (fd, *buf, BUFSIZ);
+    if (ret <= 0) {
+        fprintf (stderr, "err: read %s\n", path);
+    }
+    else {
+        *msize = ret;
+>>>>>>> 99ca565bb6bf3729df3a1ec6ceeb2a58211751f5
     }
 
-    return 0;
-}
+    ret2 = close (fd);
+    if (ret2 < 0) {
+        fprintf (stderr, "err: close [err: %d] %s\n", ret2, path);
+        perror ("closing");
+    }
 
-int file_write (FILE *f, const char *buf, size_t msize)
+    return ret;
+}*/
+
+int file_read (const char *path, char **buf, size_t *msize)
 {
-    if (0 == fwrite (buf, msize, 1, f)) {
-        fprintf (stderr, "err writing in the file\n");
-        if (ER_FILE_CLOSE == file_close (f)) {
-            fprintf (stderr, "err closing the file\n");
-            return ER_FILE_CLOSE;
-        }
-        return ER_FILE_WRITE;
+    int fd = open (path, O_RDONLY);
+    if (fd <= 0) {
+        return ER_FILE_OPEN;
     }
-
-    return 0;
+    if (*buf == NULL)
+        *buf = malloc (BUFSIZ);
+    int ret = 0;
+    int ret2 = 0;
+    ret = read (fd, *buf, BUFSIZ);
+    if (ret <= 0) {
+        fprintf (stderr, "err: read %s\n", path);
+    }
+    else {
+        *msize = ret;
+    }
+    ret2 = close (fd);
+    if (ret2 < 0) {
+        fprintf (stderr, "err: close [err: %d] %s\n", ret2, path);
+        perror ("closing");
+    }
+    return ret;
 }
 
 int srv_init (int argc, char **argv, char **env, struct service *srv, const char *sname, int (*cb)(int argc, char **argv, char **env, struct service *srv, const char *sname))
@@ -164,71 +195,19 @@ int srv_close (struct service *srv)
     return 0;
 }
 
-// only get a raw line from TMPDIR/<service>
-int srv_get_listen_raw (const struct service *srv, char **buf, size_t *msize)
-{
-    *buf = malloc(BUFSIZ);
-    memset (*buf, 0, BUFSIZ);
-
-    FILE * f = NULL;
-    if (file_open (&f, srv->spath, "rb")) {
-        return ER_FILE_OPEN;
-    }
-
-    char *ret = NULL;
-    ret = fgets (*buf, BUFSIZ, f);
-    if (ret == NULL) {
-        return ER_FILE_READ;
-    }
-    buf[0][BUFSIZ -1] = '\0';
-
-    if (file_close (f)) {
-        return ER_FILE_CLOSE;
-    }
-
-    *msize = strlen (*buf);
-
-    return 0;
-}
-
 int srv_get_new_process (const struct service *srv, struct process *p)
 {
     if (srv->spath == NULL) {
         return -1;
     }
 
-    char buf[BUFSIZ];
-    memset (buf, 0, BUFSIZ);
-
-    // read the pipe, get a process to work on
-    struct timespec ts = { 0 };
-    struct timespec ts2 = { 0 };
-
-    FILE * f = NULL;
-    if (file_open (&f, srv->spath, "rb")) {
-        return ER_FILE_OPEN;
+    char *buf = NULL;
+    size_t msize = 0;
+    int ret = file_read (srv->spath, &buf, &msize);
+    if (ret <= 0) {
+        fprintf (stderr, "err: listening on %s\n", srv->spath);
+        exit (1);
     }
-
-    clock_gettime(CLOCK_REALTIME, &ts);
-
-    char *ret = NULL;
-    ret = fgets (buf, BUFSIZ, f);
-    if (ret == NULL) {
-        if (file_close (f)) {
-            return ER_FILE_CLOSE;
-        }
-        return ER_FILE_READ;
-    }
-
-    clock_gettime(CLOCK_REALTIME, &ts2);
-    if (file_close (f)) {
-        return ER_FILE_CLOSE;
-    }
-
-    printf("sec: %ld nsec: %ld\n", ts.tv_sec, ts.tv_nsec);
-    printf("sec: %ld nsec: %ld\n", ts2.tv_sec, ts2.tv_nsec);
-
-    printf("diff nsec: %ld\n", ts2.tv_nsec - ts.tv_nsec);
 
     char *token = NULL, *saveptr = NULL;
     char *str = NULL;
@@ -254,93 +233,22 @@ int srv_get_new_process (const struct service *srv, struct process *p)
         }
     }
 
-    // printf("pid = %d, index = %d, version = %d \n",pid, index, version );
+
+    if (buf != NULL)
+        free (buf);
     srv_process_gen (p, pid, index, version);
 
     return 1;
 }
 
-int srv_read_cb (struct process *p, char ** buf, size_t * msize
-        , int (*cb)(FILE *f, char ** buf, size_t * msize))
-{
-    if (file_open (&p->out, p->path_out, "rb")) {
-        fprintf (stderr, "\033[31merr: srv_read_cb, file_open\033[00m\n");
-        if (ER_FILE_CLOSE == file_close (p->out)) {
-            fprintf (stderr, "err closing the file %s\n", p->path_out);
-            p->out = NULL;
-        }
-        return ER_FILE_OPEN;
-    }
-
-    if (cb != NULL) {
-        int ret = (*cb) (p->out, buf, msize);
-        if (ret != 0)
-            return ret;
-    }
-    else {
-        int ret = file_read (p->out, buf, msize);
-        if (ret != 0) {
-            return ret;
-        }
-    }
-    // printf ("DEBUG read, size %ld : %s\n", *msize, *buf);
-
-    if (ER_FILE_CLOSE == file_close (p->out)) {
-        fprintf (stderr, "err closing the file %s\n", p->path_out);
-        p->out = NULL;
-    }
-    p->out = NULL;
-
-    return 0;
-}
-
 int srv_read (struct process *p, char ** buf, size_t * msize)
 {
-    if (ER_FILE_OPEN == file_open (&p->out, p->path_out, "rb")) {
-        fprintf (stderr, "err opening the file %s\n", p->path_out);
-        return ER_FILE_OPEN;
-    }
-
-    int ret = file_read (p->out, buf, msize);
-    if (ret != 0) {
-        p->out = NULL;
-        return ret;
-    }
-
-    // printf ("DEBUG read, size %ld : %s\n", *msize, buf);
-
-    if (ER_FILE_CLOSE == file_close (p->out)) {
-        fprintf (stderr, "err closing the file %s\n", p->path_out);
-        p->out = NULL;
-        return ER_FILE_CLOSE;
-    }
-    p->out = NULL;
-
-    return 0;
+    return file_read (p->path_out, buf, msize);
 }
 
 int srv_write (struct process *p, char * buf, size_t msize)
 {
-    if (ER_FILE_OPEN == file_open (&p->in, p->path_in, "wb")) {
-        fprintf (stderr, "err opening the file %s\n", p->path_in);
-        return ER_FILE_OPEN;
-    }
-
-    int ret = file_write (p->in, buf, msize);
-    if (ret != 0) {
-        fprintf (stderr, "err writing in the file %s\n", p->path_in);
-        p->in = NULL;
-        return ret;
-    }
-
-    if (ER_FILE_CLOSE == file_close (p->in)) {
-        fprintf (stderr, "err closing the file %s\n", p->path_in);
-        p->in = NULL;
-        return ER_FILE_CLOSE;
-    }
-    p->in = NULL;
-
-    return 0;
+    return file_write (p->path_in, buf, msize);
 }
 
 // APPLICATION
@@ -349,27 +257,10 @@ int srv_write (struct process *p, char * buf, size_t msize)
 int app_srv_connection (struct service *srv, const char *connectionstr, size_t msize)
 {
     if (srv == NULL) {
-        return 1;
+        return -1;
     }
-
-    FILE * f = NULL;
-    if (ER_FILE_OPEN == file_open (&f, srv->spath, "wb")) {
-        fprintf (stderr, "err opening the service file %s\n", srv->spath);
-        return ER_FILE_OPEN;
-    }
-
-    int ret = file_write (f, connectionstr, msize);
-    if (ret != 0) {
-        fprintf (stderr, "err writing in the service file %s\n", srv->spath);
-        return ret;
-    }
-
-    if (ER_FILE_CLOSE == file_close (f)) {
-        fprintf (stderr, "err closing the file\n");
-        return ER_FILE_CLOSE;
-    }
-
-    return 0;
+ 
+    return file_write (srv->spath, connectionstr, msize);
 }
 
 int app_create (struct process *p, pid_t pid, int index, int version)
@@ -458,84 +349,12 @@ int app_destroy (struct process *p)
     return 0;
 }
 
-int app_read_cb (struct process *p, char ** buf, size_t * msize
-        , int (*cb)(FILE *f, char ** buf, size_t * msize))
-{
-    if (file_open (&p->in, p->path_in, "rb")) {
-        fprintf (stderr, "\033[31merr: app_read_cb, file_open\033[00m\n");
-        p->in = NULL;
-        return 1;
-    }
-
-    if (cb != NULL) {
-        int ret = (*cb) (p->in, buf, msize);
-        if (ret != 0)
-            return ret;
-    }
-    else {
-        int ret = file_read (p->in, buf, msize);
-        if (ret != 0) {
-            p->in = NULL;
-            return ret;
-        }
-    }
-
-
-    if (ER_FILE_CLOSE == file_close (p->in)) {
-        fprintf (stderr, "err closing the file %s\n", p->path_in);
-    }
-    p->in = NULL;
-
-    return 0;
-}
-
 int app_read (struct process *p, char ** buf, size_t * msize)
 {
-    if (ER_FILE_OPEN == file_open (&p->in, p->path_in, "rb")) {
-        fprintf (stderr, "err opening the file %s\n", p->path_in);
-        return ER_FILE_OPEN;
-    }
-
-    int ret = file_read (p->in, buf, msize);
-    if (ret != 0) {
-        p->in = NULL;
-        return ret;
-    }
-
-    if (ER_FILE_CLOSE == file_close (p->in)) {
-        fprintf (stderr, "err closing the file %s\n", p->path_in);
-        p->in = NULL;
-        return ER_FILE_CLOSE;
-    }
-    p->in = NULL;
-
-    return 0;
+    return file_read (p->path_in, buf, msize);
 }
 
 int app_write (struct process *p, char * buf, size_t msize)
 {
-    if (buf == NULL) {
-        return ER_FILE_WRITE_PARAMS;
-    }
-
-    if (ER_FILE_OPEN == file_open (&p->out, p->path_out, "wb")) {
-        fprintf (stderr, "err opening the file %s\n", p->path_out);
-        return ER_FILE_OPEN;
-    }
-
-    int ret = file_write (p->out, buf, msize);
-    if (ret != 0) {
-        fprintf (stderr, "err writing in the file %s\n", p->path_out);
-        p->out = NULL;
-        return ret;
-    }
-
-    if (ER_FILE_CLOSE == file_close (p->out)) {
-        fprintf (stderr, "err closing the file %s\n", p->path_out);
-        p->out = NULL;
-        return ER_FILE_CLOSE;
-    }
-    p->out = NULL;
-
-    return 0;
+    return file_write (p->path_out, buf, msize);
 }

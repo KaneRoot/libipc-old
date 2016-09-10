@@ -59,18 +59,36 @@ struct channel * pubsubd_channel_copy (struct channel *c)
     memcpy (copy, c, sizeof(struct channel));
 
     if (c->chan != NULL) {
-        // copy->chan = strndup (c->chan, c->chanlen);
-        copy->chan = malloc (BUFSIZ);
-        memcpy (copy->chan, c->chan, BUFSIZ);
+        copy->chan = malloc (c->chanlen);
+        memset (copy->chan, 0, c->chanlen);
+        memcpy (copy->chan, c->chan, c->chanlen);
         copy->chanlen = c->chanlen;
     }
 
     return copy;
 }
 
+int pubsubd_channel_new (struct channel *c, const char * name)
+{
+    if (c == NULL) {
+        return 1;
+    }
+
+    size_t nlen = (strlen (name) > BUFSIZ) ? BUFSIZ : strlen (name);
+
+    printf ("NAME : %s, SIZE : %ld\n", name, nlen);
+
+    if (c->chan == NULL)
+        c->chan = malloc (nlen +1);
+
+    memset (c->chan, 0, nlen +1);
+    memcpy (c->chan, name, nlen);
+    c->chanlen = nlen;
+    return 0;
+}
+
 void pubsubd_channel_free (struct channel * c)
 {
-    // TODO
     if (c == NULL)
         return;
 
@@ -98,7 +116,8 @@ struct channel * pubsubd_channel_get (struct channels *chans, struct channel *c)
 int
 pubsubd_channel_eq (const struct channel *c1, const struct channel *c2)
 {
-    return (strncmp (c1->chan, c2->chan, c1->chanlen) == 0);
+    return c1->chanlen == c2->chanlen &&
+        strncmp (c1->chan, c2->chan, c1->chanlen) == 0;
 }
 
 // SUBSCRIBER
@@ -114,7 +133,7 @@ void pubsubd_subscriber_init (struct app_list_head **chans) {
 
 void pubsubd_channels_print (const struct channels *chans)
 {
-    printf ("\033[36mmchannels\033[00m\n\n");
+    printf ("\033[36mmchannels\033[00m\n");
 
     if (chans == NULL)
         return ;
@@ -130,13 +149,19 @@ void pubsubd_channel_print (const struct channel *c)
     if (c == NULL || c->chan == NULL)
         return;
 
-    printf ( "\033[32mchan %s\033[00m\n\t", c->chan);
+    if (c->chan == NULL) {
+        printf ( "\033[32mchan name not available\033[00m\n");
+    }
+    else {
+        printf ( "\033[32mchan %s\033[00m\n", c->chan);
+    }
 
     if (c->alh == NULL)
         return;
 
     struct app_list_elm *ale = NULL;
     LIST_FOREACH(ale, c->alh, entries) {
+        printf ("\t");
         srv_process_print (ale->p);
     }
 }
@@ -230,7 +255,7 @@ void pubsubd_app_list_elm_free (struct app_list_elm *todel)
 {
     if (todel == NULL || todel->p == NULL)
         return;
-    srv_process_free (todel->p);
+    free (todel->p);
 }
 
 // MESSAGE, TODO CBOR
@@ -339,16 +364,15 @@ void pubsubd_msg_free (struct pubsub_msg *msg)
 
 // COMMUNICATION
 
-int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
+int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
         , struct channels *chans, struct channel **c)
 {
-    if (srv == NULL || ale == NULL || chans == NULL)
+    if (spath == NULL || ale == NULL || chans == NULL)
         return -1;
 
     char *buf = NULL;
     size_t msize = 0;
-    srv_get_listen_raw (srv, &buf, &msize);
-
+    file_read (spath, &buf, &msize);
     // parse pubsubd init msg (sent in TMPDIR/<service>)
     //
     // line fmt : pid index version action chan
@@ -361,8 +385,11 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     int index = 0;
     int version = 0;
 
+    // chan name
     char chan[BUFSIZ];
     memset (chan, 0, BUFSIZ);
+
+    printf ("INIT: %s\n", buf);
 
     for (str = buf, i = 1; ; str = NULL, i++) {
         token = strtok_r(str, " ", &saveptr);
@@ -389,9 +416,11 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
                          break;
                      }
             case 5 : {
+                         // for the last element of the line
+                         // drop the following \n
                          if (ale->action != PUBSUB_QUIT)
                              memcpy (chan, token, (strlen (token) < BUFSIZ) ?
-                                     strlen (token) : BUFSIZ);
+                                     strlen (token) -1 : BUFSIZ);
                          break;
                      }
         }
@@ -418,16 +447,9 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
         *c = malloc (sizeof (struct channel));
     }
 
-    if (c[0]->chan != NULL) {
-        free (c[0]->chan);
-        c[0]->chan = NULL;
-    }
-
     chan[BUFSIZ -1] = '\0';
-    // c[0]->chan = strndup (chan, BUFSIZ);
-    c[0]->chan = malloc (BUFSIZ);
-    memcpy(c[0]->chan, chan, BUFSIZ);
-    c[0]->chanlen = strlen (chan);
+    pubsubd_channel_new (*c, chan);
+
 
     struct channel *new_chan = NULL;
     new_chan = pubsubd_channel_get (chans, *c);
@@ -442,91 +464,6 @@ int pubsubd_get_new_process (struct service *srv, struct app_list_elm *ale
     // add the subscriber
     if (ale->action == PUBSUB_SUB || ale->action == PUBSUB_BOTH)
         pubsubd_subscriber_add (new_chan->alh, ale);
-
-    return 0;
-}
-
-// TODO CBOR
-int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize)
-{
-    // msg: "type(1) chanlen(8) chan datalen(8) data
-
-    printf ("\033[36m ON PASSE DANS pubsubd_msg_read_cb \033[00m \n");
-
-    // read 
-    char type = ' ';
-    if (0 == fread (&type, 1, 1, f)) {
-        return ER_FILE_READ;
-    }
-
-    size_t chanlen = 0;
-    if (0 == fread (&chanlen, sizeof (size_t), 1, f)) {
-        return ER_FILE_READ;
-    }
-
-    if (chanlen > BUFSIZ) {
-        return ER_FILE_READ;
-    }
-
-    char *chan = NULL;
-    chan = malloc (chanlen);
-
-    if (chan == NULL) {
-        return ER_MEM_ALLOC;
-    }
-
-    if (0 == fread (chan, chanlen, 1, f)) {
-        return ER_FILE_READ;
-    }
-
-    size_t datalen = 0;
-    if (0 == fread (&datalen, sizeof (size_t), 1, f)) {
-        free (chan);
-        return ER_FILE_READ;
-    }
-
-    if (datalen > BUFSIZ) {
-        return 1;
-    }
-
-    char *data = NULL;
-    data = malloc (datalen);
-    if (data == NULL) {
-        free (chan);
-        return ER_MEM_ALLOC;
-    }
-
-    if (0 == fread (data, datalen, 1, f)) {
-        free (chan);
-        free (data);
-        return ER_FILE_READ;
-    }
-
-    *msize = 1 + 2 * sizeof (size_t) + chanlen + datalen;
-    if (*buf == NULL) {
-        *buf = malloc(*msize);
-        if (*buf == NULL) {
-            free (chan);
-            free (data);
-            return ER_MEM_ALLOC;
-        }
-    }
-
-    // TODO CHECK THIS
-    size_t i = 0;
-
-    char *cbuf = *buf;
-
-    cbuf[i] = type;                                  i++;
-    memcpy (cbuf + i, &chanlen, sizeof(size_t));     i += sizeof(size_t);
-    memcpy (cbuf + i, chan, chanlen);                i += chanlen;
-    memcpy (cbuf + i, &datalen, sizeof(size_t));     i += sizeof(size_t);
-    memcpy (cbuf + i, data, datalen);                i += datalen;
-
-    free (chan);
-    free (data);
-
-    printf ("\033[36m ON SORT de pubsubd_msg_read_cb \033[00m \n");
 
     return 0;
 }
@@ -551,14 +488,8 @@ void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg 
 
 void pubsubd_msg_print (const struct pubsub_msg *msg)
 {
-    if (msg == NULL) {
-        return;
-    }
-
-    printf ("\t\t\033[36mMessage\033[00m\n");
-    printf ("\t\ttype %d\n", msg->type);
-    printf ("\t\tchan %s\n", msg->chan);
-    printf ("\t\tdata %s\n", msg->data);
+    printf ("msg: type=%d chan=%s, data=%s\n"
+            , msg->type, msg->chan, msg->data);
 }
 
 void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m)
@@ -566,7 +497,11 @@ void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m)
     // read the message from the process
     size_t mlen = 0;
     char *buf = NULL;
+#if 0
     srv_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
+#else
+    srv_read (p, &buf, &mlen);
+#endif
 
     pubsubd_msg_unserialize (m, buf, mlen);
 
@@ -628,19 +563,8 @@ void pubsub_disconnect (struct process *p)
     pubsubd_msg_serialize (&m, &buf, &msize);
 
     int ret = app_write (p, buf, msize);
-    switch (ret) {
-        case ER_FILE_WRITE :
-            fprintf (stderr, "err: ER_FILE_WRITE\n");
-            break;
-        case ER_FILE_WRITE_PARAMS :
-            fprintf (stderr, "err: ER_FILE_WRITE_PARAMS\n");
-            break;
-        case ER_FILE_OPEN :
-            fprintf (stderr, "err: ER_FILE_OPEN\n");
-            break;
-        case ER_FILE_CLOSE :
-            fprintf (stderr, "err: ER_FILE_CLOSE\n");
-            break;
+    if (ret != (int) msize) {
+        fprintf (stderr, "err: can't disconnect\n");
     }
 
     pubsubd_msg_free (&m);
@@ -676,7 +600,7 @@ void pubsub_msg_recv (struct process *p, struct pubsub_msg * m)
     // read the message from the process
     size_t mlen = 0;
     char *buf = NULL;
-    app_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
+    app_read (p, &buf, &mlen);
 
     pubsubd_msg_unserialize (m, buf, mlen);
 

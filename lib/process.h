@@ -19,11 +19,9 @@ struct process {
     unsigned int index;
     char path_in [PATH_MAX];
     char path_out [PATH_MAX];
-    FILE *in, *out;
 };
 
 struct process * srv_process_copy (const struct process *p);
-void srv_process_free (struct process * p);
 
 int srv_process_eq (const struct process *p1, const struct process *p2);
 
