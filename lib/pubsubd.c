@@ -59,6 +59,7 @@ struct channel * pubsubd_channel_copy (struct channel *c)
     memcpy (copy, c, sizeof(struct channel));
 
     if (c->chan != NULL) {
+        printf ("COPY CHAN : %d\n", c->chanlen);
         copy->chan = malloc (c->chanlen);
         memset (copy->chan, 0, c->chanlen);
         memcpy (copy->chan, c->chan, c->chanlen);
@@ -78,8 +79,10 @@ int pubsubd_channel_new (struct channel *c, const char * name)
 
     printf ("NAME : %s, SIZE : %ld\n", name, nlen);
 
-    if (c->chan == NULL)
+    if (c->chan == NULL) {
         c->chan = malloc (nlen +1);
+        memset (c->chan, 0, nlen +1);
+    }
 
     memset (c->chan, 0, nlen +1);
     memcpy (c->chan, name, nlen);
@@ -126,8 +129,10 @@ void pubsubd_subscriber_init (struct app_list_head **chans) {
     if (chans == NULL)
         return;
 
-    if (*chans == NULL)
+    if (*chans == NULL) {
         *chans = malloc (sizeof(struct channels));
+        memset (*chans, 0, sizeof(struct channels));
+    }
     LIST_INIT(*chans);
 } 
 
@@ -149,12 +154,7 @@ void pubsubd_channel_print (const struct channel *c)
     if (c == NULL || c->chan == NULL)
         return;
 
-    if (c->chan == NULL) {
-        printf ( "\033[32mchan name not available\033[00m\n");
-    }
-    else {
-        printf ( "\033[32mchan %s\033[00m\n", c->chan);
-    }
+    printf ( "\033[32mchan %s\033[00m\n", c->chan);
 
     if (c->alh == NULL)
         return;
@@ -173,6 +173,7 @@ struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale)
 
     struct app_list_elm * n = NULL;
     n = malloc (sizeof (struct app_list_elm));
+    memset (n, 0, sizeof (struct app_list_elm));
 
     if (ale->p != NULL)
         n->p = srv_process_copy (ale->p);
@@ -248,6 +249,9 @@ void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p)
     if (ale == NULL)
         return;
 
+    if (ale->p != NULL)
+        free (ale->p);
+
     ale->p = srv_process_copy (p);
 }
 
@@ -273,6 +277,7 @@ void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *l
             *data = NULL;
         }
         *data = malloc(*len);
+        memset (*data, 0, *len);
         data[0][0] = msg->type;
         return;
     }
@@ -286,6 +291,7 @@ void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *l
         *data = NULL;
     }
     *data = malloc(*len);
+    memset (*data, 0, *len);
 
     size_t i = 0;
 
@@ -334,6 +340,7 @@ void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t l
         return;
     }
     msg->chan = malloc (msg->chanlen);
+    memset (msg->chan, 0, msg->chanlen);
     memcpy (msg->chan, data + i, msg->chanlen);         i += msg->chanlen;
 
     memcpy (&msg->datalen, data + i, sizeof(size_t));   i += sizeof(size_t);
@@ -342,6 +349,7 @@ void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t l
         return;
     }
     msg->data = malloc (msg->datalen);
+    memset (msg->data, 0, msg->datalen);
     memcpy (msg->data, data + i, msg->datalen);         i += msg->datalen;
 }
 
@@ -389,9 +397,15 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
     char chan[BUFSIZ];
     memset (chan, 0, BUFSIZ);
 
+    if (buf == NULL) {
+        return -2;
+    }
+
     printf ("INIT: %s\n", buf);
 
     for (str = buf, i = 1; ; str = NULL, i++) {
+        if (str == NULL)
+            break;
         token = strtok_r(str, " ", &saveptr);
         if (token == NULL)
             break;
@@ -441,15 +455,16 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
     }
 
     ale->p = malloc (sizeof (struct process));
+    memset (ale->p, 0, sizeof (struct process)); 
     srv_process_gen (ale->p, pid, index, version);
 
     if (*c == NULL) {
         *c = malloc (sizeof (struct channel));
+        memset (*c, 0, sizeof (struct channel)); 
     }
 
     chan[BUFSIZ -1] = '\0';
     pubsubd_channel_new (*c, chan);
-
 
     struct channel *new_chan = NULL;
     new_chan = pubsubd_channel_get (chans, *c);

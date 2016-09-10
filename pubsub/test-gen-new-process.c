@@ -27,7 +27,7 @@ main(int argc, char **argv)
     struct channels chans;
     memset (&chans, 0, sizeof (struct channels));
 
-    for (int nb = 10, i = 0 ; nb > 0; i++, nb--) {
+    for (int nb = 1, i = 0 ; nb > 0; i++, nb--) {
         struct app_list_elm ale;
         memset (&ale, 0, sizeof (struct app_list_elm));
 
@@ -42,6 +42,8 @@ main(int argc, char **argv)
         pubsubd_channels_print (&chans);
         printf ("--\n");
         printf ("still %d remaining processes\n", nb);
+
+        pubsubd_app_list_elm_free (&ale);
     }
 
     pubsubd_channels_del_all (&chans);

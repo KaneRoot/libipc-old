@@ -19,13 +19,18 @@ int file_write (const char *path, const char *buf, size_t msize)
 
 int file_read (const char *path, char **buf, size_t *msize)
 {
+    if (buf == NULL)
+        return -1;
+
     int fd = open (path, O_RDONLY);
     if (fd <= 0) {
         return ER_FILE_OPEN;
     }
 
-    if (*buf == NULL)
+    if (*buf == NULL) {
         *buf = malloc (BUFSIZ);
+        memset (*buf, 0, BUFSIZ);
+    }
 
     int ret = 0;
     int ret2 = 0;
