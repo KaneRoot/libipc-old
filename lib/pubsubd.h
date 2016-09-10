@@ -70,9 +70,10 @@ void pubsubd_channel_print (const struct channel *c);
 // list of channels
 void pubsubd_channels_init (struct channels *chans);
 void pubsubd_channels_print (const struct channels *chans);
-struct channel * pubsubd_channels_add (struct channels *chans, struct channel *c);
+struct channel * pubsubd_channels_add (struct channels *chans, const char *chan);
 void pubsubd_channels_del (struct channels *chans, struct channel *c);
 void pubsubd_channels_del_all (struct channels *chans);
+struct channel * pubsubd_channel_search (struct channels *chans, char *chan);
 
 // remove an app_list_elm from the list (msg type DISCONNECT received)
 int pubsubd_channels_del_subscriber (struct channels *chans
@@ -100,6 +101,7 @@ int
 pubsubd_subscriber_eq (const struct app_list_elm *, const struct app_list_elm *);
 
 void pubsubd_subscriber_init (struct app_list_head **chans);
+void pubsubd_subscriber_print (struct app_list_head *alh);
 void pubsubd_subscriber_add (struct app_list_head *
         , const struct app_list_elm *);
 struct app_list_elm * pubsubd_subscriber_get (const struct app_list_head *

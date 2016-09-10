@@ -37,7 +37,7 @@ main(int argc, char **argv)
 
         pubsubd_get_new_process (spath, &ale, &chans, &c);
 
-        printf ("print the channels, %d chan\n", i);
+        printf ("print the channels\n");
         printf ("--\n");
         pubsubd_channels_print (&chans);
         printf ("--\n");
