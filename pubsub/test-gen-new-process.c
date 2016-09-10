@@ -27,7 +27,7 @@ main(int argc, char **argv)
     struct channels chans;
     memset (&chans, 0, sizeof (struct channels));
 
-    for (int nb = 1, i = 0 ; nb > 0; i++, nb--) {
+    for (int nb = 2, i = 0 ; nb > 0; i++, nb--) {
         struct app_list_elm ale;
         memset (&ale, 0, sizeof (struct app_list_elm));
 

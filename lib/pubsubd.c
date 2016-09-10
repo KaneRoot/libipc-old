@@ -59,8 +59,8 @@ struct channel * pubsubd_channel_copy (struct channel *c)
     memcpy (copy, c, sizeof(struct channel));
 
     if (c->chan != NULL) {
-        copy->chan = malloc (c->chanlen);
-        memset (copy->chan, 0, c->chanlen);
+        copy->chan = malloc (c->chanlen +1);
+        memset (copy->chan, 0, c->chanlen +1);
         memcpy (copy->chan, c->chan, c->chanlen);
         copy->chanlen = c->chanlen;
     }
@@ -76,16 +76,13 @@ int pubsubd_channel_new (struct channel *c, const char * name)
 
     size_t nlen = (strlen (name) > BUFSIZ) ? BUFSIZ : strlen (name);
 
-    printf ("NAME : %s, SIZE : %ld\n", name, nlen);
-
-    if (c->chan == NULL) {
+    if (c->chan == NULL)
         c->chan = malloc (nlen +1);
-        memset (c->chan, 0, nlen +1);
-    }
 
     memset (c->chan, 0, nlen +1);
     memcpy (c->chan, name, nlen);
     c->chanlen = nlen;
+
     return 0;
 }
 
@@ -403,8 +400,6 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
     printf ("INIT: %s\n", buf);
 
     for (str = buf, i = 1; ; str = NULL, i++) {
-        if (str == NULL)
-            break;
         token = strtok_r(str, " ", &saveptr);
         if (token == NULL)
             break;
@@ -426,14 +421,18 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
                          else { // everything else is about killing the service
                              ale->action = PUBSUB_QUIT;
                          }
+
+                         printf ("ACTION : %s\n", token);
                          break;
                      }
             case 5 : {
                          // for the last element of the line
                          // drop the following \n
-                         if (ale->action != PUBSUB_QUIT)
+                         if (ale->action != PUBSUB_QUIT) {
+                             printf ("REQUESTED CHAN : %s", token);
                              memcpy (chan, token, (strlen (token) < BUFSIZ) ?
                                      strlen (token) -1 : BUFSIZ);
+                         }
                          break;
                      }
         }
@@ -463,10 +462,11 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
     }
 
     chan[BUFSIZ -1] = '\0';
+    printf ("AVANT\n");
     pubsubd_channel_new (*c, chan);
+    printf ("APRES\n");
 
     struct channel *new_chan = NULL;
-
     new_chan = pubsubd_channel_get (chans, *c);
     if (new_chan == NULL) {
         new_chan = pubsubd_channels_add (chans, *c);
