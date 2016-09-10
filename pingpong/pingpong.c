@@ -38,7 +38,7 @@ void main_loop (const struct service *srv)
         char *buf = NULL;
 
         // printf ("before read\n");
-        if ((ret = srv_read (&proc, &buf, &msize))) {
+        if ((ret = srv_read (&proc, &buf, &msize)) == -1) {
             fprintf(stdout, "MAIN_LOOP: error service_read %d\n", ret);
             continue;
         }
@@ -46,7 +46,7 @@ void main_loop (const struct service *srv)
         printf ("read, size %ld : %s\n", msize, buf);
 
         // printf ("before proc write\n");
-        if ((ret = srv_write (&proc, buf, msize))) {
+        if ((ret = srv_write (&proc, buf, msize)) == -1) {
             fprintf(stdout, "MAIN_LOOP: error service_write %d\n", ret);
             continue;
         }
