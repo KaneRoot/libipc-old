@@ -17,16 +17,22 @@ int file_write (const char *path, const char *buf, size_t msize)
     return ret;
 }
 
-
-
 int file_read (const char *path, char **buf, size_t *msize)
 {
+    if (buf == NULL)
+        return -1;
+
     int fd = open (path, O_RDONLY);
     if (fd <= 0) {
         return ER_FILE_OPEN;
     }
-    if (*buf == NULL)
+    printf("FILE_READ: opened file %s\n", path);
+
+    if (*buf == NULL) {
         *buf = malloc (BUFSIZ);
+        memset (*buf, 0, BUFSIZ);
+    }
+
     int ret = 0;
     int ret2 = 0;
     ret = read (fd, *buf, BUFSIZ);
@@ -36,11 +42,13 @@ int file_read (const char *path, char **buf, size_t *msize)
     else {
         *msize = ret;
     }
+
     ret2 = close (fd);
     if (ret2 < 0) {
         fprintf (stderr, "err: close [err: %d] %s\n", ret2, path);
         perror ("closing");
-    } 
+    }
+
 
     return ret;
 }
@@ -160,7 +168,6 @@ int srv_get_new_process (const struct service *srv, struct process *p)
             version = strtoul(token, NULL, 10);
         }
     }
-
 
     if (buf != NULL)
         free (buf);

@@ -2,15 +2,13 @@
 
 REP=/tmp/ipc/
 SERVICE="pongd"
-NB=3
+NB=10
 
 # CLEAN UP !
 if [ $# -ne 0 ] && [ "$1" = clean ]
 then
     echo "clean rep ${REP}"
     rm ${REP}/${SERVICE}
-    rm ${REP}/*-in
-    rm ${REP}/*-out
 
     exit 0
 fi
@@ -22,8 +20,6 @@ fi
 
 for pid in `seq 1 ${NB}`
 do
-    echo "${pid}"
-
     # we make the application pipes
     mkfifo ${REP}${pid}-1-in 2>/dev/null
     mkfifo ${REP}${pid}-1-out 2>/dev/null
@@ -36,5 +32,10 @@ do
     # echo "hello world" > ${REP}${pid}-1-out
 
     # the the service will answer with our message
+    echo "pid : ${pid}"
     cat ${REP}/${pid}-1-in
 done
+
+    echo "clean rep"
+    rm ${REP}/*-in
+    rm ${REP}/*-out

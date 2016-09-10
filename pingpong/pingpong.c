@@ -77,6 +77,7 @@ int main(int argc, char * argv[], char **env)
         fprintf(stdout, "error service_create %d\n", ret);
         exit (1);
     }
+    printf("MAIN: server created\n" );
 
     // the service will loop until the end of time, a specific message, a signal
     main_loop (&srv);
