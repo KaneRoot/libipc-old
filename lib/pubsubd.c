@@ -116,7 +116,8 @@ struct channel * pubsubd_channel_get (struct channels *chans, struct channel *c)
 int
 pubsubd_channel_eq (const struct channel *c1, const struct channel *c2)
 {
-    return (strncmp (c1->chan, c2->chan, c1->chanlen) == 0);
+    return c1->chanlen == c2->chanlen &&
+        strncmp (c1->chan, c2->chan, c1->chanlen) == 0;
 }
 
 // SUBSCRIBER

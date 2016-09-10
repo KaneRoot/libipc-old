@@ -162,6 +162,8 @@ int srv_get_new_process (const struct service *srv, struct process *p)
         }
     }
 
+    if (buf != NULL)
+        free (buf);
     srv_process_gen (p, pid, index, version);
 
     return 0;
