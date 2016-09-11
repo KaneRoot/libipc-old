@@ -1,7 +1,15 @@
 #!/bin/bash
 
-for i in $(seq 1 10)
+REP=/tmp/ipc
+SERVICE=gen
+#SERVICE=pubsub
+NB=10
+
+for i in $(seq 1 ${NB})
 do
-    echo "${i} 1 1 sub chan1" > /tmp/ipc/gen
+    mkfifo ${REP}/${i}-1-1-in
+    mkfifo ${REP}/${i}-1-1-out
+
+    echo "${i} 1 1 both chan1" > ${REP}/${SERVICE}
     sleep 0.1
 done

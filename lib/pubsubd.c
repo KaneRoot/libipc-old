@@ -114,9 +114,14 @@ struct channel * pubsubd_channel_search (struct channels *chans, char *chan)
 {
     struct channel * np = NULL;
     LIST_FOREACH(np, chans, entries) {
-        if (np->chanlen == strlen (chan) + 1
-                && strncmp (np->chan, chan, np->chanlen))
+        // TODO debug
+        printf ("pubsubd_channel_search: %s (%ld) vs %s (%ld)\n"
+                , np->chan, np->chanlen, chan, strlen(chan));
+        if (np->chanlen == strlen (chan)
+                && strncmp (np->chan, chan, np->chanlen) == 0) {
+            printf ("pubsubd_channel_search: FOUND\n");
             return np;
+        }
     }
     return NULL;
 }
@@ -163,25 +168,17 @@ void pubsubd_channels_print (const struct channels *chans)
 
     struct channel *chan = NULL;
     LIST_FOREACH(chan, chans, entries) {
-        pubsubd_channel_print (chan);
+        if (chan->chan == NULL) {
+            printf ("pubsubd_channels_print: chan->chan == NULL\n");
+        }
+
+        printf ( "\033[32mchan %s\033[00m\n", chan->chan);
+
+        if (chan->alh == NULL)
+            printf ("pubsubd_channels_print: chan->alh == NULL\n");
+        else
+            pubsubd_subscriber_print (chan->alh);
     }
-}
-
-void pubsubd_channel_print (const struct channel *c)
-{
-    if (c == NULL || c->chan == NULL) {
-        printf ("pubsubd_channel_print: c == NULL or c->chan == NULL\n");
-        return;
-    }
-
-    printf ( "\033[32mchan %s\033[00m\n", c->chan);
-
-    if (c->alh == NULL) {
-        printf ("pubsubd_channel_print: c->alh == NULL\n");
-        return;
-    }
-
-    pubsubd_subscriber_print (c->alh);
 }
 
 struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale)

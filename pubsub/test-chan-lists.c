@@ -3,6 +3,9 @@
 
 #define TEST_NAME "test-chan-lists"
 
+#define CHAN1       "coucou"
+#define CHAN2       "salut"
+
 void
 ohshit(int rvalue, const char* str) {
     fprintf(stderr, "%s\n", str);
@@ -33,9 +36,9 @@ main(int argc, char **argv, char **env)
     // FIRST CHAN TO BE ADDED
     // search for the chan in channels, add it if not found
     struct channel *new_chan = NULL;
-    new_chan = pubsubd_channel_search (&chans, "coucou");
+    new_chan = pubsubd_channel_search (&chans, CHAN1);
     if (new_chan == NULL) {
-        new_chan = pubsubd_channels_add (&chans, "coucou");
+        new_chan = pubsubd_channels_add (&chans, CHAN1);
         pubsubd_subscriber_init (&new_chan->alh);
     }
     else {
@@ -49,7 +52,7 @@ main(int argc, char **argv, char **env)
 
     // SAME CHAN, SHOULD NOT BE ADDED
     // search for the chan in channels, add it if not found
-    new_chan = pubsubd_channel_search (&chans, "coucou");
+    new_chan = pubsubd_channel_search (&chans, CHAN1);
     if (new_chan == NULL) {
         ohshit (3, "error : same chan, shouldn't be added in channels");
     }
@@ -64,9 +67,9 @@ main(int argc, char **argv, char **env)
 
     // NEW CHAN, SHOULD BE ADDED
     // search for the chan in channels, add it if not found
-    new_chan = pubsubd_channel_search (&chans, "salut");
+    new_chan = pubsubd_channel_search (&chans, CHAN2);
     if (new_chan == NULL) {
-        new_chan = pubsubd_channels_add (&chans, "salut");
+        new_chan = pubsubd_channels_add (&chans, CHAN2);
         pubsubd_subscriber_init (&new_chan->alh);
     }
     else {
