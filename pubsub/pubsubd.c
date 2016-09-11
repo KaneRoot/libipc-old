@@ -55,12 +55,12 @@ void * pubsubd_worker_thread (void *params)
         else {
             struct channel *ch = pubsubd_channel_search (chans, chan->chan);
             if (ch == NULL) {
-                printf ("CHAN NON TROUVE\n");
+                printf ("CHAN NOT FOUND\n");
             }
             else {
-                printf ("Je dois dire :\n");
+                printf ("what should be sent: ");
                 pubsubd_msg_print (&m);
-                printf ("CHAN ET PROCESS À QUI JE DOIS COMMUNIQUER\n");
+                printf ("send the message to:\t");
                 pubsubd_channel_print (ch);
                 pubsubd_msg_send (ch->alh, &m);
             }
@@ -137,10 +137,12 @@ main(int argc, char **argv, char **env)
     pubsubd_channels_init (&chans);
 
     pthread_t *thr = NULL;
-    thr = malloc (sizeof (pthread_t) * NB_CLIENTS);
-    memset (thr, 0, sizeof (pthread_t) * NB_CLIENTS);
+    thr = malloc (sizeof (pthread_t));
+    memset (thr, 0, sizeof (pthread_t));
 
-    for (int i = 0; i < NB_CLIENTS; i++) {
+    int i = 0;
+    // for (i = 0; i < NB_CLIENTS; i++)
+    for (i = 0; ; i++) {
         // for each new process
         struct app_list_elm ale;
         memset (&ale, 0, sizeof (struct app_list_elm));
@@ -151,10 +153,8 @@ main(int argc, char **argv, char **env)
         // end the application
         if (ale.action == PUBSUB_QUIT) {
             printf ("Quitting ...\n");
-
             pubsubd_channels_del_all (&chans);
             srv_close (&srv);
-            
             // TODO end the threads
             exit (0);
         }
@@ -168,16 +168,18 @@ main(int argc, char **argv, char **env)
 
         pthread_create (thr + i, NULL, pubsubd_worker_thread, wp);
         pthread_detach (thr[i]);
+        // realloc memory for further workers
+        thr = realloc (thr, sizeof (pthread_t) * (i+1));
 
         pubsubd_app_list_elm_free (&ale);
     }
 
     sleep (10);
     // stop threads
-    for (int i = 0 ; i < NB_CLIENTS ; i++) {
-        pthread_cancel (thr[i]);
+    for (int j = 0 ; j < i ; j++) {
+        pthread_cancel (thr[j]);
         void *ret = NULL;
-        pthread_join (thr[i], &ret);
+        pthread_join (thr[j], &ret);
         if (ret != NULL) {
             free (ret);
         }
@@ -193,50 +195,3 @@ main(int argc, char **argv, char **env)
 
     return EXIT_SUCCESS;
 }
-
-#if 0
-void main_loop (const struct service *srv)
-{
-    int ret;
-    struct process proc;
-
-    int cnt = 10;
-
-    while (cnt--) {
-        // -1 : error, 0 = no new process, 1 = new process
-        ret = srv_get_new_process (&proc, srv);
-        if (ret == -1) {
-            fprintf (stderr, "error service_get_new_process\n");
-            continue;
-        } else if (ret == 0) { // that should not happen
-            continue;
-        }
-
-        // printf ("before print\n");
-        process_print (&proc);
-        // printf ("after print\n");
-
-        // about the message
-        size_t msize = BUFSIZ;
-        char buf[BUFSIZ];
-        bzero(buf, BUFSIZ);
-
-        // printf ("before read\n");
-        if ((ret = srv_read (&proc, &buf, &msize))) {
-            fprintf(stdout, "error service_read %d\n", ret);
-            continue;
-        }
-        // printf ("after read\n");
-        printf ("read, size %ld : %s\n", msize, buf);
-
-        // printf ("before proc write\n");
-        if ((ret = srv_write (&proc, &buf, msize))) {
-            fprintf(stdout, "error service_write %d\n", ret);
-            continue;
-        }
-
-        // printf ("after proc write\n");
-        printf ("\033[32mStill \033[31m%d\033[32m applications to serve\n",cnt);
-    }
-}
-#endif

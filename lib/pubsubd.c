@@ -407,8 +407,10 @@ void pubsubd_msg_free (struct pubsub_msg *msg)
 int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
         , struct channels *chans, struct channel **c)
 {
-    if (spath == NULL || ale == NULL || chans == NULL)
+    if (spath == NULL || ale == NULL || chans == NULL) {
+        fprintf (stderr, "pubsubd_get_new_process: spath or ale or chans == NULL\n");
         return -1;
+    }
 
     char *buf = NULL;
     size_t msize = 0;
@@ -528,8 +530,6 @@ void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg 
     char *buf = NULL;
     size_t msize = 0;
     pubsubd_msg_serialize (m, &buf, &msize);
-
-    printf ("\033[32mmsg to send : %.*s (%ld)\n", (int) msize, buf, msize);
 
     LIST_FOREACH(ale, alh, entries) {
         srv_write (ale->p, buf, msize);
