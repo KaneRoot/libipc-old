@@ -5,6 +5,16 @@ SERVICE=gen
 #SERVICE=pubsub
 NB=10
 
+if [ $# -ge 1 ] ; then
+    SERVICE=$1
+    shift
+fi
+
+if [ $# -ge 1 ] ; then
+    NB=$1
+    shift
+fi
+
 for i in $(seq 1 ${NB})
 do
     mkfifo ${REP}/${i}-1-1-in

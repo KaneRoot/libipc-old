@@ -1,32 +1,52 @@
 #include "communication.h"
 #include <stdio.h>
 #include <time.h>
+#include <errno.h>
 
 int file_write (const char *path, const char *buf, size_t msize)
 {
+    if (buf == NULL) {
+        fprintf (stderr, "file_write: buf == NULL\n");
+        return -1;
+    }
+
+    printf("file_write: path to open %s\n", path);
     int fd = open (path, O_WRONLY);
     if (fd <= 0) {
+        printf("file_write: fd < 0\n");
+        perror ("file_write: ");
         return ER_FILE_OPEN;
     }
+    printf("file_write: opened file %s\n", path);
     
     int ret = 0;
+    int ret2 = 0;
     ret = write (fd, buf, msize);
+    if (ret <= 0) {
+        fprintf (stderr, "err: written %s\n", path);
+    }
 
-    close (fd);
+    ret2 = close (fd);
+    if (ret2 < 0) {
+        fprintf (stderr, "err: close [err: %d] %s\n", ret2, path);
+        perror ("closing");
+    }
 
     return ret;
 }
 
 int file_read (const char *path, char **buf, size_t *msize)
 {
-    if (buf == NULL)
+    if (buf == NULL) {
+        fprintf (stderr, "file_read: buf == NULL\n");
         return -1;
+    }
 
     int fd = open (path, O_RDONLY);
     if (fd <= 0) {
         return ER_FILE_OPEN;
     }
-    printf("FILE_READ: opened file %s\n", path);
+    printf("file_read: opened file %s\n", path);
 
     if (*buf == NULL) {
         *buf = malloc (BUFSIZ);
@@ -48,7 +68,6 @@ int file_read (const char *path, char **buf, size_t *msize)
         fprintf (stderr, "err: close [err: %d] %s\n", ret2, path);
         perror ("closing");
     }
-
 
     return ret;
 }

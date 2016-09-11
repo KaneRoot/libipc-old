@@ -115,11 +115,11 @@ struct channel * pubsubd_channel_search (struct channels *chans, char *chan)
     struct channel * np = NULL;
     LIST_FOREACH(np, chans, entries) {
         // TODO debug
-        printf ("pubsubd_channel_search: %s (%ld) vs %s (%ld)\n"
-                , np->chan, np->chanlen, chan, strlen(chan));
+        // printf ("pubsubd_channel_search: %s (%ld) vs %s (%ld)\n"
+        //         , np->chan, np->chanlen, chan, strlen(chan));
         if (np->chanlen == strlen (chan)
                 && strncmp (np->chan, chan, np->chanlen) == 0) {
-            printf ("pubsubd_channel_search: FOUND\n");
+        //    printf ("pubsubd_channel_search: FOUND\n");
             return np;
         }
     }
@@ -156,6 +156,20 @@ void pubsubd_subscriber_init (struct app_list_head **chans) {
     LIST_INIT(*chans);
 } 
 
+void pubsubd_channel_print (const struct channel *chan)
+{
+    if (chan->chan == NULL) {
+        printf ("pubsubd_channels_print: chan->chan == NULL\n");
+    }
+
+    printf ( "\033[32mchan %s\033[00m\n", chan->chan);
+
+    if (chan->alh == NULL)
+        printf ("pubsubd_channels_print: chan->alh == NULL\n");
+    else
+        pubsubd_subscriber_print (chan->alh);
+}
+
 void pubsubd_channels_print (const struct channels *chans)
 {
     printf ("\033[36mmchannels\033[00m\n");
@@ -168,16 +182,7 @@ void pubsubd_channels_print (const struct channels *chans)
 
     struct channel *chan = NULL;
     LIST_FOREACH(chan, chans, entries) {
-        if (chan->chan == NULL) {
-            printf ("pubsubd_channels_print: chan->chan == NULL\n");
-        }
-
-        printf ( "\033[32mchan %s\033[00m\n", chan->chan);
-
-        if (chan->alh == NULL)
-            printf ("pubsubd_channels_print: chan->alh == NULL\n");
-        else
-            pubsubd_subscriber_print (chan->alh);
+        pubsubd_channel_print (chan);
     }
 }
 
@@ -291,8 +296,10 @@ void pubsubd_app_list_elm_free (struct app_list_elm *todel)
 
 void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *len)
 {
-    if (msg == NULL || data == NULL || len == NULL)
+    if (msg == NULL || data == NULL || len == NULL) {
+        fprintf (stderr, "pubsubd_msg_send: msg or data or len == NULL");
         return;
+    }
 
     // msg: "type(1) chanlen(8) chan datalen(8) data
     if (msg->type == PUBSUB_TYPE_DISCONNECT) {
@@ -506,11 +513,23 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
 // alh from the channel, message to send
 void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg * m)
 {
+    if (alh == NULL) {
+        fprintf (stderr, "pubsubd_msg_send: alh == NULL");
+        return;
+    }
+
+    if (m == NULL) {
+        fprintf (stderr, "pubsubd_msg_send: m == NULL");
+        return;
+    }
+
     struct app_list_elm * ale = NULL;
 
     char *buf = NULL;
     size_t msize = 0;
     pubsubd_msg_serialize (m, &buf, &msize);
+
+    printf ("\033[32mmsg to send : %.*s (%ld)\n", (int) msize, buf, msize);
 
     LIST_FOREACH(ale, alh, entries) {
         srv_write (ale->p, buf, msize);
@@ -532,11 +551,13 @@ void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m)
     // read the message from the process
     size_t mlen = 0;
     char *buf = NULL;
+    while (buf == NULL || mlen == 0) {
 #if 0
-    srv_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
+        srv_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
 #else
-    srv_read (p, &buf, &mlen);
+        srv_read (p, &buf, &mlen);
 #endif
+    }
 
     pubsubd_msg_unserialize (m, buf, mlen);
 
