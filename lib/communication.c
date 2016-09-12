@@ -10,14 +10,16 @@ int file_write (const char *path, const char *buf, size_t msize)
         return -1;
     }
 
-    printf("file_write: path to open %s\n", path);
+    // TODO debug
+    // printf("file_write: path to open %s\n", path);
     int fd = open (path, O_WRONLY);
     if (fd <= 0) {
         printf("file_write: fd < 0\n");
-        perror ("file_write: ");
+        perror ("file_write");
         return ER_FILE_OPEN;
     }
-    printf("file_write: opened file %s\n", path);
+    // TODO debug
+    // printf("file_write: opened file %s\n", path);
     
     int ret = 0;
     int ret2 = 0;
@@ -46,7 +48,8 @@ int file_read (const char *path, char **buf, size_t *msize)
     if (fd <= 0) {
         return ER_FILE_OPEN;
     }
-    printf("file_read: opened file %s\n", path);
+    // TODO debug
+    // printf("file_read: opened file %s\n", path);
 
     if (*buf == NULL) {
         *buf = malloc (BUFSIZ);

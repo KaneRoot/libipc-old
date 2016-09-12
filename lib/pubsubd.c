@@ -371,8 +371,8 @@ void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t l
         fprintf (stderr, "\033[31merr : msg->chanlen > BUFSIZ\033[00m\n");
         return;
     }
-    msg->chan = malloc (msg->chanlen);
-    memset (msg->chan, 0, msg->chanlen);
+    msg->chan = malloc (msg->chanlen +1);
+    memset (msg->chan, 0, msg->chanlen +1);
     memcpy (msg->chan, data + i, msg->chanlen);         i += msg->chanlen;
 
     memcpy (&msg->datalen, data + i, sizeof(size_t));   i += sizeof(size_t);
@@ -380,8 +380,8 @@ void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t l
         fprintf (stderr, "\033[31merr : msg->datalen > BUFSIZ\033[00m\n");
         return;
     }
-    msg->data = malloc (msg->datalen);
-    memset (msg->data, 0, msg->datalen);
+    msg->data = malloc (msg->datalen +1);
+    memset (msg->data, 0, msg->datalen +1);
     memcpy (msg->data, data + i, msg->datalen);         i += msg->datalen;
 }
 
@@ -552,11 +552,7 @@ void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m)
     size_t mlen = 0;
     char *buf = NULL;
     while (buf == NULL || mlen == 0) {
-#if 0
-        srv_read_cb (p, &buf, &mlen, pubsubd_msg_read_cb);
-#else
         srv_read (p, &buf, &mlen);
-#endif
     }
 
     pubsubd_msg_unserialize (m, buf, mlen);
@@ -651,12 +647,14 @@ void pubsub_msg_send (struct process *p, const struct pubsub_msg * m)
     }
 }
 
-void pubsub_msg_recv (struct process *p, struct pubsub_msg * m)
+void pubsub_msg_recv (struct process *p, struct pubsub_msg *m)
 {
     // read the message from the process
     size_t mlen = 0;
     char *buf = NULL;
-    app_read (p, &buf, &mlen);
+    while (buf == NULL || mlen == 0) {
+        app_read (p, &buf, &mlen);
+    }
 
     pubsubd_msg_unserialize (m, buf, mlen);
 

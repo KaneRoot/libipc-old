@@ -13,6 +13,42 @@ void usage (char **argv)
     printf ( "usage: %s\n", argv[0]);
 }
 
+void print_cmd (void) {
+    printf ("\033[32m>\033[00m ");
+    fflush (stdout);
+}
+
+void * listener (void *params)
+{
+    int s = 0;
+    s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    if (s != 0)
+        printf ("pthread_setcancelstate: %d\n", s);
+
+    struct process *p = NULL;
+    p = (struct process *) params;
+    if (p == NULL) {
+        fprintf (stderr, "listener: no process\n");
+        return NULL;
+    }
+
+    // main loop
+    while (1) {
+        struct pubsub_msg m;
+        memset (&m, 0, sizeof (struct pubsub_msg));
+
+        pubsub_msg_recv (p, &m);
+        printf ("\n\033[31m>\033[00m %s\n", m.data);
+        print_cmd ();
+
+        // if (m.type == PUBSUB_TYPE_DISCONNECT) { }
+        pubsubd_msg_free (&m);
+    }
+
+    pthread_exit (NULL);
+}
+
+
 void main_loop (int argc, char **argv, char **env
         , pid_t pid, int index, int version
         , char *cmd, char *chan)
@@ -32,6 +68,12 @@ void main_loop (int argc, char **argv, char **env
     printf ("app creation\n");
     if (app_create (&p, pid, index, version)) // called by the application
         ohshit (1, "app_create");
+
+    pthread_t thr;
+    memset (&thr, 0, sizeof (pthread_t));
+
+    pthread_create (&thr, NULL, listener, &p);
+    pthread_detach (thr);
 
     printf ("main_loop\n");
     // send a message to warn the service we want to do something
@@ -63,14 +105,20 @@ void main_loop (int argc, char **argv, char **env
     for (;;) {
         char buf[BUFSIZ];
         memset (buf, 0, BUFSIZ);
-        printf ("msg to send (chan: %s) [quit]: ", msg.chan);
+        print_cmd ();
         fflush (stdout);
 
         size_t mlen = read (0, buf, BUFSIZ);
 
-        printf ("data (%ld): %s\n", mlen, buf);
+        if (mlen > 1) {
+            mlen--;
+        }
+        buf[mlen] = '\0';
 
-        if (strncmp(buf, "quit\n", strlen ("quit\n")) == 0) {
+        // TODO debug
+        // printf ("data (%ld): %s\n", mlen, buf);
+
+        if (strncmp(buf, "quit", strlen ("quit")) == 0) {
             break;
         }
 
@@ -79,7 +127,8 @@ void main_loop (int argc, char **argv, char **env
         strncpy ((char *) msg.data, buf, strlen (buf) + 1);
         msg.datalen = strlen (buf);
 
-        printf ("send message\n");
+        // TODO debug
+        // printf ("send message\n");
         pubsub_msg_send (&p, &msg);
         free (msg.data);
         msg.data = NULL;
@@ -88,6 +137,9 @@ void main_loop (int argc, char **argv, char **env
 
     // free everything
     pubsubd_msg_free (&msg);
+
+    pthread_cancel (thr);
+    pthread_join (thr, NULL);
 
     printf ("disconnection...\n");
     // disconnect from the server
