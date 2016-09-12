@@ -65,6 +65,7 @@ void * pubsubd_worker_thread (void *params)
                 pubsubd_msg_send (ch->alh, &m);
             }
         }
+        pubsubd_msg_free (&m);
     }
 #if 0
 #endif
@@ -152,11 +153,8 @@ main(int argc, char **argv, char **env)
 
         // end the application
         if (ale.action == PUBSUB_QUIT) {
-            printf ("Quitting ...\n");
-            pubsubd_channels_del_all (&chans);
-            srv_close (&srv);
-            // TODO end the threads
-            exit (0);
+            pubsubd_app_list_elm_free (&ale);
+            break;
         }
 
         // TODO thread to handle multiple clients at a time
@@ -166,15 +164,25 @@ main(int argc, char **argv, char **env)
         wp->chans = &chans;
         wp->chan = chan;
 
+        // realloc memory for further workers
+        pthread_t * tmpthr = realloc (thr, sizeof (pthread_t) * (i+1));
+        if (tmpthr == NULL) {
+            fprintf (stderr, "err: can't allocate more thread contexts\n");
+            pubsubd_app_list_elm_free (&ale);
+            break;
+        }
+        else {
+            thr = tmpthr;
+        }
+        memset (thr + i, 0, sizeof (pthread_t));
+
         pthread_create (thr + i, NULL, pubsubd_worker_thread, wp);
         pthread_detach (thr[i]);
-        // realloc memory for further workers
-        thr = realloc (thr, sizeof (pthread_t) * (i+1));
 
         pubsubd_app_list_elm_free (&ale);
     }
 
-    sleep (10);
+    printf ("Quitting ...\n");
     // stop threads
     for (int j = 0 ; j < i ; j++) {
         pthread_cancel (thr[j]);
@@ -186,7 +194,6 @@ main(int argc, char **argv, char **env)
     }
     free (thr);
 
-    printf ("QUIT\n");
     pubsubd_channels_del_all (&chans);
 
     // the application will shut down, and remove the service named pipe

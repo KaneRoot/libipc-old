@@ -47,25 +47,23 @@ void main_loop (int argc, char **argv, char **env
 
     pubsub_connection (&srv, &p, action, chan);
 
-    struct pubsub_msg m;
-    memset (&m, 0, sizeof (struct pubsub_msg));
+    struct pubsub_msg msg;
+    memset (&msg, 0, sizeof (struct pubsub_msg));
 
 
     // meta data on the message
-    m.type = PUBSUB_TYPE_MESSAGE;
-    m.chan = malloc (strlen (chan) + 1);
-    memset (m.chan, 0, strlen (chan) + 1);
-    m.chan[strlen (chan)] = '\0';
-    m.chanlen = strlen (chan);
+    msg.type = PUBSUB_TYPE_MESSAGE;
+    msg.chan = malloc (strlen (chan) + 1);
+    memset (msg.chan, 0, strlen (chan) + 1);
+    strncpy ((char *) msg.chan, chan, strlen (chan));
+    msg.chan[strlen (chan)] = '\0';
+    msg.chanlen = strlen (chan);
 
     // msg loop
     for (;;) {
-        struct pubsub_msg msg;
-        memset (&msg, 0, sizeof (struct pubsub_msg));
-
         char buf[BUFSIZ];
         memset (buf, 0, BUFSIZ);
-        printf ("msg to send [quit]: ");
+        printf ("msg to send (chan: %s) [quit]: ", msg.chan);
         fflush (stdout);
 
         size_t mlen = read (0, buf, BUFSIZ);
@@ -76,20 +74,20 @@ void main_loop (int argc, char **argv, char **env
             break;
         }
 
-        m.data = malloc (strlen (buf) + 1);
-        memset (m.data, 0, strlen (buf) + 1);
-        strncpy ((char *) m.data, buf, strlen (buf) + 1);
-        m.datalen = strlen (buf);
+        msg.data = malloc (strlen (buf) + 1);
+        memset (msg.data, 0, strlen (buf) + 1);
+        strncpy ((char *) msg.data, buf, strlen (buf) + 1);
+        msg.datalen = strlen (buf);
 
         printf ("send message\n");
-        pubsub_msg_send (&p, &m);
-        free (m.data);
-        m.data = NULL;
-        m.datalen = 0;
+        pubsub_msg_send (&p, &msg);
+        free (msg.data);
+        msg.data = NULL;
+        msg.datalen = 0;
     }
 
     // free everything
-    pubsubd_msg_free (&m);
+    pubsubd_msg_free (&msg);
 
     printf ("disconnection...\n");
     // disconnect from the server
