@@ -19,7 +19,7 @@ $(TESTS):
 	valgrind --show-leak-kinds=all --leak-check=full -v --track-origins=yes ./$(basename $@)
 
 clean:
-	@-rm $(OBJECTS) *.o
+	@-rm $(OBJECTS)
 
 mrproper: clean
 	@-rm $(EXEC)
