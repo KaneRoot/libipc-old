@@ -59,7 +59,7 @@ int file_read (const char *path, char **buf, size_t *msize)
     int ret = 0;
     int ret2 = 0;
     ret = read (fd, *buf, BUFSIZ);
-    if (ret <= 0) {
+    if (ret < 0) {
         fprintf (stderr, "err: read %s\n", path);
     }
     else {
