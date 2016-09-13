@@ -1,43 +1,44 @@
 # connection init (draft)
 
-## what the programs should do and how they interact
+## how things happen
 
-    * service : application providing a feature to others (windows, audio, …)
-    * program : specific application (browser, instant messaging, …)
+    * Service : daemon providing a feature (windowing, audio, …)
+    * Application : specific application (browser, instant messaging, …)
     
     * [service] : service name
-    * [index] : process index in the program point of view
-    * [pindex] : process index in the service point of view
+    * $pid : application PID
+    * $index : process index (application point of view)
 
-    1. the service creates a pipe, named /tmp/[service]
-    2. the program creates pipes named /tmp/$pid-[index]-{in,out}
-    3. the program prints in the pipe /tmp/[service] : $pid-[index] version
-    4. depending on the configuration and service type, the service will
-    
-      * thread, to spare resources
-      * fork, not to compromise the security
-    
-    5. the service prints [pindex] in /tmp/$pid-[index]-in
+    1. Service creates a pipe named /tmp/[service]
+    2. Application creates pipes named /tmp/$pid-$index-$version-{in,out}
+    3. Application sends in /tmp/[service] : $pid $index $version
 
 ## pure "networking" view (what should go in the pipes)
 
-1. the program prints in the pipe /tmp/[service] : $pid-[index] version
-2. the service prints [pindex] in /tmp/$pid-[index]-in
+1. Application sends in /tmp/[service] : $pid $index $version [...]
 
 # messages format
 
-QUESTION : no CBOR for 1 & 2, or CBOR everywhere ?
+First of all, the application will send a message to the service's pipe in **plain text** with its PID, the number of time the process already used the service (index) and the version of the communication protocol we want to use between the application and the service.
+
+In order to communicate between the application and the service, we use the [CBOR format (RFC 7049)][cbor].
+This will be used with some conventions.
 
 ## overview
 
-format "type : value"
+The format will be "type : value".
 
-type will be a simple byte :
+The type will be a simple byte :
 
     * <0 - 15>   : control, meta data
     * <16 - 127> : later use
     * <128 - 255> : application specific (windowing system, audio system, …)
 
-## CBOR table (TODO)
+## CBOR type convention
 
-index | semantic
+0 - 15
+
+    index   | abbreviation  | semantic
+    0       | close         | to close the communication between the application and the service
+
+[cbor]: https://tools.ietf.org/html/rfc7049
