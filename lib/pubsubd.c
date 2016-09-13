@@ -15,7 +15,7 @@ pubsubd_channels_add (struct channels *chans, const char *chan)
         return NULL;
     }
 
-    struct channel *n = malloc (sizeof (struct channel));;
+    struct channel *n = malloc (sizeof (struct channel));
     memset (n, 0, sizeof (struct channel));
     pubsubd_channel_new (n, chan);
 
