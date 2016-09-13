@@ -42,7 +42,6 @@ void * pubsubd_worker_thread (void *params)
         struct pubsub_msg m;
         memset (&m, 0, sizeof (struct pubsub_msg));
 
-        sleep (2); // TODO DEBUG
         pubsubd_msg_recv (ale->p, &m);
 
         if (m.type == PUBSUB_TYPE_DISCONNECT) {
