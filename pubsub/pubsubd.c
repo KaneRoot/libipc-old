@@ -74,7 +74,7 @@ main(int argc, char **argv, char **env)
 
     // the application will shut down, and remove the service named pipe
     if (srv_close (&srv))
-        ohshit (1, "service_close error");
+        ohshit (1, "srv_close error");
 
     return EXIT_SUCCESS;
 }

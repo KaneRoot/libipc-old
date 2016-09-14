@@ -1,43 +1,70 @@
 #include "../lib/communication.h"
 
+#define SERVICE         "windowing"
+
+void
+ohshit(int rvalue, const char* str) {
+    fprintf(stderr, "%s\n", str);
+    exit(rvalue);
+}
+
 /*
  * pipes creation and removal test program
  *
- * 1. to create the named pipe /tmp/<service>
- * 2. to create the named pipes in & out
- * 3. to remove the named pipes in & out
- * 4. to remove the named pipe /tmp/<service>
+ * 1. S creates the named pipe /tmp/ipc/<service>
+ * 2. App creates named pipes in & out, /tmp/ipc/$pid-$index-$version-{in,out}
+ *
+ * ... some communication between S and App...
+ * App wants to stop
+ *
+ * 3. App removes the named pipes in and out
+ * 4. S removes the named pipe /tmp/ipc/<service>
  */
 
-int main(int argc, char * argv[])
+int main(int argc, char * argv[], char *env[])
 {
-    // service path (/tmp/<service>)
-    char spath[PATH_MAX];
-    service_path (spath, "windows");
+    struct service srv;
+    memset (&srv, 0, sizeof (struct service));
+    srv_init (argc, argv, env, &srv, SERVICE, NULL);
+    printf ("Listening on %s.\n", srv.spath);
 
-    int ret;
-    if ((ret = service_create (spath))) {
-        fprintf(stdout, "error service_create %d\n", ret);
-        exit (1);
-    }
+    // creates the service named pipe, that listens to client applications
+    if (srv_create (&srv))
+        ohshit(1, "service_create error");
 
-    struct process proc;
-    if ((ret = process_create (&proc, 0))) {
-        fprintf(stdout, "error process_create %d\n", ret);
-        exit (1);
-    }
+    /*
+     *  PROCESS
+     */
 
-    /* specific code, talks between applications */
+    struct process p;
+    memset (&p, 0, sizeof (struct process));
 
-    if ((ret = process_destroy (&proc))) {
-        fprintf(stdout, "error process_destroy %d\n", ret);
-        exit (1);
-    }
+    pid_t pid = getpid();
+    int index = 0; // first time we communication with the service
+    int version = 1;
 
-    if ((ret = service_close (spath))) {
-        fprintf(stdout, "error service_close %d\n", ret);
-        exit (1);
-    }
+    printf ("app creation\n");
+    if (app_create (&p, pid, index, version)) // called by the application
+        ohshit (1, "app_create");
+
+    /*
+     * some exchanges between App and S
+     * specific code, talks between applications
+     * then App wants to end the communication
+     */
+
+    printf ("destroying app\n");
+    // the application will shut down, and remove the application named pipes
+    if (app_destroy (&p))
+        ohshit (1, "app_destroy");
+
+    /*
+     *  /PROCESS
+     */
+
+    // the application will shut down, and remove the service named pipe
+    if (srv_close (&srv))
+        ohshit (1, "srv_close error");
 
     return EXIT_SUCCESS;
 }
