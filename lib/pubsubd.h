@@ -1,35 +1,13 @@
 #ifndef __PUBSUBD_H__
 #define __PUBSUBD_H__
 
-#include "communication.h"
-#include "process.h"
-#include "queue.h"
-
-#define PUBSUB_TYPE_DISCONNECT                                     1 << 0
-#define PUBSUB_TYPE_INFO                                           1 << 1
-#define PUBSUB_TYPE_DEBUG                                          1 << 2
-#define PUBSUB_TYPE_MESSAGE                                        1 << 3
-
-#define PUBSUB_SERVICE_NAME "pubsub"
+#include "pubsub.h"
+#include <pthread.h>
 
 struct channel;
 struct channels;
 struct app_list_head;
 struct app_list_elm;
-struct pubsub_msg;
-
-struct pubsub_msg {
-    unsigned char *chan;
-    size_t chanlen;
-    unsigned char *data;
-    size_t datalen;
-    unsigned char type; // message type : alert, notification, …
-};
-
-void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *len);
-void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t len);
-void pubsubd_msg_free (struct pubsub_msg *msg);
-void pubsubd_msg_print (const struct pubsub_msg *msg);
 
 // parse pubsubd init msg (sent in TMPDIR/<service>)
 //
@@ -37,13 +15,8 @@ void pubsubd_msg_print (const struct pubsub_msg *msg);
 // action : quit | pub | sub
 int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
         , struct channels *chans, struct channel **c);
-int pubsubd_msg_read_cb (FILE *f, char ** buf, size_t * msize);
 void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg *m);
 void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m);
-
-void pubsub_disconnect (struct process *p);
-void pubsub_msg_send (struct process *p, const struct pubsub_msg *msg);
-void pubsub_msg_recv (struct process *p, struct pubsub_msg *msg);
 
 // CHANNEL
 
@@ -88,8 +61,6 @@ pubsubd_channels_search_from_app_list_elm (struct channels *chans
 // head of the list
 LIST_HEAD(app_list_head, app_list_elm);
 
-enum app_list_elm_action {PUBSUB_QUIT = 1, PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BOTH};
-
 // element of the list
 struct app_list_elm {
     struct process *p;
@@ -113,7 +84,33 @@ struct app_list_elm * pubsubd_app_list_elm_copy (const struct app_list_elm *ale)
 void pubsubd_app_list_elm_create (struct app_list_elm *ale, struct process *p);
 void pubsubd_app_list_elm_free (struct app_list_elm *todel);
 
-void pubsub_connection (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame);
 void pubsubd_quit (struct service *srv);
+
+// WORKERS: one thread per client
+
+// head of the list
+LIST_HEAD(workers, worker);
+
+// element of the list
+// worker : process to handle (threaded)
+struct worker {
+    pthread_t *thr;
+    struct workers *my_workers;
+    struct channels *chans;
+    struct channel *chan;
+    struct app_list_elm *ale;
+    LIST_ENTRY(worker) entries;
+};
+
+void pubsubd_worker_free (struct worker * w);
+struct worker * pubsubd_worker_get (struct workers *wrkrs, struct worker *w);
+int pubsubd_worker_eq (const struct worker *w1, const struct worker *w2);
+void pubsubd_workers_init (struct workers *wrkrs);
+void * pubsubd_worker_thread (void *params);
+struct worker *
+pubsubd_workers_add (struct workers *wrkrs, const struct worker *w);
+void pubsubd_workers_del_all (struct workers *wrkrs);
+void pubsubd_workers_stop (struct workers *wrkrs);
+void pubsubd_worker_del (struct workers *wrkrs, struct worker *w);
 
 #endif
