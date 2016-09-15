@@ -1,6 +1,11 @@
 #include "../lib/pubsubd.h"
+#include "cbor.h"
 #include <stdlib.h>
 #include <string.h>
+
+#define PKT_CLOSE                   0
+#define PKT_MSG                     1
+#define PKT_ERROR                   2
 
 void
 ohshit(int rvalue, const char* str) {
@@ -16,16 +21,6 @@ void usage (char **argv)
     printf ( "    This sends a CBOR msg [ 1, \"data\" ]\n");
 }
 
-/*
- *  implemented types:
- *      bstr_t (default)
- *      tstr_t
- *      int_t
- *
- *  future types:
- *      nint_t 
- */
-
 int
 main(int argc, char **argv)
 {
@@ -33,6 +28,28 @@ main(int argc, char **argv)
         usage (argv);
         exit (1);
     }
+
+    unsigned char buf[BUFSIZ];
+    memset (buf, 0, BUFSIZ);
+
+    ssize_t buflen = read (0, buf, BUFSIZ);
+
+    /* Preallocate the map structure */
+    cbor_item_t * root = cbor_new_definite_map(1);
+    /* Add the content */
+    cbor_map_add(root, (struct cbor_pair) {
+            .key = cbor_move(cbor_build_uint8(PKT_MSG)),
+            .value = cbor_move(cbor_build_bytestring(buf, buflen))
+            });
+    /* Output: `length` bytes of data in the `buffer` */
+    unsigned char * buffer;
+    size_t buffer_size, length = cbor_serialize_alloc (root, &buffer, &buffer_size);
+
+    fwrite(buffer, 1, length, stdout);
+    free(buffer);
+
+    fflush(stdout);
+    cbor_decref(&root);
 
     return EXIT_SUCCESS;
 }

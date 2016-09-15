@@ -5,6 +5,10 @@
 
 int main(int argc, char * argv[])
 {
+
+    (void) argc;
+    (void) argv;
+
     char *fifopathin = "/tmp/123000-1-in";
     size_t msize = 100;
 

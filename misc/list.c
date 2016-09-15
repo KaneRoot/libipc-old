@@ -13,6 +13,9 @@ struct node {
 
 int main(int argc, char * argv[])
 {
+    (void) argc;
+    (void) argv;
+
     // the list
     struct mlist *list;
     list = malloc (sizeof(struct mlist));
