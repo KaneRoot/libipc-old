@@ -24,6 +24,13 @@ First of all, the application will send a message to the service's pipe in **pla
 In order to communicate between the application and the service, we use the [CBOR format (RFC 7049)][cbor].
 This will be used with some conventions.
 
+## CBOR install, programming, debug
+
+[libcbor][libcbor] is used in the provided implementations.
+It is an [extensively documented][libcbor-doc] library, easy to install and to work with.
+
+We also strongly encourage the use of the [cbor-diag][cbor-diag] to ensure that you send and receive correctly formatted messages.
+
 ## overview
 
 The format will be "type : value".
@@ -40,5 +47,10 @@ The type will be a simple byte :
 
     index   | abbreviation  | semantic
     0       | close         | to close the communication between the application and the service
+    1       | message       | to send data 
+    2       | error         | to send an error message
 
 [cbor]: https://tools.ietf.org/html/rfc7049
+[cbor-diag]: https://github.com/cabo/cbor-diag
+[libcbor]: https://github.com/PJK/libcbor
+[libcbor-doc]: https://github.com/PJK/libcbor
