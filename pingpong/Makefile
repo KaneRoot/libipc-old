@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -g
-LDFLAGS=
+LDFLAGS= -pthread
 CFILES=$(wildcard *.c) # CFILES => recompiles everything on a C file change
 EXEC=$(basename $(wildcard *.c))
 SOURCES=$(wildcard ../lib/*.c)

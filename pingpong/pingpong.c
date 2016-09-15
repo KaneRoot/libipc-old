@@ -21,7 +21,6 @@ void main_loop (const struct service *srv)
 
         // -1 : error, 0 = no new process, 1 = new process
         ret = srv_get_new_process (srv, &proc);
-        //printf("ret = %d\n", ret);
 
         if (ret == -1) {
             fprintf (stderr, "MAIN_LOOP: error service_get_new_process\n");

@@ -59,6 +59,7 @@ int file_read (const char *path, char **buf, size_t *msize)
     int ret = 0;
     int ret2 = 0;
     ret = read (fd, *buf, BUFSIZ);
+
     if (ret < 0) {
         fprintf (stderr, "err: read %s\n", path);
     }
@@ -160,8 +161,9 @@ int srv_get_new_process (const struct service *srv, struct process *p)
     }
 
     char *buf = NULL;
-    size_t msize = 0;
+    size_t msize = 0;    
     int ret = file_read (srv->spath, &buf, &msize);
+
     if (ret <= 0) {
         fprintf (stderr, "err: listening on %s\n", srv->spath);
         exit (1);
