@@ -13,10 +13,10 @@ $(EXEC): $(OBJECTS) $(CFILES)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) $@.c -o $@
 
 tcpdserver: tcpdserver.c tcpdserver.h
-	$(CC) $(CFLAGS) $@.c -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $@.c -o $@
 
 tcpdclient: tcpdclient.c tcpdserver.h
-	$(CC) $(CFLAGS) $@.c -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $@.c -o $@
 
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
@@ -26,3 +26,6 @@ clean:
 
 mrproper: clean
 	rm $(EXEC)
+
+cleantmp:
+	rm /tmp/ipc/*
