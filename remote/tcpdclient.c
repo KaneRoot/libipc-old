@@ -7,9 +7,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
-
+#define BUF_SIZE 1024
 #define PORT 6000
+
+void write_message(int sock, const char *buffer)
+{
+   if(send(sock, buffer, strlen(buffer), 0) < 0)
+   {
+      perror("send()");
+      exit(errno);
+   }
+}
+
+int read_message(int sock, char *buffer)
+{
+   int n = 0;
+
+   if((n = recv(sock, buffer, BUF_SIZE - 1, 0)) < 0)
+   {
+      perror("recv()");
+      /* if recv error we disonnect the client */
+      n = 0;
+   }
+
+   buffer[n] = 0;
+
+   return n;
+}
 
 
 int main(int argc, char ** argv) {
@@ -30,6 +56,8 @@ int main(int argc, char ** argv) {
 	    perror("connect()");
 	    exit(errno);
 	}
+
+	write_message(sock, "pongd 5");
 
 	close(sock);
 

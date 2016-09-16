@@ -7,8 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
 #define PORT 6000
+#define BUF_SIZE 1024
 
 int init_connection(void)
 {
@@ -40,15 +42,41 @@ int init_connection(void)
    return sock;
 }
 
+void write_message(int sock, const char *buffer)
+{
+   if(send(sock, buffer, strlen(buffer), 0) < 0)
+   {
+		perror("send()");
+		exit(errno);
+   }
+}
 
-// void printClientAddr(struct sockaddr_in &csin) {
-// 	printf("%s\n", );
-// }
+int read_message(int sock, char *buffer)
+{
+   int n = 0;
+
+   if((n = recv(sock, buffer, BUF_SIZE - 1, 0)) < 0)
+   {
+		perror("recv()");
+		/* if recv error we disonnect the client */
+		n = 0;
+   }
+
+   buffer[n] = 0;
+
+   return n;
+}
+
+void printClientAddr(struct sockaddr_in *csin) {
+	printf("%s\n", inet_ntoa(csin->sin_addr));
+	printf("%u\n", ntohs(csin->sin_port));
+}
 
 
 int main(int argc, char * argv[], char **env) {
 
 	int sock = init_connection();
+	char buffer[BUF_SIZE];
 
 	struct sockaddr_in csin = { 0 };
 	socklen_t sinsize = sizeof csin;
@@ -59,7 +87,16 @@ int main(int argc, char * argv[], char **env) {
 		exit(errno);
 	}
 
-	printf("new client\n");
+	//printf("new client\n");
+	printClientAddr(&csin);
+
+	int n = read_message(csock, buffer);
+	if (n == -1) {
+		perror("read_message()");
+	}else {
+		printf("%s\n",buffer );
+	}
+
 
 	close(sock);
 	close(csock);
