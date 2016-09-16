@@ -6,11 +6,20 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+typedef struct {
+	struct 	sockaddr_in c_sock;
+	int sfd;
+} p_data;
+
 int initConnection ();
 void endConnection (int sock, int csock);
 void printClientAddr (struct sockaddr_in *csin);
 void write_message(int sock, const char *buffer);
 int read_message(int sock, char *buffer);
+void * listen_thread(void * p_data);
+void parseString(char * buf, char ** service, int *version);
+void inOutPathCreate(char ** pathname, int version);
+int fifo_create (char * path);
 
 
 #endif
