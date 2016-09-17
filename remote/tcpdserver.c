@@ -1,5 +1,5 @@
 #include "tcpdserver.h"
-#include "../lib.communication.h"
+#include "../lib/communication.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -162,7 +162,7 @@ void * listen_thread(void * pdata) {
 		return NULL;
 	}*/
 
-	pthread_t senPid;
+	pthread_t sendPid;
 	int ret = pthread_create( &sendPid, NULL, &send_thread, (void *) pda);
 	if (ret) {
 		perror("pthread_create()");
@@ -178,7 +178,7 @@ void * listen_thread(void * pdata) {
 		}
 	}
 
-	pthread_join(listenPid, NULL);
+	pthread_join(sendPid, NULL);
 
 	return NULL;
 }
