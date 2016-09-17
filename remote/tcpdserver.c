@@ -1,4 +1,6 @@
 #include "tcpdserver.h"
+#include "../lib.communication.h"
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -128,15 +130,13 @@ void * listen_thread(void * pdata) {
 	char *service;
 	int version;
 
-	int n = read_message(pda->sfd, buffer);
-	if (n == -1) {
+	if (read_message(pda->sfd, buffer) == -1) {
 		perror("read_message()");
 		return NULL;
 	}else {
-		parseString(buffer, &service, &version);
+		parseServiceVersion(buffer, &service, &version);
 	}
-	// printf("%s\n", service);
-	// printf("%d\n", version);
+	
 	/* TODO : service correspond au service que le client veut utiliser 
 	** il faut comparer service à un tableau qui contient les services 
 	** disponibles
@@ -162,10 +162,44 @@ void * listen_thread(void * pdata) {
 		return NULL;
 	}*/
 
+	pthread_t senPid;
+	int ret = pthread_create( &sendPid, NULL, &send_thread, (void *) pda);
+	if (ret) {
+		perror("pthread_create()");
+		exit(errno);
+	} else {
+		printf("Creation of send thread \n");
+	}
+
+	while (1) {
+		int n = read_message(pda->sfd, buffer);
+		if (n > 0) {
+			printf("%s\n", buffer );
+		}
+	}
+
+	pthread_join(listenPid, NULL);
+
 	return NULL;
 }
 
-void parseString(char * buf, char ** service, int *version) {
+void * send_thread(void * pdata) {
+	p_data *pda = (p_data*) pdata;
+	int ret;
+	size_t msize = BUFSIZ;
+    char *buf = NULL;
+
+	while (1) {
+		ret = file_read(pda->fifoOut, &buf, &msize);
+		if (ret > 0) {
+			printf("%s\n",buf );
+		}
+	}
+
+	return NULL;
+}
+
+void parseServiceVersion(char * buf, char ** service, int *version) {
 	char *token = NULL, *saveptr = NULL;
     char *str = NULL;
     int i = 0;

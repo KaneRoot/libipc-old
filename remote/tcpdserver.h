@@ -9,6 +9,7 @@
 typedef struct {
 	struct 	sockaddr_in c_sock;
 	int sfd;
+	char * fifoOut;
 } p_data;
 
 int initConnection ();
@@ -17,7 +18,7 @@ void printClientAddr (struct sockaddr_in *csin);
 void write_message(int sock, const char *buffer);
 int read_message(int sock, char *buffer);
 void * listen_thread(void * p_data);
-void parseString(char * buf, char ** service, int *version);
+void parseServiceVersion(char * buf, char ** service, int *version);
 void inOutPathCreate(char ** pathname, int version);
 int fifo_create (char * path);
 
