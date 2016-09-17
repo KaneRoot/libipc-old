@@ -18,10 +18,11 @@ int file_write (const char *path, const char *buf, size_t msize)
         perror ("file_write");
         return ER_FILE_OPEN;
     }
-
+    // TODO debug
+    // printf("file_write: opened file %s\n", path);
+    
     int ret = 0;
     int ret2 = 0;
-    printf ("%ld bytes to write\n", msize);
     ret = write (fd, buf, msize);
     if (ret <= 0) {
         fprintf (stderr, "err: written %s\n", path);
