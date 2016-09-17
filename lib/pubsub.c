@@ -3,8 +3,6 @@
 
 #include <string.h> // strndup
 
-// MESSAGE, TODO CBOR
-
 void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *len)
 {
     if (msg == NULL || data == NULL || len == NULL) {
@@ -12,40 +10,20 @@ void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *l
         return;
     }
 
-    // msg: "type(1) chanlen(8) chan datalen(8) data
-    if (msg->type == PUBSUB_TYPE_DISCONNECT) {
-        *len = 1;
-        if (*data != NULL) {
-            free (*data);
-            *data = NULL;
-        }
-        *data = malloc(*len);
-        memset (*data, 0, *len);
-        data[0][0] = msg->type;
-        return;
-    }
-    else {
-        // type + size chan + chan + size data + data
-        *len = 1 + 2 * sizeof(size_t) + msg->chanlen + msg->datalen;
-    }
+    /* Preallocate the map structure */
+    cbor_item_t * root = cbor_new_definite_map(1);
+    /* Add the content */
+    cbor_map_add(root, (struct cbor_pair) {
+            .key = cbor_move(cbor_build_uint8((unsigned char) msg->type)),
+            .value = cbor_move(cbor_build_bytestring((unsigned char*) msg->data, msg->datalen))
+            });
 
-    if (*data != NULL) {
-        free (*data);
-        *data = NULL;
-    }
-    *data = malloc(*len);
-    memset (*data, 0, *len);
-
-    size_t i = 0;
-
-    data[0][i] = msg->type;                              i++;
-    memcpy (&data[0][i], &msg->chanlen, sizeof(size_t)); i += sizeof(size_t);
-    memcpy (&data[0][i], msg->chan, msg->chanlen);       i += msg->chanlen;
-    memcpy (&data[0][i], &msg->datalen, sizeof(size_t)); i += sizeof(size_t);
-    memcpy (&data[0][i], msg->data, msg->datalen);       i += msg->datalen;
+    size_t buffer_size;
+    *len = cbor_serialize_alloc (root, (unsigned char **) data, &buffer_size);
+    cbor_decref(&root);
 }
 
-void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t len)
+void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *buf, size_t mlen)
 {
     if (msg == NULL) {
         fprintf (stderr
@@ -53,47 +31,36 @@ void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t l
         return;
     }
     
-    if (data == NULL) {
+    if (buf == NULL) {
         fprintf (stderr
-                , "\033[31merr: pubsubd_msg_unserialize, data NULL\033[00m\n");
+                , "\033[31merr: pubsubd_msg_unserialize, buf NULL\033[00m\n");
         return;
     }
 
-    if (len > BUFSIZ) {
+    if (mlen > BUFSIZ) {
         fprintf (stderr
-                , "\033[31merr: pubsubd_msg_unserialize, len %ld\033[00m\n"
-                , len);
+                , "\033[31merr: pubsubd_msg_unserialize, mlen %ld\033[00m\n"
+                , mlen);
         return;
     }
 
-    size_t i = 0;
-    msg->type = data[i];                                i++;
+    // CBOR reading, from buf to pubsub_msg structure
+    struct cbor_load_result result;
+    cbor_item_t * item = cbor_load ((unsigned char *) buf, mlen, &result);
 
-    if (msg->type == PUBSUB_TYPE_DISCONNECT) {
-        msg->chanlen = 0;
-        msg->chan = NULL;
-        msg->datalen = 0;
-        msg->data = NULL;
-        return ;
+    struct cbor_pair * pair = cbor_map_handle (item);
+    cbor_mutable_data *data = cbor_bytestring_handle (pair->value);
+
+    msg->type = cbor_get_uint8 (pair->key);
+    if (msg->type != PUBSUB_TYPE_DISCONNECT) {
+        msg->datalen = cbor_bytestring_length (pair->value);
+        msg->data = malloc (msg->datalen +1);
+        memset (msg->data, 0, msg->datalen +1);
+        memcpy (msg->data, data, msg->datalen);
     }
 
-    memcpy (&msg->chanlen, data + i, sizeof(size_t));   i += sizeof(size_t);
-    if (msg->chanlen > BUFSIZ) {
-        fprintf (stderr, "\033[31merr : msg->chanlen > BUFSIZ\033[00m\n");
-        return;
-    }
-    msg->chan = malloc (msg->chanlen +1);
-    memset (msg->chan, 0, msg->chanlen +1);
-    memcpy (msg->chan, data + i, msg->chanlen);         i += msg->chanlen;
-
-    memcpy (&msg->datalen, data + i, sizeof(size_t));   i += sizeof(size_t);
-    if (msg->datalen > BUFSIZ) {
-        fprintf (stderr, "\033[31merr : msg->datalen > BUFSIZ\033[00m\n");
-        return;
-    }
-    msg->data = malloc (msg->datalen +1);
-    memset (msg->data, 0, msg->datalen +1);
-    memcpy (msg->data, data + i, msg->datalen);         i += msg->datalen;
+    /* Deallocate the result */
+    cbor_decref (&item);
 }
 
 void pubsubd_msg_free (struct pubsub_msg *msg)
@@ -193,15 +160,13 @@ void pubsubd_quit (struct service *srv)
 
 void pubsub_msg_send (struct process *p, const struct pubsub_msg * m)
 {
-    char *buf = NULL;
     size_t msize = 0;
+    char * buf = NULL;
     pubsubd_msg_serialize (m, &buf, &msize);
 
     app_write (p, buf, msize);
 
-    if (buf != NULL) {
-        free (buf);
-    }
+    free(buf);
 }
 
 void pubsub_msg_recv (struct process *p, struct pubsub_msg *m)
@@ -218,4 +183,5 @@ void pubsub_msg_recv (struct process *p, struct pubsub_msg *m)
     if (buf != NULL) {
         free (buf);
     }
+
 }

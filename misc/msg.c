@@ -1,5 +1,5 @@
 #include "../lib/pubsubd.h"
-#include "cbor.h"
+#include <cbor.h>
 #include <stdlib.h>
 #include <string.h>
 

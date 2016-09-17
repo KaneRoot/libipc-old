@@ -5,10 +5,11 @@
 #include "process.h"
 #include "queue.h"
 
-#define PUBSUB_TYPE_DISCONNECT                                     1 << 0
-#define PUBSUB_TYPE_INFO                                           1 << 1
-#define PUBSUB_TYPE_DEBUG                                          1 << 2
-#define PUBSUB_TYPE_MESSAGE                                        1 << 3
+#define PUBSUB_TYPE_DISCONNECT                                      0
+#define PUBSUB_TYPE_MESSAGE                                         1
+#define PUBSUB_TYPE_ERROR                                           2
+#define PUBSUB_TYPE_DEBUG                                           4
+#define PUBSUB_TYPE_INFO                                            128
 
 #define PUBSUB_SERVICE_NAME "pubsub"
 
