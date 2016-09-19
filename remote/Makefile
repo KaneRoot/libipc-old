@@ -7,25 +7,16 @@ SOURCES=$(wildcard ../lib/*.c)
 OBJECTS=$(SOURCES:.c=.o)
 TESTS=$(addsuffix .test, $(EXEC))
 
-all: tcpdserver tcpdclient
+all: $(SOURCES) $(EXEC)
 
 $(EXEC): $(OBJECTS) $(CFILES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) $@.c -o $@
-
-tcpdserver: tcpdserver.c tcpdserver.h
-	$(CC) $(CFLAGS) $(LDFLAGS) $@.c -o $@
-
-tcpdclient: tcpdclient.c tcpdserver.h
-	$(CC) $(CFLAGS) $(LDFLAGS) $@.c -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) $@.c -lcbor -o $@.bin
 
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
 
 clean:
-	-rm $(OBJECTS)
+	@-rm $(OBJECTS)
 
 mrproper: clean
-	rm $(EXEC)
-
-cleantmp:
-	rm /tmp/ipc/*
+	@-rm *.bin
