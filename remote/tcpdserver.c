@@ -107,8 +107,9 @@ int main(int argc, char * argv[], char **env) {
 	p_data *p_d_listen = malloc (sizeof(p_data));
 	//p_d_listen.c_sock = NULL;
 	p_d_listen->sfd = sfd;
+	p_d_listen->index = 0;
 	
-	int ret = pthread_create( &listenPid, NULL, &listen_thread, (void *) p_d_listen);
+	int ret = pthread_create( &listenPid, NULL, &service_thread, (void *) p_d_listen);
 	if (ret) {
 		perror("pthread_create()");
 		endConnection(sock, sfd);
@@ -124,13 +125,14 @@ int main(int argc, char * argv[], char **env) {
 	return 0;
 }
 
-void * listen_thread(void * pdata) {
+void * service_thread(void * pdata) {
 	p_data *pda = (p_data*) pdata;
 	char buffer[BUF_SIZE];
 	char *service;
 	int version;
+	int clientSock = pda->sfd;
 
-	if (read_message(pda->sfd, buffer) == -1) {
+	if (read_message(clientSock, buffer) == -1) {
 		perror("read_message()");
 		return NULL;
 	}else {
@@ -142,17 +144,34 @@ void * listen_thread(void * pdata) {
 	** disponibles
 	*/
 
-	// printf("%d\n", getpid());
-	// printf("%zu\n", pthread_self());
+	//path service
+	char * servicePath = malloc(sizeof PATH_MAX);
+	strcat(servicePath, TMPDIR);
+	strcat(servicePath, service);
+
+	//pid index version
+	char * piv = malloc(sizeof PATH_MAX);
+	makePivMessage(&piv, getpid(), pda->index, version);
+	printf("piv : %s\n",piv );
+
+	//write pid index version in T/I/S of service
+	int ret = file_write(servicePath, piv, strlen(piv));
+	if(ret == 0) {
+		perror("file_write()");
+		free(servicePath);
+		free(piv);
+		return NULL;
+	}
 
 	// gets the service path, such as /tmp/ipc/pid-index-version-in/out
 	char *pathname[2];
-	inOutPathCreate(pathname, version);
+	inOutPathCreate(pathname, pda->index, version);
 
-	printf("%s\n",pathname[0] );
-	printf("%s\n",pathname[1] );
+	// printf("pathname 1: %s\n",pathname[0] );
+	// printf("pathname 2: %s\n",pathname[1] );
 
-	/*if(fifo_create(pathname[0]) != 0) {
+	//create in out files
+	if(fifo_create(pathname[0]) != 0) {
 		perror("fifo_create()");
 		return NULL;
 	}
@@ -160,41 +179,62 @@ void * listen_thread(void * pdata) {
 	if(fifo_create(pathname[1]) != 0) {
 		perror("fifo_create()");
 		return NULL;
-	}*/
-
-	pthread_t sendPid;
-	int ret = pthread_create( &sendPid, NULL, &send_thread, (void *) pda);
-	if (ret) {
-		perror("pthread_create()");
-		exit(errno);
-	} else {
-		printf("Creation of send thread \n");
 	}
 
-	while (1) {
-		int n = read_message(pda->sfd, buffer);
-		if (n > 0) {
-			printf("%s\n", buffer );
+	printf("pathname[0] : %s\n", pathname[0]);
+	//open -in fifo file
+	int fdin = open (pathname[0], O_RDWR);
+    if (fdin <= 0) {
+        printf("open: fd < 0\n");
+        perror ("open()");
+        return NULL;
+    }
+
+	//utilisation du select() pour surveiller la socket du client et fichier in
+	fd_set rdfs;
+	int max = clientSock > fdin ? clientSock : fdin;
+	max = max > STDIN_FILENO ? max : STDIN_FILENO;
+
+	while(1) {
+		FD_ZERO(&rdfs);
+
+		/* add STDIN_FILENO */
+		FD_SET(STDIN_FILENO, &rdfs);
+
+		//add client's socket
+		FD_SET(clientSock, &rdfs);
+
+		//add in file
+		FD_SET(fdin, &rdfs);
+
+		if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
+		{
+			perror("select()");
+			exit(errno);
+		}
+
+		/* something from standard input : i.e keyboard */
+		if(FD_ISSET(STDIN_FILENO, &rdfs))
+		{
+			/* stop process when type on keyboard */
+			break;
+		}else if (FD_ISSET(clientSock, &rdfs)) {
+			if(read_message(clientSock, buffer) > 0) {
+				printf("message : %s\n",buffer );
+			}
+
+			/*if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
+				perror("file_write");
+			}*/
+		}else {
+			if(read(fdin, &buffer, BUF_SIZE) < 0) {
+				perror("read()");
+			}
+			printf("file in : %s\n", buffer );
 		}
 	}
-
-	pthread_join(sendPid, NULL);
-
-	return NULL;
-}
-
-void * send_thread(void * pdata) {
-	p_data *pda = (p_data*) pdata;
-	int ret;
-	size_t msize = BUFSIZ;
-    char *buf = NULL;
-
-	while (1) {
-		ret = file_read(pda->fifoOut, &buf, &msize);
-		if (ret > 0) {
-			printf("%s\n",buf );
-		}
-	}
+	free(servicePath);
+	free(piv);
 
 	return NULL;
 }
@@ -253,37 +293,57 @@ int fifo_create (char * path)
     return ret;
 }
 
-void inOutPathCreate(char ** pathname, int version) {
+void inOutPathCreate(char ** pathname, int index, int version) {
 	pathname[0] = malloc(sizeof PATH_MAX);
 	pathname[1] = malloc(sizeof PATH_MAX);
 
 	int length = snprintf( NULL, 0, "%d", version );
-	char* str = malloc( length + 2 );
-	snprintf( str, length + 1, "%d", version );
+	char* versionStr = malloc( length + 2 );
+	snprintf( versionStr, length + 1, "%d", version );
 
-	int length2 = snprintf( NULL, 0, "%zu", pthread_self() );
-	char * str2 = malloc( length2 + 1 );
-	snprintf( str2, length2 + 1, "%zu", pthread_self() );
+	int length2 = snprintf( NULL, 0, "%d", getpid() );
+	char * pidprocess = malloc( length2 + 1 );
+	snprintf( pidprocess, length2 + 1, "%d", getpid() );
 
-	int length3 = snprintf( NULL, 0, "%d", 1 );
-	char* str3 = malloc( length3 + 1 );
-	snprintf( str3, length3 + 1, "%d", 1 );	
+	int length3 = snprintf( NULL, 0, "%d", index );
+	char* indexStr = malloc( length3 + 1 );
+	snprintf( indexStr, length3 + 1, "%d", index );	
 
 	strcat(pathname[0], TMPDIR);
-	strcat(pathname[0], str2);
+	strcat(pathname[0], pidprocess);
 	strcat(pathname[0], "-");
-	strcat(pathname[0], str3);
+	strcat(pathname[0], indexStr);
 	strcat(pathname[0], "-");
-	strcat(pathname[0], str);
+	strcat(pathname[0], versionStr);
 	strcat(pathname[0], "-in");
 	
 	strcat(pathname[1], TMPDIR);
-	strcat(pathname[1], str2);
+	strcat(pathname[1], pidprocess);
 	strcat(pathname[1], "-");
-	strcat(pathname[1], str3);
+	strcat(pathname[1], indexStr);
 	strcat(pathname[1], "-");
-	strcat(pathname[1], str);
+	strcat(pathname[1], versionStr);
 	strcat(pathname[1], "-out");
+}
+
+void makePivMessage (char ** piv, int pid, int index, int version) {
+	int length1 = snprintf( NULL, 0, "%d", getpid() );
+	char * pidprocess = malloc( length1 + 1 );
+	snprintf( pidprocess, length1 + 1, "%d", getpid() );
+
+	int length2 = snprintf( NULL, 0, "%d", index );
+	char* indexStr = malloc( length2 + 1 );
+	snprintf( indexStr, length2 + 1, "%d", index );	
+
+	int length3 = snprintf( NULL, 0, "%d", version );
+	char* versionStr = malloc( length3 + 2 );
+	snprintf( versionStr, length3 + 1, "%d", version );
+
+	strcat(*piv, pidprocess);
+	strcat(*piv, " ");
+	strcat(*piv, indexStr);
+	strcat(*piv, " ");
+	strcat(*piv, versionStr);
 }
 
 

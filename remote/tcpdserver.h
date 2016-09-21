@@ -9,7 +9,7 @@
 typedef struct {
 	struct 	sockaddr_in c_sock;
 	int sfd;
-	char * fifoOut;
+	int index;
 } p_data;
 
 int initConnection ();
@@ -21,17 +21,19 @@ void write_message(int sock, const char *buffer);
 int read_message(int sock, char *buffer);
 
 //2 threads for listen and send data
-void * listen_thread(void * pdata);
-void * send_thread(void * pdata);
+void * service_thread(void * pdata);
 
 //parse the first message from client in service and version
 void parseServiceVersion(char * buf, char ** service, int *version);
 
 //create 2 pathnames such as : pid-index-version-in/out
-void inOutPathCreate(char ** pathname, int version);
+void inOutPathCreate(char ** pathname, int index, int version);
 
 //create a fifo file
 int fifo_create (char * path);
+
+//create first message for a service : pid index version
+void makePivMessage(char ** piv, int pid, int index, int version);
 
 
 #endif

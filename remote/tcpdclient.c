@@ -60,6 +60,8 @@ int main(int argc, char ** argv) {
 	write_message(sock, "pongd 5");
 	sleep(1);
 	write_message(sock, "is it working ???");
+	sleep(2);
+	write_message(sock, "is it working ???");
 
 	close(sock);
 
