@@ -20,3 +20,6 @@ clean:
 
 mrproper: clean
 	@-rm *.bin
+
+cleantmp:
+	rm /tmp/ipc/*
