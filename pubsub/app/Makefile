@@ -3,7 +3,7 @@ CFLAGS=-Wall -g -Wextra
 LDFLAGS= -pthread
 CFILES=$(wildcard *.c) # CFILES => recompiles everything on a C file change
 EXEC=$(basename $(wildcard *.c))
-SOURCES=$(wildcard ../lib/*.c)
+SOURCES=$(wildcard ../lib/*.c ../../lib/*.c)
 OBJECTS=$(SOURCES:.c=.o)
 TESTS=$(addsuffix .test, $(EXEC))
 

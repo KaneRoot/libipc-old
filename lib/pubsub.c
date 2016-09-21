@@ -49,7 +49,7 @@ void pubsubd_msg_unserialize (struct pubsub_msg *msg, const char *buf, size_t ml
     cbor_item_t * item = cbor_load ((unsigned char *) buf, mlen, &result);
 
     struct cbor_pair * pair = cbor_map_handle (item);
-    cbor_mutable_data *data = cbor_bytestring_handle (pair->value);
+    cbor_mutable_data data = cbor_bytestring_handle (pair->value);
 
     msg->type = cbor_get_uint8 (pair->key);
     if (msg->type != PUBSUB_TYPE_DISCONNECT) {
