@@ -1,6 +1,38 @@
 #include "../lib/communication.h"
+#include <pthread.h>
 
 #define PONGD_SERVICE_NAME "pongd"
+
+
+/* control the file descriptor*/
+void * pongd_thread(void * pdata) {
+    struct process *proc = (struct process*) pdata;
+
+    // about the message
+    size_t msize = BUFSIZ;
+    char *buf = NULL;
+    int ret;
+
+    while (1) {
+        // printf ("before read\n");
+        if ((ret = srv_read (proc, &buf, &msize)) == -1) {
+            fprintf(stdout, "MAIN_LOOP: error service_read %d\n", ret);
+        }
+        // printf ("after read\n");
+        printf ("read, size %ld : %s\n", msize, buf);
+
+        if(msize > 0) {
+            printf ("before proc write\n");
+            if ((ret = srv_write (proc, buf, msize)) == -1) {
+                fprintf(stdout, "MAIN_LOOP: error service_write %d\n", ret);
+            }
+        }else {
+            break;
+        }
+    }
+
+    return NULL;
+}
 
 /*
  * main loop
@@ -13,14 +45,17 @@
 void main_loop (const struct service *srv)
 {
     int ret;
-    struct process proc;
+    struct process tab_proc[10];
+    //thread 
+    pthread_t tab_thread[10]; 
+    int i;
 
-    int cnt = 10;
+    int cnt = 0;
 
-    while (cnt--) {
+    while (cnt < 10) {
 
         // -1 : error, 0 = no new process, 1 = new process
-        ret = srv_get_new_process (srv, &proc);
+        ret = srv_get_new_process (srv, &tab_proc[cnt]);
 
         if (ret == -1) {
             fprintf (stderr, "MAIN_LOOP: error service_get_new_process\n");
@@ -29,28 +64,25 @@ void main_loop (const struct service *srv)
             continue;
         }
 
-        srv_process_print (&proc);
+        srv_process_print (&tab_proc[cnt]);
         //printf ("after print\n");
 
-        // about the message
-        size_t msize = BUFSIZ;
-        char *buf = NULL;
-
-        // printf ("before read\n");
-        if ((ret = srv_read (&proc, &buf, &msize)) == -1) {
-            fprintf(stdout, "MAIN_LOOP: error service_read %d\n", ret);
-            continue;
+        int ret = pthread_create( &tab_thread[cnt], NULL, &pongd_thread, (void *) &tab_proc[cnt]);
+        if (ret) {
+            perror("pthread_create()");
+            exit(errno);
+        } else {
+            printf("Creation of listen thread \n");
         }
-        // printf ("after read\n");
-        printf ("read, size %ld : %s\n", msize, buf);
 
-        // printf ("before proc write\n");
-        if ((ret = srv_write (&proc, buf, msize)) == -1) {
-            fprintf(stdout, "MAIN_LOOP: error service_write %d\n", ret);
-            continue;
-        }
         // printf ("after proc write\n");
         printf ("%d applications to serve\n",cnt);
+
+        cnt++;
+    }
+
+    for (i = 0; i < cnt; i++) {
+        pthread_join(tab_thread[cnt], NULL);    
     }
 }
 
