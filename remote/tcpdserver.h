@@ -13,7 +13,7 @@ typedef struct {
 } p_data;
 
 int initConnection ();
-void endConnection (int sock, int csock);
+void endConnection (int sock);
 
 void printClientAddr (struct sockaddr_in *csin);
 

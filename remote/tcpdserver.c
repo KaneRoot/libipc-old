@@ -73,9 +73,8 @@ int read_message(int sock, char *buffer)
    return n;
 }
 
-void endConnection(int sock, int sfd) {
+void endConnection(int sock) {
 	close(sock);
-	close(sfd);
 }
 
 void printClientAddr(struct sockaddr_in *csin) {
@@ -84,46 +83,6 @@ void printClientAddr(struct sockaddr_in *csin) {
 	printf("Port : %u\n", ntohs(csin->sin_port));
 }
 
-
-int main(int argc, char * argv[], char **env) {
-
-	int sock = init_connection();
-	// char buffer[BUF_SIZE];
-
-	struct sockaddr_in csin = { 0 };
-	socklen_t sinsize = sizeof csin;
-	int sfd = accept(sock, (struct sockaddr *)&csin, &sinsize);
-	if(sfd == -1)
-	{
-		perror("accept()");
-		close(sock);
-		exit(errno);
-	}
-
-	printClientAddr(&csin);
-	printf("%d \n",getpid());
-
-	pthread_t listenPid;
-	p_data *p_d_listen = malloc (sizeof(p_data));
-	//p_d_listen.c_sock = NULL;
-	p_d_listen->sfd = sfd;
-	p_d_listen->index = 0;
-	
-	int ret = pthread_create( &listenPid, NULL, &service_thread, (void *) p_d_listen);
-	if (ret) {
-		perror("pthread_create()");
-		endConnection(sock, sfd);
-		exit(errno);
-	} else {
-		printf("Creation of listen thread \n");
-	}
-
-	pthread_join(listenPid, NULL);
-
-	endConnection(sock, sfd);
-
-	return 0;
-}
 
 void * service_thread(void * pdata) {
 	p_data *pda = (p_data*) pdata;
@@ -181,7 +140,6 @@ void * service_thread(void * pdata) {
 		return NULL;
 	}
 
-	printf("pathname[0] : %s\n", pathname[0]);
 	//open -in fifo file
 	int fdin = open (pathname[0], O_RDWR);
     if (fdin <= 0) {
@@ -193,8 +151,8 @@ void * service_thread(void * pdata) {
 	//utilisation du select() pour surveiller la socket du client et fichier in
 	fd_set rdfs;
 	int max = clientSock > fdin ? clientSock : fdin;
-	max = max > STDIN_FILENO ? max : STDIN_FILENO;
 
+	printf("Waitting for new messages :\n" );
 	while(1) {
 		FD_ZERO(&rdfs);
 
@@ -217,24 +175,34 @@ void * service_thread(void * pdata) {
 		if(FD_ISSET(STDIN_FILENO, &rdfs))
 		{
 			/* stop process when type on keyboard */
-			break;
-		}else if (FD_ISSET(clientSock, &rdfs)) {
-			if(read_message(clientSock, buffer) > 0) {
-				printf("message : %s\n",buffer );
+			break; 
+		}else /*if (FD_ISSET(fdin, &rdfs))*/{
+			if (FD_ISSET(clientSock, &rdfs)) {
+				if(read_message(clientSock, buffer) > 0) {
+					printf("message : %s\n",buffer );
+				}
+
+				if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
+					perror("file_write");
+				}
+				printf("ok\n");
 			}
 
-			/*if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
-				perror("file_write");
-			}*/
-		}else {
-			if(read(fdin, &buffer, BUF_SIZE) < 0) {
-				perror("read()");
+			if (FD_ISSET(fdin, &rdfs)) {
+
+				if(read(fdin, &buffer, BUF_SIZE) < 0) {
+					perror("read()");
+				}
+				printf("message from file in : %s\n", buffer );
 			}
-			printf("file in : %s\n", buffer );
 		}
 	}
 	free(servicePath);
 	free(piv);
+	
+	//close the files descriptors
+	close(fdin);
+	close(clientSock);
 
 	return NULL;
 }
@@ -346,4 +314,42 @@ void makePivMessage (char ** piv, int pid, int index, int version) {
 	strcat(*piv, versionStr);
 }
 
+int main(int argc, char * argv[], char **env) {
 
+	int sock = init_connection();
+	// char buffer[BUF_SIZE];
+
+	struct sockaddr_in csin = { 0 };
+	socklen_t sinsize = sizeof csin;
+	int sfd = accept(sock, (struct sockaddr *)&csin, &sinsize);
+	if(sfd == -1)
+	{
+		perror("accept()");
+		close(sock);
+		exit(errno);
+	}
+
+	printClientAddr(&csin);
+	printf("%d \n",getpid());
+
+	pthread_t listenPid;
+	p_data *p_d_listen = malloc (sizeof(p_data));
+	//p_d_listen.c_sock = NULL;
+	p_d_listen->sfd = sfd;
+	p_d_listen->index = 0;
+	
+	int ret = pthread_create( &listenPid, NULL, &service_thread, (void *) p_d_listen);
+	if (ret) {
+		perror("pthread_create()");
+		endConnection(sock);
+		exit(errno);
+	} else {
+		printf("Creation of listen thread \n");
+	}
+
+	pthread_join(listenPid, NULL);
+
+	endConnection(sock);
+
+	return 0;
+}
