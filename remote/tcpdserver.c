@@ -17,6 +17,7 @@
 #define PORT 6000
 #define BUF_SIZE 1024
 #define TMPDIR "/tmp/ipc/"
+#define NBCLIENT 5
 
 int init_connection(void)
 {
@@ -84,12 +85,12 @@ void printClientAddr(struct sockaddr_in *csin) {
 }
 
 
-void * service_thread(void * pdata) {
-	p_data *pda = (p_data*) pdata;
+void * service_thread(void * c_data) {
+	client_data *cda = (client_data*) c_data;
 	char buffer[BUF_SIZE];
 	char *service;
 	int version;
-	int clientSock = pda->sfd;
+	int clientSock = cda->sfd;
 
 	if (read_message(clientSock, buffer) == -1) {
 		perror("read_message()");
@@ -104,13 +105,19 @@ void * service_thread(void * pdata) {
 	*/
 
 	//path service
-	char * servicePath = malloc(sizeof PATH_MAX);
+	char * servicePath = (char*) calloc((strlen(TMPDIR) + strlen(service) + 1), sizeof(char));
+	if (servicePath == NULL) {
+		perror("calloc()");
+	}
 	strcat(servicePath, TMPDIR);
 	strcat(servicePath, service);
 
 	//pid index version
-	char * piv = malloc(sizeof PATH_MAX);
-	makePivMessage(&piv, getpid(), pda->index, version);
+	char * piv =  (char*) calloc(PATH_MAX, sizeof(char));
+	if (piv == NULL) {
+		perror("calloc()");
+	}
+	makePivMessage(&piv, getpid(), cda->index, version);
 	printf("piv : %s\n",piv );
 
 	//write pid index version in T/I/S of service
@@ -124,10 +131,15 @@ void * service_thread(void * pdata) {
 
 	// gets the service path, such as /tmp/ipc/pid-index-version-in/out
 	char *pathname[2];
-	inOutPathCreate(pathname, pda->index, version);
-
-	// printf("pathname 1: %s\n",pathname[0] );
-	// printf("pathname 2: %s\n",pathname[1] );
+	pathname[0] = (char*) calloc(PATH_MAX, sizeof(char));
+	if (pathname[0] == NULL) {
+		perror("calloc()");
+	}
+	pathname[1] = (char*) calloc(PATH_MAX, sizeof(char));
+	if (pathname[1] == NULL) {
+		perror("calloc()");
+	}
+	inOutPathCreate(pathname, cda->index, version);
 
 	//create in out files
 	if(fifo_create(pathname[0]) != 0) {
@@ -175,17 +187,17 @@ void * service_thread(void * pdata) {
 		if(FD_ISSET(STDIN_FILENO, &rdfs))
 		{
 			/* stop process when type on keyboard */
+			printf("thread %d shutdown\n", cda->index );
 			break; 
 		}else /*if (FD_ISSET(fdin, &rdfs))*/{
 			if (FD_ISSET(clientSock, &rdfs)) {
 				if(read_message(clientSock, buffer) > 0) {
 					printf("message : %s\n",buffer );
+					if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
+						perror("file_write");
+					}
+					printf("ok\n");
 				}
-
-				if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
-					perror("file_write");
-				}
-				printf("ok\n");
 			}
 
 			if (FD_ISSET(fdin, &rdfs)) {
@@ -197,8 +209,14 @@ void * service_thread(void * pdata) {
 			}
 		}
 	}
+
+	//free
 	free(servicePath);
 	free(piv);
+	free(service);
+	free(pathname[0]);
+	free(pathname[1]);
+	
 	
 	//close the files descriptors
 	close(fdin);
@@ -224,6 +242,7 @@ void parseServiceVersion(char * buf, char ** service, int *version) {
             *version = strtoul(token, NULL, 10);
         }
     }
+
 }
 
 int fifo_create (char * path)
@@ -262,9 +281,6 @@ int fifo_create (char * path)
 }
 
 void inOutPathCreate(char ** pathname, int index, int version) {
-	pathname[0] = malloc(sizeof PATH_MAX);
-	pathname[1] = malloc(sizeof PATH_MAX);
-
 	int length = snprintf( NULL, 0, "%d", version );
 	char* versionStr = malloc( length + 2 );
 	snprintf( versionStr, length + 1, "%d", version );
@@ -292,6 +308,10 @@ void inOutPathCreate(char ** pathname, int index, int version) {
 	strcat(pathname[1], "-");
 	strcat(pathname[1], versionStr);
 	strcat(pathname[1], "-out");
+
+	free(pidprocess);
+	free(indexStr);
+	free(versionStr);
 }
 
 void makePivMessage (char ** piv, int pid, int index, int version) {
@@ -312,42 +332,82 @@ void makePivMessage (char ** piv, int pid, int index, int version) {
 	strcat(*piv, indexStr);
 	strcat(*piv, " ");
 	strcat(*piv, versionStr);
+
+	free(pidprocess);
+	free(indexStr);
+	free(versionStr);
 }
 
 int main(int argc, char * argv[], char **env) {
+	//client 
+	client_data tab_client[NBCLIENT];
+	pthread_t tab_service_threads[NBCLIENT];
+	int actual = 0;
+	int i;
 
 	int sock = init_connection();
-	// char buffer[BUF_SIZE];
+	fd_set rdfs;
+	int max = sock;
 
-	struct sockaddr_in csin = { 0 };
-	socklen_t sinsize = sizeof csin;
-	int sfd = accept(sock, (struct sockaddr *)&csin, &sinsize);
-	if(sfd == -1)
-	{
-		perror("accept()");
-		close(sock);
-		exit(errno);
+	printf("Waitting for new clients :\n" );
+	while(1) {
+		FD_ZERO(&rdfs);
+
+		/* add STDIN_FILENO */
+		FD_SET(STDIN_FILENO, &rdfs);
+
+		//add client's socket
+		FD_SET(sock, &rdfs);
+
+		if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
+		{
+			perror("select()");
+			exit(errno);
+		}
+
+		/* something from standard input : i.e keyboard */
+		if(FD_ISSET(STDIN_FILENO, &rdfs))
+		{
+			/* stop process when type on keyboard */
+			// for (i = 0; i < actual; i++) {
+			// 	if (pthread_cancel(tab_service_threads[i]) != 0) {
+			// 		printf("Aucun thread correspond \n");
+			// 	}	
+			// }
+			printf("server shutdown\n");
+			break; 
+		}
+		else if (FD_ISSET(sock, &rdfs)){
+			//New client
+			socklen_t sinsize = sizeof (struct sockaddr_in);
+			tab_client[actual].sfd = accept(sock, (struct sockaddr *)&tab_client[actual].c_addr, &sinsize);
+			if(tab_client[actual].sfd == -1)
+			{
+				perror("accept()");
+				close(sock);
+				exit(errno);
+			}
+			printClientAddr(&tab_client[actual].c_addr);
+
+			tab_client[actual].index = actual;
+			
+			int ret = pthread_create( &tab_service_threads[actual], NULL, &service_thread, (void *) &tab_client[actual]);
+			if (ret) {
+				perror("pthread_create()");
+				endConnection(sock);
+				exit(errno);
+			} else {
+				printf("Creation of listen thread %d\n", actual);
+			}
+
+			max = tab_client[actual].sfd > max ? tab_client[actual].sfd : max;
+			actual++;
+		}
 	}
 
-	printClientAddr(&csin);
-	printf("%d \n",getpid());
-
-	pthread_t listenPid;
-	p_data *p_d_listen = malloc (sizeof(p_data));
-	//p_d_listen.c_sock = NULL;
-	p_d_listen->sfd = sfd;
-	p_d_listen->index = 0;
-	
-	int ret = pthread_create( &listenPid, NULL, &service_thread, (void *) p_d_listen);
-	if (ret) {
-		perror("pthread_create()");
-		endConnection(sock);
-		exit(errno);
-	} else {
-		printf("Creation of listen thread \n");
+	for (i = 0; i < actual; i++) {
+		pthread_join(tab_service_threads[i], NULL);	
 	}
-
-	pthread_join(listenPid, NULL);
 
 	endConnection(sock);
 

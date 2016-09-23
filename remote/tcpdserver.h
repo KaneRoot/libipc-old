@@ -7,10 +7,10 @@
 #include <arpa/inet.h>
 
 typedef struct {
-	struct 	sockaddr_in c_sock;
+	struct 	sockaddr_in c_addr;
 	int sfd;
 	int index;
-} p_data;
+} client_data;
 
 int initConnection ();
 void endConnection (int sock);

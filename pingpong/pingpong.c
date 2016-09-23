@@ -22,7 +22,7 @@ void * pongd_thread(void * pdata) {
         printf ("read, size %ld : %s\n", msize, buf);
 
         if(msize > 0) {
-            printf ("before proc write\n");
+            //printf ("before proc write\n");
             if ((ret = srv_write (proc, buf, msize)) == -1) {
                 fprintf(stdout, "MAIN_LOOP: error service_write %d\n", ret);
             }
