@@ -21,212 +21,209 @@
 
 int init_connection(void)
 {
-   int sock = socket(AF_INET, SOCK_STREAM, 0);
-   struct sockaddr_in sin = { 0 };
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in sin = { 0 };
 
-   if(sock == -1)
-   {
-		perror("socket()");
-		exit(errno);
-   }
+    if(sock == -1)
+    {
+        perror("socket()");
+        exit(errno);
+    }
 
-   sin.sin_addr.s_addr = htonl(INADDR_ANY);
-   sin.sin_port = htons(PORT);
-   sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = htonl(INADDR_ANY);
+    sin.sin_port = htons(PORT);
+    sin.sin_family = AF_INET;
 
-   if(bind(sock,(struct sockaddr *) &sin, sizeof sin) == -1)
-   {
-		perror("bind()");
-		exit(errno);
-   }
+    if(bind(sock,(struct sockaddr *) &sin, sizeof sin) == -1)
+    {
+        perror("bind()");
+        exit(errno);
+    }
 
-   if(listen(sock, 5) == -1)
-   {
-		perror("listen()");
-		exit(errno);
-   }
+    if(listen(sock, 5) == -1)
+    {
+        perror("listen()");
+        exit(errno);
+    }
 
-   return sock;
+    return sock;
 }
 
 void write_message(int sock, const char *buffer)
 {
-   if(send(sock, buffer, strlen(buffer), 0) < 0)
-   {
-		perror("send()");
-		exit(errno);
-   }
+    if(send(sock, buffer, strlen(buffer), 0) < 0)
+    {
+        perror("send()");
+        exit(errno);
+    }
 }
 
 int read_message(int sock, char *buffer)
 {
-   int n = 0;
-
-   if((n = recv(sock, buffer, BUF_SIZE - 1, 0)) < 0)
-   {
-		perror("recv()");
-		/* if recv error we disonnect the client */
-		n = 0;
-   }
-
-   buffer[n] = 0;
-
-   return n;
+    return recv(sock, buffer, BUF_SIZE - 1, 0);
 }
 
 void endConnection(int sock) {
-	close(sock);
+    close(sock);
 }
 
 void printClientAddr(struct sockaddr_in *csin) {
-	printf("New client\n");
-	printf("IP Addr : %s\n", inet_ntoa(csin->sin_addr));
-	printf("Port : %u\n", ntohs(csin->sin_port));
+    printf("New client\n");
+    printf("IP Addr : %s\n", inet_ntoa(csin->sin_addr));
+    printf("Port : %u\n", ntohs(csin->sin_port));
 }
 
 
 void * service_thread(void * c_data) {
-	client_data *cda = (client_data*) c_data;
-	char buffer[BUF_SIZE];
-	char *service;
-	int version;
-	int clientSock = cda->sfd;
+    client_data *cda = (client_data*) c_data;
+    char buffer[BUF_SIZE];
+    char *service;
+    int version;
+    int clientSock = cda->sfd;
 
-	if (read_message(clientSock, buffer) == -1) {
-		perror("read_message()");
-		return NULL;
-	}else {
-		parseServiceVersion(buffer, &service, &version);
-	}
-	
-	/* TODO : service correspond au service que le client veut utiliser 
-	** il faut comparer service à un tableau qui contient les services 
-	** disponibles
-	*/
+    if (read_message(clientSock, buffer) == -1) {
+        perror("read_message()");
+        return NULL;
+    }else {
+        parseServiceVersion(buffer, &service, &version);
+    }
 
-	//path service
-	char * servicePath = (char*) calloc((strlen(TMPDIR) + strlen(service) + 1), sizeof(char));
-	if (servicePath == NULL) {
-		perror("calloc()");
-	}
-	strcat(servicePath, TMPDIR);
-	strcat(servicePath, service);
+    /* TODO : service correspond au service que le client veut utiliser 
+     ** il faut comparer service à un tableau qui contient les services 
+     ** disponibles
+     */
 
-	//pid index version
-	char * piv =  (char*) calloc(PATH_MAX, sizeof(char));
-	if (piv == NULL) {
-		perror("calloc()");
-	}
-	makePivMessage(&piv, getpid(), cda->index, version);
-	printf("piv : %s\n",piv );
+    //path service
+    char * servicePath = malloc (strlen(TMPDIR) + strlen(service) + 1);
+    memset (servicePath, 0, strlen(TMPDIR) + strlen(service) + 1);
 
-	//write pid index version in T/I/S of service
-	int ret = file_write(servicePath, piv, strlen(piv));
-	if(ret == 0) {
-		perror("file_write()");
-		free(servicePath);
-		free(piv);
-		return NULL;
-	}
+    if (servicePath == NULL) {
+        perror("malloc()");
+    }
+    strcat(servicePath, TMPDIR);
+    strcat(servicePath, service);
 
-	// gets the service path, such as /tmp/ipc/pid-index-version-in/out
-	char *pathname[2];
-	pathname[0] = (char*) calloc(PATH_MAX, sizeof(char));
-	if (pathname[0] == NULL) {
-		perror("calloc()");
-	}
-	pathname[1] = (char*) calloc(PATH_MAX, sizeof(char));
-	if (pathname[1] == NULL) {
-		perror("calloc()");
-	}
-	inOutPathCreate(pathname, cda->index, version);
+    //pid index version
+    char * piv =  (char*) malloc(PATH_MAX);
+    memset(piv , 0, PATH_MAX);
+    if (piv == NULL) {
+        perror("malloc()");
+    }
+    makePivMessage(&piv, getpid(), cda->index, version);
+    printf("piv : %s\n",piv );
 
-	//create in out files
-	if(fifo_create(pathname[0]) != 0) {
-		perror("fifo_create()");
-		return NULL;
-	}
+    //write pid index version in T/I/S of service
+    int ret = file_write(servicePath, piv, strlen(piv));
+    if(ret == 0) {
+        perror("file_write()");
+        free(servicePath);
+        free(piv);
+        return NULL;
+    }
 
-	if(fifo_create(pathname[1]) != 0) {
-		perror("fifo_create()");
-		return NULL;
-	}
+    // gets the service path, such as /tmp/ipc/pid-index-version-in/out
+    char *pathname[2];
+    pathname[0] = (char*) malloc(PATH_MAX);
+    memset(pathname[0], 0, PATH_MAX);
+    if (pathname[0] == NULL) {
+        perror("malloc()");
+    }
+    pathname[1] = malloc(PATH_MAX);
+    memset(pathname[1] , 0, PATH_MAX);
+    if (pathname[1] == NULL) {
+        perror("malloc()");
+    }
+    inOutPathCreate(pathname, cda->index, version);
 
-	//open -in fifo file
-	int fdin = open (pathname[0], O_RDWR);
+    //create in out files
+    if(fifo_create(pathname[0]) != 0) {
+        perror("fifo_create()");
+        return NULL;
+    }
+
+    if(fifo_create(pathname[1]) != 0) {
+        perror("fifo_create()");
+        return NULL;
+    }
+
+    //open -in fifo file
+    int fdin = open (pathname[0], O_RDWR);
     if (fdin <= 0) {
         printf("open: fd < 0\n");
         perror ("open()");
         return NULL;
     }
 
-	//utilisation du select() pour surveiller la socket du client et fichier in
-	fd_set rdfs;
-	int max = clientSock > fdin ? clientSock : fdin;
+    //utilisation du select() pour surveiller la socket du client et fichier in
+    fd_set rdfs;
+    int max = clientSock > fdin ? clientSock : fdin;
 
-	printf("Waitting for new messages :\n" );
-	while(1) {
-		FD_ZERO(&rdfs);
+    printf("Waitting for new messages :\n" );
+    while(1) {
+        FD_ZERO(&rdfs);
 
-		/* add STDIN_FILENO */
-		FD_SET(STDIN_FILENO, &rdfs);
+        /* add STDIN_FILENO */
+        FD_SET(STDIN_FILENO, &rdfs);
 
-		//add client's socket
-		FD_SET(clientSock, &rdfs);
+        //add client's socket
+        FD_SET(clientSock, &rdfs);
 
-		//add in file
-		FD_SET(fdin, &rdfs);
+        //add in file
+        FD_SET(fdin, &rdfs);
 
-		if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
-		{
-			perror("select()");
-			exit(errno);
-		}
+        if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
+        {
+            perror("select()");
+            exit(errno);
+        }
 
-		/* something from standard input : i.e keyboard */
-		if(FD_ISSET(STDIN_FILENO, &rdfs))
-		{
-			/* stop process when type on keyboard */
-			printf("thread %d shutdown\n", cda->index );
-			break; 
-		}else /*if (FD_ISSET(fdin, &rdfs))*/{
-			if (FD_ISSET(clientSock, &rdfs)) {
-				if(read_message(clientSock, buffer) > 0) {
-					printf("message : %s\n",buffer );
-					if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
-						perror("file_write");
-					}
-					printf("ok\n");
-				}
-			}
+        /* something from standard input : i.e keyboard */
+        if(FD_ISSET(STDIN_FILENO, &rdfs))
+        {
+            /* stop process when type on keyboard */
+            printf("thread %d shutdown\n", cda->index );
+            break; 
+        }else /*if (FD_ISSET(fdin, &rdfs))*/{
+            if (FD_ISSET(clientSock, &rdfs)) {
+                int n = 0;
+                n = read_message(clientSock, buffer);
+                if(n > 0) {
+                    if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
+                        perror("file_write");
+                    }
+                    printf("ok\n");
+                }
+                printf("message (%d bytes) : %s\n", n, buffer);
+            }
 
-			if (FD_ISSET(fdin, &rdfs)) {
+            if (FD_ISSET(fdin, &rdfs)) {
 
-				if(read(fdin, &buffer, BUF_SIZE) < 0) {
-					perror("read()");
-				}
-				printf("message from file in : %s\n", buffer );
-			}
-		}
-	}
+                if(read(fdin, &buffer, BUF_SIZE) < 0) {
+                    perror("read()");
+                }
+                printf("message from file in : %s\n", buffer );
+            }
+        }
+        memset (buffer, 0, BUF_SIZE);
+    }
 
-	//free
-	free(servicePath);
-	free(piv);
-	free(service);
-	free(pathname[0]);
-	free(pathname[1]);
-	
-	
-	//close the files descriptors
-	close(fdin);
-	close(clientSock);
+    //free
+    free(servicePath);
+    free(piv);
+    free(service);
+    free(pathname[0]);
+    free(pathname[1]);
 
-	return NULL;
+
+    //close the files descriptors
+    close(fdin);
+    close(clientSock);
+
+    return NULL;
 }
 
 void parseServiceVersion(char * buf, char ** service, int *version) {
-	char *token = NULL, *saveptr = NULL;
+    char *token = NULL, *saveptr = NULL;
     char *str = NULL;
     int i = 0;
 
@@ -281,135 +278,135 @@ int fifo_create (char * path)
 }
 
 void inOutPathCreate(char ** pathname, int index, int version) {
-	int length = snprintf( NULL, 0, "%d", version );
-	char* versionStr = malloc( length + 2 );
-	snprintf( versionStr, length + 1, "%d", version );
+    int length = snprintf( NULL, 0, "%d", version );
+    char* versionStr = malloc( length + 2 );
+    snprintf( versionStr, length + 1, "%d", version );
 
-	int length2 = snprintf( NULL, 0, "%d", getpid() );
-	char * pidprocess = malloc( length2 + 1 );
-	snprintf( pidprocess, length2 + 1, "%d", getpid() );
+    int length2 = snprintf( NULL, 0, "%d", getpid() );
+    char * pidprocess = malloc( length2 + 1 );
+    snprintf( pidprocess, length2 + 1, "%d", getpid() );
 
-	int length3 = snprintf( NULL, 0, "%d", index );
-	char* indexStr = malloc( length3 + 1 );
-	snprintf( indexStr, length3 + 1, "%d", index );	
+    int length3 = snprintf( NULL, 0, "%d", index );
+    char* indexStr = malloc( length3 + 1 );
+    snprintf( indexStr, length3 + 1, "%d", index );	
 
-	strcat(pathname[0], TMPDIR);
-	strcat(pathname[0], pidprocess);
-	strcat(pathname[0], "-");
-	strcat(pathname[0], indexStr);
-	strcat(pathname[0], "-");
-	strcat(pathname[0], versionStr);
-	strcat(pathname[0], "-in");
-	
-	strcat(pathname[1], TMPDIR);
-	strcat(pathname[1], pidprocess);
-	strcat(pathname[1], "-");
-	strcat(pathname[1], indexStr);
-	strcat(pathname[1], "-");
-	strcat(pathname[1], versionStr);
-	strcat(pathname[1], "-out");
+    strcat(pathname[0], TMPDIR);
+    strcat(pathname[0], pidprocess);
+    strcat(pathname[0], "-");
+    strcat(pathname[0], indexStr);
+    strcat(pathname[0], "-");
+    strcat(pathname[0], versionStr);
+    strcat(pathname[0], "-in");
 
-	free(pidprocess);
-	free(indexStr);
-	free(versionStr);
+    strcat(pathname[1], TMPDIR);
+    strcat(pathname[1], pidprocess);
+    strcat(pathname[1], "-");
+    strcat(pathname[1], indexStr);
+    strcat(pathname[1], "-");
+    strcat(pathname[1], versionStr);
+    strcat(pathname[1], "-out");
+
+    free(pidprocess);
+    free(indexStr);
+    free(versionStr);
 }
 
 void makePivMessage (char ** piv, int pid, int index, int version) {
-	int length1 = snprintf( NULL, 0, "%d", getpid() );
-	char * pidprocess = malloc( length1 + 1 );
-	snprintf( pidprocess, length1 + 1, "%d", getpid() );
+    int length1 = snprintf( NULL, 0, "%d", getpid() );
+    char * pidprocess = malloc( length1 + 1 );
+    snprintf( pidprocess, length1 + 1, "%d", getpid() );
 
-	int length2 = snprintf( NULL, 0, "%d", index );
-	char* indexStr = malloc( length2 + 1 );
-	snprintf( indexStr, length2 + 1, "%d", index );	
+    int length2 = snprintf( NULL, 0, "%d", index );
+    char* indexStr = malloc( length2 + 1 );
+    snprintf( indexStr, length2 + 1, "%d", index );	
 
-	int length3 = snprintf( NULL, 0, "%d", version );
-	char* versionStr = malloc( length3 + 2 );
-	snprintf( versionStr, length3 + 1, "%d", version );
+    int length3 = snprintf( NULL, 0, "%d", version );
+    char* versionStr = malloc( length3 + 2 );
+    snprintf( versionStr, length3 + 1, "%d", version );
 
-	strcat(*piv, pidprocess);
-	strcat(*piv, " ");
-	strcat(*piv, indexStr);
-	strcat(*piv, " ");
-	strcat(*piv, versionStr);
+    strcat(*piv, pidprocess);
+    strcat(*piv, " ");
+    strcat(*piv, indexStr);
+    strcat(*piv, " ");
+    strcat(*piv, versionStr);
 
-	free(pidprocess);
-	free(indexStr);
-	free(versionStr);
+    free(pidprocess);
+    free(indexStr);
+    free(versionStr);
 }
 
 int main(int argc, char * argv[], char **env) {
-	//client 
-	client_data tab_client[NBCLIENT];
-	pthread_t tab_service_threads[NBCLIENT];
-	int actual = 0;
-	int i;
+    //client 
+    client_data tab_client[NBCLIENT];
+    pthread_t tab_service_threads[NBCLIENT];
+    int actual = 0;
+    int i;
 
-	int sock = init_connection();
-	fd_set rdfs;
-	int max = sock;
+    int sock = init_connection();
+    fd_set rdfs;
+    int max = sock;
 
-	printf("Waitting for new clients :\n" );
-	while(1) {
-		FD_ZERO(&rdfs);
+    printf("Waitting for new clients :\n" );
+    while(1) {
+        FD_ZERO(&rdfs);
 
-		/* add STDIN_FILENO */
-		FD_SET(STDIN_FILENO, &rdfs);
+        /* add STDIN_FILENO */
+        FD_SET(STDIN_FILENO, &rdfs);
 
-		//add client's socket
-		FD_SET(sock, &rdfs);
+        //add client's socket
+        FD_SET(sock, &rdfs);
 
-		if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
-		{
-			perror("select()");
-			exit(errno);
-		}
+        if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
+        {
+            perror("select()");
+            exit(errno);
+        }
 
-		/* something from standard input : i.e keyboard */
-		if(FD_ISSET(STDIN_FILENO, &rdfs))
-		{
-			/* stop process when type on keyboard */
-			// for (i = 0; i < actual; i++) {
-			// 	if (pthread_cancel(tab_service_threads[i]) != 0) {
-			// 		printf("Aucun thread correspond \n");
-			// 	}	
-			// }
-			printf("server shutdown\n");
-			break; 
-		}
-		else if (FD_ISSET(sock, &rdfs)){
-			//New client
-			socklen_t sinsize = sizeof (struct sockaddr_in);
-			tab_client[actual].sfd = accept(sock, (struct sockaddr *)&tab_client[actual].c_addr, &sinsize);
-			if(tab_client[actual].sfd == -1)
-			{
-				perror("accept()");
-				close(sock);
-				exit(errno);
-			}
-			printClientAddr(&tab_client[actual].c_addr);
+        /* something from standard input : i.e keyboard */
+        if(FD_ISSET(STDIN_FILENO, &rdfs))
+        {
+            /* stop process when type on keyboard */
+            // for (i = 0; i < actual; i++) {
+            // 	if (pthread_cancel(tab_service_threads[i]) != 0) {
+            // 		printf("Aucun thread correspond \n");
+            // 	}	
+            // }
+            printf("server shutdown\n");
+            break; 
+        }
+        else if (FD_ISSET(sock, &rdfs)){
+            //New client
+            socklen_t sinsize = sizeof (struct sockaddr_in);
+            tab_client[actual].sfd = accept(sock, (struct sockaddr *)&tab_client[actual].c_addr, &sinsize);
+            if(tab_client[actual].sfd == -1)
+            {
+                perror("accept()");
+                close(sock);
+                exit(errno);
+            }
+            printClientAddr(&tab_client[actual].c_addr);
 
-			tab_client[actual].index = actual;
-			
-			int ret = pthread_create( &tab_service_threads[actual], NULL, &service_thread, (void *) &tab_client[actual]);
-			if (ret) {
-				perror("pthread_create()");
-				endConnection(sock);
-				exit(errno);
-			} else {
-				printf("Creation of listen thread %d\n", actual);
-			}
+            tab_client[actual].index = actual;
 
-			max = tab_client[actual].sfd > max ? tab_client[actual].sfd : max;
-			actual++;
-		}
-	}
+            int ret = pthread_create( &tab_service_threads[actual], NULL, &service_thread, (void *) &tab_client[actual]);
+            if (ret) {
+                perror("pthread_create()");
+                endConnection(sock);
+                exit(errno);
+            } else {
+                printf("Creation of listen thread %d\n", actual);
+            }
 
-	for (i = 0; i < actual; i++) {
-		pthread_join(tab_service_threads[i], NULL);	
-	}
+            max = tab_client[actual].sfd > max ? tab_client[actual].sfd : max;
+            actual++;
+        }
+    }
 
-	endConnection(sock);
+    for (i = 0; i < actual; i++) {
+        pthread_join(tab_service_threads[i], NULL);	
+    }
 
-	return 0;
+    endConnection(sock);
+
+    return 0;
 }
