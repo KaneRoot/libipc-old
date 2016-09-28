@@ -27,6 +27,7 @@ void * pongd_thread(void * pdata) {
                 fprintf(stdout, "MAIN_LOOP: error service_write %d\n", ret);
             }
         }else {
+            printf("------thread shutdown------------\n");
             break;
         }
     }
@@ -65,8 +66,8 @@ void main_loop (const struct service *srv)
         }
 
         srv_process_print (&tab_proc[cnt]);
-        //printf ("after print\n");
-
+        
+        printf ("\n-------New thread created---------\n");
         int ret = pthread_create( &tab_thread[cnt], NULL, &pongd_thread, (void *) &tab_proc[cnt]);
         if (ret) {
             perror("pthread_create()");
