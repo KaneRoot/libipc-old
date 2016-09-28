@@ -80,6 +80,7 @@ void * service_thread(void * c_data) {
     char *service;
     int version;
     int clientSock = cda->sfd;
+    int nbMessages = 0;
 
     if (read_message(clientSock, buffer) == -1) {
         perror("read_message()");
@@ -94,7 +95,7 @@ void * service_thread(void * c_data) {
      */
 
     //path service
-    char * servicePath = malloc (strlen(TMPDIR) + strlen(service) + 1);
+    char servicePath[PATH_MAX];
     memset (servicePath, 0, strlen(TMPDIR) + strlen(service) + 1);
 
     if (servicePath == NULL) {
@@ -104,25 +105,23 @@ void * service_thread(void * c_data) {
     strcat(servicePath, service);
 
     //pid index version
-    char * piv =  (char*) malloc(PATH_MAX);
+    char * piv = malloc(PATH_MAX);
     memset(piv , 0, PATH_MAX);
     if (piv == NULL) {
         perror("malloc()");
     }
     makePivMessage(&piv, getpid(), cda->index, version);
-    printf("piv : %s\n",piv );
 
     //write pid index version in T/I/S of service
     int ret = file_write(servicePath, piv, strlen(piv));
     if(ret == 0) {
         perror("file_write()");
-        free(servicePath);
-        free(piv);
         return NULL;
     }
+    free(piv);
 
     // gets the service path, such as /tmp/ipc/pid-index-version-in/out
-    char *pathname[2];
+    char * pathname[2];
     pathname[0] = (char*) malloc(PATH_MAX);
     memset(pathname[0], 0, PATH_MAX);
     if (pathname[0] == NULL) {
@@ -154,16 +153,15 @@ void * service_thread(void * c_data) {
         return NULL;
     }
 
+
     //utilisation du select() pour surveiller la socket du client et fichier in
     fd_set rdfs;
+
     int max = clientSock > fdin ? clientSock : fdin;
 
-    printf("Waitting for new messages :\n" );
+    printf("Waitting for new messages...\n" );
     while(1) {
         FD_ZERO(&rdfs);
-
-        /* add STDIN_FILENO */
-        FD_SET(STDIN_FILENO, &rdfs);
 
         //add client's socket
         FD_SET(clientSock, &rdfs);
@@ -177,47 +175,41 @@ void * service_thread(void * c_data) {
             exit(errno);
         }
 
-        /* something from standard input : i.e keyboard */
-        if(FD_ISSET(STDIN_FILENO, &rdfs))
-        {
-            /* stop process when type on keyboard */
-            printf("thread %d shutdown\n", cda->index );
-            break; 
-        }else /*if (FD_ISSET(fdin, &rdfs))*/{
-            if (FD_ISSET(clientSock, &rdfs)) {
-                int n = 0;
-                n = read_message(clientSock, buffer);
-                if(n > 0) {
-                    if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
-                        perror("file_write");
-                    }
-                    printf("ok\n");
-                }
+        if (FD_ISSET(fdin, &rdfs)){
+            if(read(fdin, &buffer, BUF_SIZE) < 0) {
+                perror("read()");
+            }
+            printf("message from file in : %s\n", buffer );
+            nbMessages--;
+        } else if (FD_ISSET(clientSock, &rdfs)) {
+            int n = read_message(clientSock, buffer);
+            if(n > 0) {
                 printf("message (%d bytes) : %s\n", n, buffer);
-            }
-
-            if (FD_ISSET(fdin, &rdfs)) {
-
-                if(read(fdin, &buffer, BUF_SIZE) < 0) {
-                    perror("read()");
+                if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
+                    perror("file_write");
                 }
-                printf("message from file in : %s\n", buffer );
+                nbMessages++;
+            } else if (n == 0 && nbMessages == 0){
+                //message end to server
+                if(file_write(pathname[1], "e", 0) < 0) {
+                    perror("file_write");
+                }
+
+                //free
+                free(pathname[0]);
+                free(pathname[1]);
+
+                //close the files descriptors
+                close(fdin);
+                close(clientSock);
+
+                printf("------thread %d shutdown----------\n\n", cda->index );
+
+                break;
             }
+            
         }
-        memset (buffer, 0, BUF_SIZE);
     }
-
-    //free
-    free(servicePath);
-    free(piv);
-    free(service);
-    free(pathname[0]);
-    free(pathname[1]);
-
-
-    //close the files descriptors
-    close(fdin);
-    close(clientSock);
 
     return NULL;
 }
@@ -353,7 +345,7 @@ int main(int argc, char * argv[], char **env) {
         /* add STDIN_FILENO */
         FD_SET(STDIN_FILENO, &rdfs);
 
-        //add client's socket
+        //add listener's socket
         FD_SET(sock, &rdfs);
 
         if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
@@ -394,7 +386,7 @@ int main(int argc, char * argv[], char **env) {
                 endConnection(sock);
                 exit(errno);
             } else {
-                printf("Creation of listen thread %d\n", actual);
+                printf("\n----------Creation of listen thread %d ------------\n", actual);
             }
 
             max = tab_client[actual].sfd > max ? tab_client[actual].sfd : max;
