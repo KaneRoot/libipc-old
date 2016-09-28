@@ -24,8 +24,8 @@ int file_write (const char *path, const char *buf, size_t msize)
     int ret = 0;
     int ret2 = 0;
     ret = write (fd, buf, msize);
-    if (ret <= 0) {
-        fprintf (stderr, "err: written %s\n", path);
+    if (ret < 0) {
+        fprintf (stderr, "err: written %s   buf = %s\n", path, buf);
     }
 
     ret2 = close (fd);
