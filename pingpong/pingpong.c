@@ -28,6 +28,7 @@ void * pongd_thread(void * pdata) {
             }
         }else {
             printf("------thread shutdown------------\n");
+            free(buf);
             break;
         }
     }
