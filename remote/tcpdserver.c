@@ -270,64 +270,17 @@ int fifo_create (char * path)
 }
 
 void inOutPathCreate(char ** pathname, int index, int version) {
-    int length = snprintf( NULL, 0, "%d", version );
-    char* versionStr = malloc( length + 2 );
-    snprintf( versionStr, length + 1, "%d", version );
-
-    int length2 = snprintf( NULL, 0, "%d", getpid() );
-    char * pidprocess = malloc( length2 + 1 );
-    snprintf( pidprocess, length2 + 1, "%d", getpid() );
-
-    int length3 = snprintf( NULL, 0, "%d", index );
-    char* indexStr = malloc( length3 + 1 );
-    snprintf( indexStr, length3 + 1, "%d", index );	
-
-    strcat(pathname[0], TMPDIR);
-    strcat(pathname[0], pidprocess);
-    strcat(pathname[0], "-");
-    strcat(pathname[0], indexStr);
-    strcat(pathname[0], "-");
-    strcat(pathname[0], versionStr);
-    strcat(pathname[0], "-in");
-
-    strcat(pathname[1], TMPDIR);
-    strcat(pathname[1], pidprocess);
-    strcat(pathname[1], "-");
-    strcat(pathname[1], indexStr);
-    strcat(pathname[1], "-");
-    strcat(pathname[1], versionStr);
-    strcat(pathname[1], "-out");
-
-    free(pidprocess);
-    free(indexStr);
-    free(versionStr);
+    snprintf(pathname[0] , PATH_MAX, "%s%d-%d-%d-in" , TMPDIR, getpid(), index, version);
+    snprintf(pathname[1] , PATH_MAX, "%s%d-%d-%d-out", TMPDIR, getpid(), index, version);
 }
 
 void makePivMessage (char ** piv, int pid, int index, int version) {
-    int length1 = snprintf( NULL, 0, "%d", getpid() );
-    char * pidprocess = malloc( length1 + 1 );
-    snprintf( pidprocess, length1 + 1, "%d", getpid() );
 
-    int length2 = snprintf( NULL, 0, "%d", index );
-    char* indexStr = malloc( length2 + 1 );
-    snprintf( indexStr, length2 + 1, "%d", index );	
+    snprintf(*piv , PATH_MAX, "%d %d %d" , getpid(), index, version);
 
-    int length3 = snprintf( NULL, 0, "%d", version );
-    char* versionStr = malloc( length3 + 2 );
-    snprintf( versionStr, length3 + 1, "%d", version );
-
-    strcat(*piv, pidprocess);
-    strcat(*piv, " ");
-    strcat(*piv, indexStr);
-    strcat(*piv, " ");
-    strcat(*piv, versionStr);
-
-    free(pidprocess);
-    free(indexStr);
-    free(versionStr);
 }
 
-int main(int argc, char * argv[], char **env) {
+void * server() {
     //client 
     client_data tab_client[NBCLIENT];
     pthread_t tab_service_threads[NBCLIENT];
@@ -359,9 +312,9 @@ int main(int argc, char * argv[], char **env) {
         {
             /* stop process when type on keyboard */
             // for (i = 0; i < actual; i++) {
-            // 	if (pthread_cancel(tab_service_threads[i]) != 0) {
-            // 		printf("Aucun thread correspond \n");
-            // 	}	
+            //  if (pthread_cancel(tab_service_threads[i]) != 0) {
+            //      printf("Aucun thread correspond \n");
+            //  }   
             // }
             printf("server shutdown\n");
             break; 
@@ -395,7 +348,108 @@ int main(int argc, char * argv[], char **env) {
     }
 
     for (i = 0; i < actual; i++) {
-        pthread_join(tab_service_threads[i], NULL);	
+        pthread_join(tab_service_threads[i], NULL); 
+    }
+
+    endConnection(sock);
+
+    return NULL;
+}
+
+/*void main_loop() {
+    struct service srv;
+    srv_init (argc, argv, env, &srv, PONGD_SERVICE_NAME, NULL);
+    printf ("Listening on %s.\n", srv.spath);
+
+    // creates the service named pipe, that listens to client applications
+    int ret;
+    if ((ret = srv_create (&srv))) {
+        fprintf(stdout, "error service_create %d\n", ret);
+        exit (1);
+    }
+    printf("MAIN: server created\n" );
+
+    // the service will loop until the end of time, a specific message, a signal
+    main_loop (&srv);
+
+    // the application will shut down, and remove the service named pipe
+    if ((ret = srv_close (&srv))) {
+        fprintf(stdout, "error service_close %d\n", ret);
+        exit (1);
+    }
+
+    return EXIT_SUCCESS;
+}*/
+
+int main(int argc, char * argv[], char **env) {
+    //client 
+    client_data tab_client[NBCLIENT];
+    pthread_t tab_service_threads[NBCLIENT];
+    int actual = 0;
+    int i;
+
+    int sock = init_connection();
+    fd_set rdfs;
+    int max = sock;
+
+    printf("Waitting for new clients :\n" );
+    while(1) {
+        FD_ZERO(&rdfs);
+
+        /* add STDIN_FILENO */
+        FD_SET(STDIN_FILENO, &rdfs);
+
+        //add listener's socket
+        FD_SET(sock, &rdfs);
+
+        if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
+        {
+            perror("select()");
+            exit(errno);
+        }
+
+        /* something from standard input : i.e keyboard */
+        if(FD_ISSET(STDIN_FILENO, &rdfs))
+        {
+            /* stop process when type on keyboard */
+            // for (i = 0; i < actual; i++) {
+            //  if (pthread_cancel(tab_service_threads[i]) != 0) {
+            //      printf("Aucun thread correspond \n");
+            //  }   
+            // }
+            printf("server shutdown\n");
+            break; 
+        }
+        else if (FD_ISSET(sock, &rdfs)){
+            //New client
+            socklen_t sinsize = sizeof (struct sockaddr_in);
+            tab_client[actual].sfd = accept(sock, (struct sockaddr *)&tab_client[actual].c_addr, &sinsize);
+            if(tab_client[actual].sfd == -1)
+            {
+                perror("accept()");
+                close(sock);
+                exit(errno);
+            }
+            printClientAddr(&tab_client[actual].c_addr);
+
+            tab_client[actual].index = actual;
+
+            int ret = pthread_create( &tab_service_threads[actual], NULL, &service_thread, (void *) &tab_client[actual]);
+            if (ret) {
+                perror("pthread_create()");
+                endConnection(sock);
+                exit(errno);
+            } else {
+                printf("\n----------Creation of listen thread %d ------------\n", actual);
+            }
+
+            max = tab_client[actual].sfd > max ? tab_client[actual].sfd : max;
+            actual++;
+        }
+    }
+
+    for (i = 0; i < actual; i++) {
+        pthread_join(tab_service_threads[i], NULL); 
     }
 
     endConnection(sock);
