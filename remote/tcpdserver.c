@@ -1,5 +1,4 @@
 #include "tcpdserver.h"
-#include "../lib/communication.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -18,11 +17,12 @@
 #define BUF_SIZE 1024
 #define TMPDIR "/tmp/ipc/"
 #define NBCLIENT 5
+#define SERVICE_TCP "tmp/ipc/tcpd"
 
-int init_connection(void)
+int init_connection(const info_request *req)
 {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in sin = { 0 };
+    //struct sockaddr_in sin = { 0 };
 
     if(sock == -1)
     {
@@ -30,11 +30,11 @@ int init_connection(void)
         exit(errno);
     }
 
-    sin.sin_addr.s_addr = htonl(INADDR_ANY);
+    /*sin.sin_addr.s_addr = htonl(INADDR_ANY);
     sin.sin_port = htons(PORT);
-    sin.sin_family = AF_INET;
+    sin.sin_family = AF_INET;*/
 
-    if(bind(sock,(struct sockaddr *) &sin, sizeof sin) == -1)
+    if(bind(sock,(struct sockaddr *) &req->addr, sizeof(req->addr)) == -1)
     {
         perror("bind()");
         exit(errno);
@@ -96,13 +96,11 @@ void * service_thread(void * c_data) {
 
     //path service
     char servicePath[PATH_MAX];
-    memset (servicePath, 0, strlen(TMPDIR) + strlen(service) + 1);
-
+    memset (servicePath, 0, PATH_MAX);
     if (servicePath == NULL) {
         perror("malloc()");
     }
-    strcat(servicePath, TMPDIR);
-    strcat(servicePath, service);
+    snprintf(servicePath , PATH_MAX, "%s%s" , TMPDIR, service);
 
     //pid index version
     char * piv = malloc(PATH_MAX);
@@ -182,6 +180,7 @@ void * service_thread(void * c_data) {
             printf("message from file in : %s\n", buffer );
             nbMessages--;
         } else if (FD_ISSET(clientSock, &rdfs)) {
+
             int n = read_message(clientSock, buffer);
             if(n > 0) {
                 printf("message (%d bytes) : %s\n", n, buffer);
@@ -280,16 +279,17 @@ void makePivMessage (char ** piv, int pid, int index, int version) {
 
 }
 
-void * server() {
+void * server_thread(void * reqq) {
+    info_request *req = (info_request*) reqq;
+
     //client 
     client_data tab_client[NBCLIENT];
     pthread_t tab_service_threads[NBCLIENT];
     int actual = 0;
     int i;
 
-    int sock = init_connection();
+    int sock = init_connection(req);
     fd_set rdfs;
-    int max = sock;
 
     printf("Waitting for new clients :\n" );
     while(1) {
@@ -301,7 +301,7 @@ void * server() {
         //add listener's socket
         FD_SET(sock, &rdfs);
 
-        if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
+        if(select(sock + 1, &rdfs, NULL, NULL, NULL) == -1)
         {
             perror("select()");
             exit(errno);
@@ -342,7 +342,6 @@ void * server() {
                 printf("\n----------Creation of listen thread %d ------------\n", actual);
             }
 
-            max = tab_client[actual].sfd > max ? tab_client[actual].sfd : max;
             actual++;
         }
     }
@@ -356,9 +355,87 @@ void * server() {
     return NULL;
 }
 
-/*void main_loop() {
+/*
+*   user cans send 2 types of request to server : listen or connect
+*   listen = server for a service such as pongd
+*   connect = connect to a server
+*/
+int srv_get_new_request(const struct service *srv, info_request *req) {
+    if (srv->spath == NULL) {
+        return -1;
+    }
+
+    char *buf = NULL;
+    size_t msize = 0;    
+    int ret = file_read (srv->spath, &buf, &msize);
+    if (ret <= 0) {
+        fprintf (stderr, "err: listening on %s\n", srv->spath);
+        return -1;
+    }
+
+    char *token = NULL, *saveptr = NULL;
+    char *str = NULL;
+    int i = 0;
+
+    for (str = buf, i = 1; ; str = NULL, i++) {
+        token = strtok_r(str, " ", &saveptr);
+        if (token == NULL)
+            break;
+
+        if (i == 1) {
+            req->request = token;
+        }else if (i == 2){ 
+            req->addr.sin_addr.s_addr = inet_addr(token);
+        }
+        else if (i == 3) {
+            req->addr.sin_port = htons(strtoul(token, NULL, 10));
+        }
+    }
+
+    req->addr.sin_family = AF_INET;
+
+    if (buf != NULL)
+        free (buf);
+
+    return 1;
+}
+
+void request_print (const info_request *req) {
+    printf("%s\n",req->request);
+}
+
+void main_loop (const struct service *srv) {
+    //request
+    info_request req;
+    int ret;
+    pthread_t pid;
+
+    while(1) {
+        ret = srv_get_new_request(srv, &req);
+        if (ret == -1) {
+            perror("srv_get_new_request()");
+            exit(1);
+        }
+
+        request_print(&req);
+
+        if (strcmp("listen", req.request) == 0) {
+            int ret = pthread_create( &pid, NULL, &server_thread, (void *) &req);
+            if (ret) {
+                perror("pthread_create()");
+                exit(errno);
+            } else {
+                printf("\n----------Creation of server thread ------------\n");
+            }
+        }else {
+            printf("connect\n" );
+        }
+    }
+}
+
+int main(int argc, char * argv[], char **env) {
     struct service srv;
-    srv_init (argc, argv, env, &srv, PONGD_SERVICE_NAME, NULL);
+    srv_init (argc, argv, env, &srv, SERVICE_TCP, NULL);
     printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications
@@ -377,82 +454,6 @@ void * server() {
         fprintf(stdout, "error service_close %d\n", ret);
         exit (1);
     }
-
-    return EXIT_SUCCESS;
-}*/
-
-int main(int argc, char * argv[], char **env) {
-    //client 
-    client_data tab_client[NBCLIENT];
-    pthread_t tab_service_threads[NBCLIENT];
-    int actual = 0;
-    int i;
-
-    int sock = init_connection();
-    fd_set rdfs;
-    int max = sock;
-
-    printf("Waitting for new clients :\n" );
-    while(1) {
-        FD_ZERO(&rdfs);
-
-        /* add STDIN_FILENO */
-        FD_SET(STDIN_FILENO, &rdfs);
-
-        //add listener's socket
-        FD_SET(sock, &rdfs);
-
-        if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
-        {
-            perror("select()");
-            exit(errno);
-        }
-
-        /* something from standard input : i.e keyboard */
-        if(FD_ISSET(STDIN_FILENO, &rdfs))
-        {
-            /* stop process when type on keyboard */
-            // for (i = 0; i < actual; i++) {
-            //  if (pthread_cancel(tab_service_threads[i]) != 0) {
-            //      printf("Aucun thread correspond \n");
-            //  }   
-            // }
-            printf("server shutdown\n");
-            break; 
-        }
-        else if (FD_ISSET(sock, &rdfs)){
-            //New client
-            socklen_t sinsize = sizeof (struct sockaddr_in);
-            tab_client[actual].sfd = accept(sock, (struct sockaddr *)&tab_client[actual].c_addr, &sinsize);
-            if(tab_client[actual].sfd == -1)
-            {
-                perror("accept()");
-                close(sock);
-                exit(errno);
-            }
-            printClientAddr(&tab_client[actual].c_addr);
-
-            tab_client[actual].index = actual;
-
-            int ret = pthread_create( &tab_service_threads[actual], NULL, &service_thread, (void *) &tab_client[actual]);
-            if (ret) {
-                perror("pthread_create()");
-                endConnection(sock);
-                exit(errno);
-            } else {
-                printf("\n----------Creation of listen thread %d ------------\n", actual);
-            }
-
-            max = tab_client[actual].sfd > max ? tab_client[actual].sfd : max;
-            actual++;
-        }
-    }
-
-    for (i = 0; i < actual; i++) {
-        pthread_join(tab_service_threads[i], NULL); 
-    }
-
-    endConnection(sock);
 
     return 0;
 }

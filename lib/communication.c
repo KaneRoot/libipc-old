@@ -6,7 +6,7 @@
 int file_write (const char *path, const char *buf, size_t msize)
 {
     if (buf == NULL) {
-        fprintf (stderr, "file_write: buf == NULL\n");
+        fprintf (stderr, "file_write: buf == NULL  path : %s\n", path);
         return -1;
     }
 

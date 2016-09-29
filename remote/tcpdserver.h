@@ -6,13 +6,21 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "../lib/communication.h"
+
 typedef struct {
 	struct 	sockaddr_in c_addr;
 	int sfd;
 	int index;
 } client_data;
 
-int initConnection ();
+//informations for server to listen at a address
+typedef struct {
+	struct 	sockaddr_in addr;
+	char * request;
+} info_request;
+
+int initConnection (const info_request *req);
 void endConnection (int sock);
 
 void printClientAddr (struct sockaddr_in *csin);
@@ -34,6 +42,14 @@ int fifo_create (char * path);
 
 //create first message for a service : pid index version
 void makePivMessage(char ** piv, int pid, int index, int version);
+
+void * server_thread(void *reqq);
+
+int srv_get_new_request(const struct service *srv, info_request *req);
+
+void request_print (const info_request *req);
+
+void main_loop(const struct service *srv);
 
 
 #endif
