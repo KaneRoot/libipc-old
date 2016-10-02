@@ -14,7 +14,7 @@ int file_write (const char *path, const char *buf, size_t msize)
     // printf("file_write: path to open %s\n", path);
     int fd = open (path, O_WRONLY);
     if (fd <= 0) {
-        printf("file_write: fd < 0\n");
+        printf("file_write: fd < 0  path : %s\n", path);
         perror ("file_write");
         return ER_FILE_OPEN;
     }
