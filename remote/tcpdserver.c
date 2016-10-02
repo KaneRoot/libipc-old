@@ -17,10 +17,11 @@
 #define BUF_SIZE 1024
 #define TMPDIR "/tmp/ipc/"
 #define NBCLIENT 5
-#define SERVICE_TCP "tmp/ipc/tcpd"
+#define SERVICE_TCP "tcpd"
 
 int init_connection(const info_request *req)
 {
+    int yes = 1;
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     //struct sockaddr_in sin = { 0 };
 
@@ -30,9 +31,13 @@ int init_connection(const info_request *req)
         exit(errno);
     }
 
-    /*sin.sin_addr.s_addr = htonl(INADDR_ANY);
-    sin.sin_port = htons(PORT);
-    sin.sin_family = AF_INET;*/
+    /*"address already in use" error message */
+    if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
+    {
+        perror("Server-setsockopt() error lol!");
+        exit(1);
+    }
+    printf("Server-setsockopt() is OK...\n");
 
     if(bind(sock,(struct sockaddr *) &req->addr, sizeof(req->addr)) == -1)
     {
@@ -67,8 +72,7 @@ void endConnection(int sock) {
     close(sock);
 }
 
-void printClientAddr(struct sockaddr_in *csin) {
-    printf("New client\n");
+void printAddr(struct sockaddr_in *csin) {
     printf("IP Addr : %s\n", inet_ntoa(csin->sin_addr));
     printf("Port : %u\n", ntohs(csin->sin_port));
 }
@@ -178,12 +182,13 @@ void * service_thread(void * c_data) {
                 perror("read()");
             }
             printf("message from file in : %s\n", buffer );
+            write_message(clientSock, buffer);
             nbMessages--;
         } else if (FD_ISSET(clientSock, &rdfs)) {
 
             int n = read_message(clientSock, buffer);
             if(n > 0) {
-                printf("message (%d bytes) : %s\n", n, buffer);
+                printf("Server : message (%d bytes) : %s\n", n, buffer);
                 if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
                     perror("file_write");
                 }
@@ -311,11 +316,11 @@ void * server_thread(void * reqq) {
         if(FD_ISSET(STDIN_FILENO, &rdfs))
         {
             /* stop process when type on keyboard */
-            // for (i = 0; i < actual; i++) {
-            //  if (pthread_cancel(tab_service_threads[i]) != 0) {
-            //      printf("Aucun thread correspond \n");
-            //  }   
-            // }
+            for (i = 0; i < actual; i++) {
+                if (pthread_cancel(tab_service_threads[i]) != 0) {
+                    printf("Aucun thread correspond \n");
+                }   
+            }
             printf("server shutdown\n");
             break; 
         }
@@ -329,7 +334,9 @@ void * server_thread(void * reqq) {
                 close(sock);
                 exit(errno);
             }
-            printClientAddr(&tab_client[actual].c_addr);
+
+            printf("New client :\n");
+            printAddr(&tab_client[actual].c_addr);
 
             tab_client[actual].index = actual;
 
@@ -377,50 +384,171 @@ int srv_get_new_request(const struct service *srv, info_request *req) {
     char *str = NULL;
     int i = 0;
 
+    //for a "connect" request
+    pid_t pid = 0;
+    int index = 0;
+    int version = 0;
+
     for (str = buf, i = 1; ; str = NULL, i++) {
         token = strtok_r(str, " ", &saveptr);
         if (token == NULL)
             break;
 
         if (i == 1) {
+            if(strncmp("exit", token, 4) == 0 ) {
+                free(str);
+                return 0;
+            }
             req->request = token;
-        }else if (i == 2){ 
+        }
+        else if (i == 2){ 
             req->addr.sin_addr.s_addr = inet_addr(token);
         }
         else if (i == 3) {
             req->addr.sin_port = htons(strtoul(token, NULL, 10));
         }
+        else if (i == 4 && (strcmp("connect", req->request)) == 0){
+            pid = strtoul(token, NULL, 10);
+        }
+        else if (i == 5 && (strcmp("connect", req->request)) == 0) {
+            index = strtoul(token, NULL, 10);
+        }
+        else if (i == 6 && (strcmp("connect", req->request)) == 0) {
+            version = strtoul(token, NULL, 10);
+        }
+        
     }
 
     req->addr.sin_family = AF_INET;
 
+    if (strcmp("connect", req->request) == 0) {
+        srv_process_gen (req->p, pid, index, version);
+    }
+
     if (buf != NULL)
-        free (buf);
+        free(buf);
+    buf = NULL;
+    msize = 0;
 
     return 1;
 }
 
+void * client_thread(void *reqq) {
+    info_request *req = (info_request*) reqq;
+    char buffer[BUF_SIZE];
+
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if(sock == -1)
+    {
+        perror("socket()");
+        exit(errno);
+    }
+
+    if(connect(sock,(struct sockaddr *) &req->addr, sizeof(struct sockaddr)) == -1)
+    {
+        perror("connect()");
+        exit(errno);
+    }
+
+    printf("Connected to server at :\n");
+    printAddr(&req->addr);
+
+    write_message(sock, "pongd 5");
+    /*sleep(1);
+    write_message(sock, "is it working ???");
+    sleep(2);
+    write_message(sock, "is it working ???");*/
+
+    //open -out fifo file of client
+    int fdout = open (req->p->path_out, O_RDWR);
+    if (fdout <= 0) {
+        printf("open: fd < 0\n");
+        perror ("open()");
+        return NULL;
+    }
+
+    //utilisation du select() pour surveiller la socket du server et fichier out du client
+    fd_set rdfs;
+
+    int max = sock > fdout ? sock : fdout;
+
+    while(1) {
+        FD_ZERO(&rdfs);
+
+        //add client's socket
+        FD_SET(sock, &rdfs);
+
+        //add in file
+        FD_SET(fdout, &rdfs);
+
+        if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
+        {
+            perror("select()");
+            exit(errno);
+        }
+
+        if (FD_ISSET(fdout, &rdfs)){
+            if(read(fdout, &buffer, BUF_SIZE) < 0) {
+                perror("read()");
+            }
+            write_message(sock, buffer);
+
+        } else if (FD_ISSET(sock, &rdfs)) {
+
+            int n = read_message(sock, buffer);
+            if(n > 0) {
+                printf("Client : message (%d bytes) : %s\n", n, buffer);
+                if(file_write(req->p->path_in, buffer, strlen(buffer)) < 0) {
+                    perror("file_write");
+                }
+
+            } else if (n == 0){
+                //message end from server
+                printf("server down\n");
+
+                //close the files descriptors
+                close(fdout);
+                close(sock);
+
+                printf("------thread client shutdown----------\n");
+
+                break;
+            }
+            
+        }
+    }
+    close(sock);
+
+    return NULL;
+
+}
+
 void request_print (const info_request *req) {
-    printf("%s\n",req->request);
+    printf("%s \n",req->request);
 }
 
 void main_loop (const struct service *srv) {
     //request
     info_request req;
+    req.p = malloc(sizeof(struct process));
     int ret;
-    pthread_t pid;
+    pthread_t pidS;
+    pthread_t pidC;
 
     while(1) {
         ret = srv_get_new_request(srv, &req);
         if (ret == -1) {
             perror("srv_get_new_request()");
             exit(1);
+        } else if (ret == 0) {
+            free(req.p);
+            break;
         }
 
         request_print(&req);
 
         if (strcmp("listen", req.request) == 0) {
-            int ret = pthread_create( &pid, NULL, &server_thread, (void *) &req);
+            int ret = pthread_create( &pidS, NULL, &server_thread, (void *) &req);
             if (ret) {
                 perror("pthread_create()");
                 exit(errno);
@@ -428,7 +556,13 @@ void main_loop (const struct service *srv) {
                 printf("\n----------Creation of server thread ------------\n");
             }
         }else {
-            printf("connect\n" );
+            int ret = pthread_create( &pidC, NULL, &client_thread, (void *) &req);
+            if (ret) {
+                perror("pthread_create()");
+                exit(errno);
+            } else {
+                printf("\n----------Creation of client thread ------------\n");
+            }
         }
     }
 }

@@ -18,12 +18,13 @@ typedef struct {
 typedef struct {
 	struct 	sockaddr_in addr;
 	char * request;
+	struct process *p;
 } info_request;
 
 int initConnection (const info_request *req);
 void endConnection (int sock);
 
-void printClientAddr (struct sockaddr_in *csin);
+void printAddr (struct sockaddr_in *csin);
 
 void write_message(int sock, const char *buffer);
 int read_message(int sock, char *buffer);
@@ -44,6 +45,8 @@ int fifo_create (char * path);
 void makePivMessage(char ** piv, int pid, int index, int version);
 
 void * server_thread(void *reqq);
+
+void * client_thread(void *reqq);
 
 int srv_get_new_request(const struct service *srv, info_request *req);
 
