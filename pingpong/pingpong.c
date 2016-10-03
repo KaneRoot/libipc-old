@@ -9,19 +9,21 @@ void * pongd_thread(void * pdata) {
     struct process *proc = (struct process*) pdata;
 
     // about the message
-    size_t msize = BUFSIZ;
+    size_t msize = 0;
     char *buf = NULL;
-    int ret;
+    int ret = 0;
 
     while (1) {
         // printf ("before read\n");
-        if ((ret = srv_read (proc, &buf, &msize)) == -1) {
-            fprintf(stdout, "MAIN_LOOP: error service_read %d\n", ret);
+        while (ret <= 0 || msize == 0) {
+            if ((ret = srv_read (proc, &buf, &msize)) == -1) {
+                fprintf(stdout, "MAIN_LOOP: error service_read %d\n", ret);
+            }
         }
         // printf ("after read\n");
         printf ("read, size %ld : %s\n", msize, buf);
 
-        if(msize > 0) {
+        if (strncmp ("exit", buf, 4) != 0) {
             //printf ("before proc write\n");
             if ((ret = srv_write (proc, buf, msize)) == -1) {
                 fprintf(stdout, "MAIN_LOOP: error service_write %d\n", ret);
@@ -31,6 +33,8 @@ void * pongd_thread(void * pdata) {
             free(buf);
             break;
         }
+        ret = 0;
+        msize = 0;
     }
 
     return NULL;

@@ -2,7 +2,7 @@
 
 REP=/tmp/ipc/
 SERVICE="tcpd"
-NB=5
+NB=3
 
 if [ $# -ne 0 ]
 then
@@ -16,7 +16,6 @@ do
     mkfifo ${REP}${pid}-1-1-in 2>/dev/null
     mkfifo ${REP}${pid}-1-1-out 2>/dev/null
 
-    # pid index version
     echo "connect 127.0.0.1 6000 ${pid} 1 1" > ${REP}${SERVICE}
 
     # the purpose is to send something in the pipe

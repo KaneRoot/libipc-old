@@ -6,7 +6,7 @@
 int file_write (const char *path, const char *buf, size_t msize)
 {
     if (buf == NULL) {
-        fprintf (stderr, "file_write: buf == NULL  path : %s\n", path);
+        fprintf (stderr, "file_write: buf == NULL\n");
         return -1;
     }
 
@@ -14,18 +14,17 @@ int file_write (const char *path, const char *buf, size_t msize)
     // printf("file_write: path to open %s\n", path);
     int fd = open (path, O_WRONLY);
     if (fd <= 0) {
-        printf("file_write: fd < 0  path : %s\n", path);
+        printf("file_write: fd < 0\n");
         perror ("file_write");
         return ER_FILE_OPEN;
     }
-    // TODO debug
-    // printf("file_write: opened file %s\n", path);
-    
+
     int ret = 0;
     int ret2 = 0;
+    printf ("%ld bytes to write\n", msize);
     ret = write (fd, buf, msize);
-    if (ret < 0) {
-        fprintf (stderr, "err: written %s   buf = %s\n", path, buf);
+    if (ret <= 0) {
+        fprintf (stderr, "err: written %s\n", path);
     }
 
     ret2 = close (fd);
@@ -59,7 +58,6 @@ int file_read (const char *path, char **buf, size_t *msize)
     int ret = 0;
     int ret2 = 0;
     ret = read (fd, *buf, BUFSIZ);
-
     if (ret < 0) {
         fprintf (stderr, "err: read %s\n", path);
     }
@@ -161,9 +159,8 @@ int srv_get_new_process (const struct service *srv, struct process *p)
     }
 
     char *buf = NULL;
-    size_t msize = 0;    
+    size_t msize = 0;
     int ret = file_read (srv->spath, &buf, &msize);
-
     if (ret <= 0) {
         fprintf (stderr, "err: listening on %s\n", srv->spath);
         exit (1);

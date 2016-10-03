@@ -195,7 +195,7 @@ void * service_thread(void * c_data) {
                 nbMessages++;
             } else if (n == 0 && nbMessages == 0){
                 //message end to server
-                if(file_write(pathname[1], "e", 0) < 0) {
+                if(file_write(pathname[1], "exit", 4) < 0) {
                     perror("file_write");
                 }
 
