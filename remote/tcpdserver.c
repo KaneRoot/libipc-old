@@ -65,7 +65,7 @@ void write_message(int sock, const char *buffer)
 
 int read_message(int sock, char *buffer)
 {
-    return recv(sock, buffer, BUF_SIZE - 1, 0);
+    return read(sock, buffer, BUF_SIZE);
 }
 
 void endConnection(int sock) {
@@ -80,11 +80,17 @@ void printAddr(struct sockaddr_in *csin) {
 
 void * service_thread(void * c_data) {
     client_data *cda = (client_data*) c_data;
-    char buffer[BUF_SIZE];
     char *service;
     int version;
     int clientSock = cda->sfd;
     int nbMessages = 0;
+
+    char *buffer = malloc (BUF_SIZE);
+    if (buffer == NULL) {
+        perror("malloc()");
+        return NULL;
+    }
+    memset(buffer, 0, BUF_SIZE);
 
     if (read_message(clientSock, buffer) == -1) {
         perror("read_message()");
@@ -92,6 +98,8 @@ void * service_thread(void * c_data) {
     }else {
         parseServiceVersion(buffer, &service, &version);
     }
+    printf("%s\n",buffer );
+    printf("%s %d\n",service, version );
 
     /* TODO : service correspond au service que le client veut utiliser 
      ** il faut comparer service à un tableau qui contient les services 
@@ -99,12 +107,12 @@ void * service_thread(void * c_data) {
      */
 
     //path service
-    char servicePath[PATH_MAX];
+    /*char servicePath[PATH_MAX];
     memset (servicePath, 0, PATH_MAX);
     if (servicePath == NULL) {
         perror("malloc()");
     }
-    snprintf(servicePath , PATH_MAX, "%s%s" , TMPDIR, service);
+    snprintf(servicePath , PATH_MAX, "%s%s" , TMPDIR, service);*/
 
     //pid index version
     char * piv = malloc(PATH_MAX);
@@ -114,16 +122,21 @@ void * service_thread(void * c_data) {
     }
     makePivMessage(&piv, getpid(), cda->index, version);
 
+    struct service srv;
+    srv_init (0, NULL, NULL, &srv, service, NULL);
+    app_srv_connection(&srv, piv, strlen(piv));
+    free(piv);
+
     //write pid index version in T/I/S of service
-    int ret = file_write(servicePath, piv, strlen(piv));
+    /*int ret = file_write(servicePath, piv, strlen(piv));
     if(ret == 0) {
         perror("file_write()");
         return NULL;
     }
-    free(piv);
+    free(piv);*/
 
     // gets the service path, such as /tmp/ipc/pid-index-version-in/out
-    char * pathname[2];
+    /*char * pathname[2];
     pathname[0] = (char*) malloc(PATH_MAX);
     memset(pathname[0], 0, PATH_MAX);
     if (pathname[0] == NULL) {
@@ -134,10 +147,14 @@ void * service_thread(void * c_data) {
     if (pathname[1] == NULL) {
         perror("malloc()");
     }
-    inOutPathCreate(pathname, cda->index, version);
+    inOutPathCreate(pathname, cda->index, version);*/
+
+    struct process p;
+    app_create(&p, getpid(), cda->index, version);
+    srv_process_print(&p);
 
     //create in out files
-    if(fifo_create(pathname[0]) != 0) {
+    /*if(fifo_create(pathname[0]) != 0) {
         perror("fifo_create()");
         return NULL;
     }
@@ -145,16 +162,18 @@ void * service_thread(void * c_data) {
     if(fifo_create(pathname[1]) != 0) {
         perror("fifo_create()");
         return NULL;
-    }
+    }*/
 
     //open -in fifo file
-    int fdin = open (pathname[0], O_RDWR);
+    int fdin = open (p.path_in, O_RDWR);
     if (fdin <= 0) {
         printf("open: fd < 0\n");
         perror ("open()");
         return NULL;
     }
 
+    //char *buf = NULL;
+    size_t msize;
 
     //utilisation du select() pour surveiller la socket du client et fichier in
     fd_set rdfs;
@@ -178,8 +197,8 @@ void * service_thread(void * c_data) {
         }
 
         if (FD_ISSET(fdin, &rdfs)){
-            if(read(fdin, &buffer, BUF_SIZE) < 0) {
-                perror("read()");
+            if(app_read(&p, &buffer, &msize) < 0) {
+                perror("app_read()");
             }
             printf("message from file in : %s\n", buffer );
             write_message(clientSock, buffer);
@@ -189,19 +208,15 @@ void * service_thread(void * c_data) {
             int n = read_message(clientSock, buffer);
             if(n > 0) {
                 printf("Server : message (%d bytes) : %s\n", n, buffer);
-                if(file_write(pathname[1], buffer, strlen(buffer)) < 0) {
+                if(app_write(&p, buffer, strlen(buffer)) < 0) {
                     perror("file_write");
                 }
                 nbMessages++;
             } else if (n == 0 && nbMessages == 0){
                 //message end to server
-                if(file_write(pathname[1], "exit", 4) < 0) {
+                if(app_write(&p, "exit", 4) < 0) {
                     perror("file_write");
                 }
-
-                //free
-                free(pathname[0]);
-                free(pathname[1]);
 
                 //close the files descriptors
                 close(fdin);
@@ -493,6 +508,8 @@ void * client_thread(void *reqq) {
             }
             write_message(sock, buffer);
 
+
+
         } else if (FD_ISSET(sock, &rdfs)) {
 
             int n = read_message(sock, buffer);
@@ -517,6 +534,9 @@ void * client_thread(void *reqq) {
             
         }
     }
+
+    printf("------thread client shutdown----------\n");
+
     close(sock);
 
     return NULL;

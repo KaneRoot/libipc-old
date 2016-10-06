@@ -2,7 +2,7 @@
 
 REP=/tmp/ipc/
 SERVICE="tcpd"
-NB=3
+NB=10
 
 if [ $# -ne 0 ]
 then
