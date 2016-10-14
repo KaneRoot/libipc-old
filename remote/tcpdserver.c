@@ -16,7 +16,7 @@
 #define PORT 6000
 #define BUF_SIZE 1024
 #define TMPDIR "/tmp/ipc/"
-#define NBCLIENT 5
+#define NBCLIENT 10
 #define SERVICE_TCP "tcpd"
 
 int init_connection(const info_request *req)
@@ -45,7 +45,7 @@ int init_connection(const info_request *req)
         exit(errno);
     }
 
-    if(listen(sock, 5) == -1)
+    if(listen(sock, 10) == -1)
     {
         perror("listen()");
         exit(errno);
@@ -54,9 +54,9 @@ int init_connection(const info_request *req)
     return sock;
 }
 
-void write_message(int sock, const char *buffer)
+void write_message(int sock, const char *buffer, size_t size_buf)
 {
-    if(send(sock, buffer, strlen(buffer), 0) < 0)
+    if(send(sock, buffer, size_buf, 0) < 0)
     {
         perror("send()");
         exit(errno);
@@ -201,7 +201,7 @@ void * service_thread(void * c_data) {
                 perror("app_read()");
             }
             printf("message from file in : %s\n", buffer );
-            write_message(clientSock, buffer);
+            write_message(clientSock, buffer, msize);
             nbMessages--;
         } else if (FD_ISSET(clientSock, &rdfs)) {
 
@@ -212,7 +212,7 @@ void * service_thread(void * c_data) {
                     perror("file_write");
                 }
                 nbMessages++;
-            } else if (n == 0 && nbMessages == 0){
+            } else if (strncmp(buffer, "exit", 4) == 0 && nbMessages == 0){
                 //message end to server
                 if(app_write(&p, "exit", 4) < 0) {
                     perror("file_write");
@@ -451,6 +451,7 @@ int srv_get_new_request(const struct service *srv, info_request *req) {
 void * client_thread(void *reqq) {
     info_request *req = (info_request*) reqq;
     char buffer[BUF_SIZE];
+    int nbMessages = 0;
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if(sock == -1)
@@ -468,7 +469,7 @@ void * client_thread(void *reqq) {
     printf("Connected to server at :\n");
     printAddr(&req->addr);
 
-    write_message(sock, "pongd 5");
+    write_message(sock, "pongd 5", strlen("pongd 5"));
     /*sleep(1);
     write_message(sock, "is it working ???");
     sleep(2);
@@ -503,11 +504,15 @@ void * client_thread(void *reqq) {
         }
 
         if (FD_ISSET(fdout, &rdfs)){
-            if(read(fdout, &buffer, BUF_SIZE) < 0) {
+            size_t n_read = read(fdout, &buffer, BUF_SIZE);
+            if(n_read < 0) {
                 perror("read()");
             }
-            write_message(sock, buffer);
-
+            printf("Client : size message %ld \n",n_read );
+            write_message(sock, buffer, n_read);
+            if (strncmp(buffer, "exit", 4) != 0) {
+                nbMessages++;
+            }
 
 
         } else if (FD_ISSET(sock, &rdfs)) {
@@ -518,6 +523,7 @@ void * client_thread(void *reqq) {
                 if(file_write(req->p->path_in, buffer, strlen(buffer)) < 0) {
                     perror("file_write");
                 }
+                nbMessages--;     
 
             } else if (n == 0){
                 //message end from server
@@ -533,10 +539,14 @@ void * client_thread(void *reqq) {
             }
             
         }
+
+        if (strncmp(buffer, "exit", 4) == 0 && nbMessages == 0) {
+            break;
+        }
     }
 
     printf("------thread client shutdown----------\n");
-
+    close(fdout);
     close(sock);
 
     return NULL;

@@ -160,11 +160,18 @@ int srv_get_new_process (const struct service *srv, struct process *p)
 
     char *buf = NULL;
     size_t msize = 0;
-    int ret = file_read (srv->spath, &buf, &msize);
-    if (ret <= 0) {
-        fprintf (stderr, "err: listening on %s\n", srv->spath);
-        exit (1);
+    int ret = 0;
+    while (ret == 0) {
+        ret = file_read (srv->spath, &buf, &msize);
+
+        if (ret < 0) {
+            fprintf (stderr, "err: listening on %s\n", srv->spath);
+            exit (1);
+        } 
+
     }
+    
+
 
     char *token = NULL, *saveptr = NULL;
     char *str = NULL;
@@ -194,7 +201,7 @@ int srv_get_new_process (const struct service *srv, struct process *p)
         free (buf);
     srv_process_gen (p, pid, index, version);
 
-    return 1;
+    return 0;
 }
 
 int srv_read (struct process *p, char ** buf, size_t * msize)

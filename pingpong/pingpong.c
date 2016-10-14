@@ -66,9 +66,7 @@ void main_loop (const struct service *srv)
         if (ret == -1) {
             fprintf (stderr, "MAIN_LOOP: error service_get_new_process\n");
             continue;
-        } else if (ret == 0) { // that should not happen
-            continue;
-        }
+        } 
 
         srv_process_print (&tab_proc[cnt]);
         
@@ -88,7 +86,7 @@ void main_loop (const struct service *srv)
     }
 
     for (i = 0; i < cnt; i++) {
-        pthread_join(tab_thread[cnt], NULL);    
+        pthread_join(tab_thread[i], NULL);    
     }
 }
 

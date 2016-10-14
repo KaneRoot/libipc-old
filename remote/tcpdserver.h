@@ -26,7 +26,7 @@ void endConnection (int sock);
 
 void printAddr (struct sockaddr_in *csin);
 
-void write_message(int sock, const char *buffer);
+void write_message(int sock, const char *buffer, size_t size);
 int read_message(int sock, char *buffer);
 
 //2 threads for listen and send data

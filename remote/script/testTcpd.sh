@@ -27,4 +27,6 @@ do
     echo "pid : ${pid}"
     cat ${REP}/${pid}-1-1-in
 
+    echo "exit" > ${REP}${pid}-1-1-out
+
 done

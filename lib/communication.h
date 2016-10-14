@@ -68,4 +68,6 @@ int app_write (struct process *, char * buf, size_t);
 int file_read (const char *path, char **buf, size_t *msize);
 int file_write (const char *path, const char *buf, size_t msize);
 
+//open, close, read, write
+
 #endif

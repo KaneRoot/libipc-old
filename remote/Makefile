@@ -15,6 +15,9 @@ $(EXEC): $(OBJECTS) $(CFILES)
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
 
+$(TESTS):
+	valgrind --show-leak-kinds=all --leak-check=full -v --track-origins=yes ./$(basename $@).bin
+
 clean:
 	@-rm $(OBJECTS)
 
