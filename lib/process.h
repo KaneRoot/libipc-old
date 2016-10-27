@@ -19,7 +19,8 @@ struct process {
     unsigned int index;
     char path_in [PATH_MAX];
     char path_out [PATH_MAX];
-    int pfd;
+    char path_proc [PATH_MAX];
+    int proc_fd;
 };
 
 struct process * srv_process_copy (const struct process *p);
