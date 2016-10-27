@@ -3,7 +3,6 @@
 REP=/tmp/ipc/
 SERVICE="pongd"
 NB=10
-
 # CLEAN UP !
 if [ $# -ne 0 ] && [ "$1" = clean ]
 then
@@ -23,22 +22,26 @@ fi
 for pid in `seq 1 ${NB}`
 do
     # we make the application pipes
-    mkfifo ${REP}${pid}-1-1-in 2>/dev/null
-    mkfifo ${REP}${pid}-1-1-out 2>/dev/null
+    # mkfifo ${REP}${pid}-1-1-in 2>/dev/null
+    # mkfifo ${REP}${pid}-1-1-out 2>/dev/null
 
     # pid index version
-    echo "${pid} 1 1" > ${REP}${SERVICE}
-
+    echo "${pid} 1 1" | nc -U ${REP}${SERVICE}
+    
+    sleep 1
     # the purpose is to send something in the pipe
-    cat /dev/urandom | base64 | head -n 1 > ${REP}${pid}-1-1-out
-    # echo "hello world" > ${REP}${pid}-1-out
+    #cat /dev/urandom | base64 | head -n 1 > ${REP}${pid}-1-1-out
+    echo "exit" | nc -U ${REP}${pid}-1-1
+    #echo "exit" | nc -U ${REP}${pid}-1-1 
 
-    # the the service will answer with our message
+    # the service will answer with our message
     echo "pid : ${pid}"
-    cat ${REP}/${pid}-1-1-in
+    #cat ${REP}/${pid}-1-1-in
 
 done
 
+echo "exit" | nc -U ${REP}${SERVICE}
+
 echo "clean rep"
-rm ${REP}/*-in
-rm ${REP}/*-out
+#rm ${REP}/*
+#rm ${REP}/*-out
