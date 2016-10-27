@@ -30,7 +30,7 @@ struct service {
     unsigned int version;
     unsigned int index;
     char spath[PATH_MAX];
-    FILE *spipe;
+    int server_fd;
 };
 
 int srv_init (int argc, char **argv, char **env
@@ -38,7 +38,7 @@ int srv_init (int argc, char **argv, char **env
         , int (*cb)(int argc, char **argv, char **env
             , struct service *srv, const char *sname));
 
-int srv_get_new_process (const struct service *srv, struct process *proc);
+int srv_get_new_process (const char *buf, struct process *proc);
 
 /*
  * returns
@@ -50,7 +50,7 @@ int srv_get_new_process (const struct service *srv, struct process *proc);
 int srv_create (struct service *srv);
 int srv_close (struct service *srv);
 
-int srv_read (struct process *, char ** buf, size_t *);
+int srv_read (struct process *, char ** buf);
 int srv_write (struct process *, char * buf, size_t);
 
 // APPLICATION
@@ -61,12 +61,15 @@ int app_srv_connection (struct service *, const char *, size_t);
 int app_create (struct process *, pid_t pid, int index, int version);
 int app_destroy (struct process *);
 
-int app_read (struct process *, char ** buf, size_t *);
+int app_read (struct process *, char ** buf);
 int app_write (struct process *, char * buf, size_t);
 
 // wrappers
-int file_read (const char *path, char **buf, size_t *msize);
-int file_write (const char *path, const char *buf, size_t msize);
+int file_read (int fd, char **buf);
+int file_write (int fd, const char *buf, const int m_size);
+
+//close socket
+int close_socket(int fd);
 
 //open, close, read, write
 
