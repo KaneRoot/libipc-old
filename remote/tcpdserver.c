@@ -570,6 +570,7 @@ void main_loop (struct service *srv) {
     //request
     info_request tab_req[NBCLIENT];
     int ret;
+    int i;
     //pid server
     pthread_t pid_s;
     //pid client
@@ -627,81 +628,87 @@ void main_loop (struct service *srv) {
         }
         //printf("Server-select...OK\n");
 
-        if(FD_ISSET(listener, &read_fds)) {
-            /* handle new connections */
-            peer_addr_size = sizeof(struct sockaddr_un);
-            newfd = accept(sfd, (struct sockaddr *) &peer_addr, &peer_addr_size);
-            if (newfd == -1) {
-                handle_error("accept");
-            }
-            else
-            {
-                printf("Server-accept() is OK...\n");
-                FD_SET(newfd, &master); /* add to master set */
-                if(newfd > fdmax)
-                { /* keep track of the maximum */
-                    fdmax = newfd;
-                }
-                srv->service_fd = newfd;
-            }
-        } else {
-            nbytes = srv_read (srv, &buf);
-            if ( nbytes == -1) {
-                handle_error("file_read");
-            } else if( nbytes == 0) {
-                /* close it... */
-                close(srv->service_fd);
-                /* remove from master set */
-                FD_CLR(srv->service_fd, &master);
-            }else {
-                buf[BUFSIZ - 1] = '\0';
-                printf ("msg received (%d) : %s\n", nbytes, buf);
-                if (strncmp ("exit", buf, 4) == 0) {
-                    break;
-                }
-
-                tab_req[nbclient].p = malloc(sizeof(struct process));
-                // -1 : error, 0 = no new process, 1 = new process
-                ret = srv_get_new_request (buf, &tab_req[nbclient]);
-                if (ret == -1) {
-                    perror("srv_get_new_request()");
-                    exit(1);
-                } else if (ret == 0) {
-                    break;
-                }
-
-                request_print(&tab_req[nbclient]);
-
-                if (strcmp("listen", tab_req[nbclient].request) == 0) {
-                    int ret = pthread_create( &pid_s, NULL, &server_thread, (void *) &tab_req[nbclient]);
-                    if (ret) {
-                        perror("pthread_create()");
-                        exit(errno);
-                    } else {
-                        printf("\n----------Creation of server thread ------------\n");
+        for (i = 0; i <= fdmax; i++) {
+            if(FD_ISSET(i, &read_fds)) {
+                if(i == listener) {
+                    /* handle new connections */
+                    peer_addr_size = sizeof(struct sockaddr_un);
+                    newfd = accept(sfd, (struct sockaddr *) &peer_addr, &peer_addr_size);
+                    if (newfd == -1) {
+                        handle_error("accept");
                     }
-                    nbclient++;
-                }else {
-                    int ret = pthread_create( &tab_client[nbclient], NULL, &client_thread, (void *) &tab_req[nbclient]);
-                    if (ret) {
-                        perror("pthread_create()");
-                        exit(errno);
-                    } else {
-                        printf("\n----------Creation of client thread ------------\n");
+                    else
+                    {
+                        printf("Server-accept() is OK...\n");
+                        FD_SET(newfd, &master); /* add to master set */
+                        if(newfd > fdmax)
+                        { /* keep track of the maximum */
+                            fdmax = newfd;
+                        }
                     }
-                    nbclient++;
+                } else {
+                    nbytes = file_read (i, &buf);
+                    if ( nbytes == -1) {
+                        handle_error("file_read");
+                    } else if( nbytes == 0) {
+                        /* close it... */
+                        close(i);
+                        /* remove from master set */
+                        FD_CLR(i, &master);
+                    }else {
+                        buf[BUFSIZ - 1] = '\0';
+                        printf ("msg received (%d) : %s\n", nbytes, buf);
+                        if (strncmp ("exit", buf, 4) == 0) {
+                            break;
+                        }
 
-                }
-            }
+                        tab_req[nbclient].p = malloc(sizeof(struct process));
+                        // -1 : error, 0 = no new process, 1 = new process
+                        ret = srv_get_new_request (buf, &tab_req[nbclient]);
+                        if (ret == -1) {
+                            perror("srv_get_new_request()");
+                            exit(1);
+                        } else if (ret == 0) {
+                            break;
+                        }
+
+                        request_print(&tab_req[nbclient]);
+
+                        if (strcmp("listen", tab_req[nbclient].request) == 0) {
+                            int ret = pthread_create( &pid_s, NULL, &server_thread, (void *) &tab_req[nbclient]);
+                            if (ret) {
+                                perror("pthread_create()");
+                                exit(errno);
+                            } else {
+                                printf("\n----------Creation of server thread ------------\n");
+                            }
+                            nbclient++;
+                        }else {
+                            int ret = pthread_create( &tab_client[nbclient], NULL, &client_thread, (void *) &tab_req[nbclient]);
+                            if (ret) {
+                                perror("pthread_create()");
+                                exit(errno);
+                            } else {
+                                printf("\n----------Creation of client thread ------------\n");
+                            }
+                            nbclient++;
+
+                        }
+                    }
+                } //i == listener
+            } //if FDISSET
+        }//boucle for
+        if (strncmp ("exit", buf, 4) == 0) {
+            break;
         }
-    }
+    }//boucle while
 
     if (pthread_cancel(pid_s) != 0) {
         printf("Aucun thread correspond \n");
     }   
 
     pthread_join(pid_s, NULL);
-    int i;
+    
     /*for (i = 0; i < nbclient; i++) {
         pthread_join(tab_client[i], NULL);
     }*/

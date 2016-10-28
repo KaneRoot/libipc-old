@@ -38,7 +38,6 @@ void * pongd_thread(void * pdata) {
     if (cfd == -1)
         handle_error("accept");
     proc->proc_fd = cfd;
-    printf("ok\n");
 
     while (1) {
         if ((nbytes = app_read (proc, &buf)) == -1) {
@@ -56,7 +55,6 @@ void * pongd_thread(void * pdata) {
             if ((nbytes = app_write (proc, buf, nbytes)) == -1) {
                 fprintf(stdout, "MAIN_LOOP: error service_write %d\n", nbytes);
             }
-            printf("write success\n");
         }
     }
 

@@ -199,11 +199,13 @@ int srv_get_new_process (char *buf, struct process *p)
 
 int srv_read (const struct service *srv, char ** buf)
 {
+    //printf("---%s\n", srv->spath);
     return file_read (srv->service_fd, buf);
 }
 
 int srv_write (const struct service *srv, const char * buf, size_t msize)
 {
+    //printf("---%s\n", srv->spath);
     return file_write (srv->service_fd, buf, msize);
 }
 
@@ -386,12 +388,14 @@ int app_destroy (struct process *p)
 }
 
 int app_read (struct process *p, char ** buf)
-{
+{   
+    //printf("---%s\n", p->path_proc);
     return file_read (p->proc_fd, buf);
 }
 
 int app_write (struct process *p, char * buf, size_t msize)
 {
+    //printf("---%s\n", p->path_proc);
     return file_write (p->proc_fd, buf, msize);
 }
 
