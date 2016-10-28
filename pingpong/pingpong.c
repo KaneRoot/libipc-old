@@ -4,36 +4,8 @@
 #include <sys/un.h>
 
 #define PONGD_SERVICE_NAME "pongd"
-#define LISTEN_BACKLOG 50
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
-
-
-/*init a unit socket : bind, listen
- *and return a socket 
- */
-int set_listen_socket(const char *path) {
-    int sfd;
-    struct sockaddr_un my_addr;
-
-    sfd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sfd == -1)
-        return -1;
-
-    memset(&my_addr, 0, sizeof(struct sockaddr_un));
-    /* Clear structure */
-    my_addr.sun_family = AF_UNIX;
-    strncpy(my_addr.sun_path, path, sizeof(my_addr.sun_path) - 1);
-
-    unlink(my_addr.sun_path);
-    if (bind(sfd, (struct sockaddr *) &my_addr, sizeof(struct sockaddr_un)) == -1)
-        return -1;
-
-    if (listen(sfd, LISTEN_BACKLOG) == -1)
-        return -1;
-
-    return sfd;
-}
 
 
 /* control the file descriptor*/
@@ -54,44 +26,37 @@ void * pongd_thread(void * pdata) {
     struct sockaddr_un peer_addr;
     socklen_t peer_addr_size;
     printf("%s\n", proc->path_proc);
+    //app_create(proc, proc->pid, proc->index, proc->version);
 
     sfd = set_listen_socket(proc->path_proc);
     if (sfd == -1){
         handle_error("set_listen_socket");
     }
     peer_addr_size = sizeof(struct sockaddr_un);
-    printf("ici\n");
+
     cfd = accept(sfd, (struct sockaddr *) &peer_addr, &peer_addr_size);
     if (cfd == -1)
         handle_error("accept");
     proc->proc_fd = cfd;
+    printf("ok\n");
 
     while (1) {
-        if ((nbytes = srv_read (proc, &buf)) == -1) {
+        if ((nbytes = app_read (proc, &buf)) == -1) {
             fprintf(stdout, "MAIN_LOOP: error service_read %d\n", nbytes);
         }
-        // printf ("after read\n");
-        printf ("read, size %d : %s\n", nbytes, buf);
-        if (nbytes == 0){
+        
+        if (nbytes == 0 || strncmp ("exit", buf, 4) == 0){
             printf("------thread shutdown------------\n");
             close(cfd);
             close(sfd);
             free(buf);
             break;
-        }
-
-        if (strncmp ("exit", buf, 4) != 0) {
-            //printf ("before proc write\n");
-            if ((nbytes = srv_write (proc, buf, nbytes)) == -1) {
+        }else {
+            printf ("read, size %d : %s\n", nbytes, buf);
+            if ((nbytes = app_write (proc, buf, nbytes)) == -1) {
                 fprintf(stdout, "MAIN_LOOP: error service_write %d\n", nbytes);
             }
-        }
-        else {
-            printf("------thread shutdown------------\n");
-            close(cfd);
-            close(sfd);
-            free(buf);
-            break;
+            printf("write success\n");
         }
     }
 
@@ -167,7 +132,7 @@ void main_loop (struct service *srv)
             perror("Server-select() error lol!");
             exit(1);
         }
-        printf("Server-select...OK\n");
+        //printf("Server-select...OK\n");
 
         /*run through the existing connections looking for data to be read*/
         for(i = 0; i <= fdmax; i++) {
@@ -194,13 +159,12 @@ void main_loop (struct service *srv)
                     if ( nbytes == -1) {
                         handle_error("file_read");
                     } else if( nbytes == 0) {
-                        printf ("msg received (%d) : %s\n", nbytes, buf);
                         /* close it... */
                         close(i);
                         /* remove from master set */
                         FD_CLR(i, &master);
                     }else {
-                        //buf[BUFSIZ - 1] = '\0';
+                        buf[BUFSIZ - 1] = '\0';
                         printf ("msg received (%d) : %s\n", nbytes, buf);
                         if (strncmp ("exit", buf, 4) == 0) {
                             break;
@@ -236,7 +200,6 @@ void main_loop (struct service *srv)
         }
 
     }
-    printf("ici\n");
     
     for (i = 0; i < cnt; i++) {
         pthread_join(tab_thread[i], NULL);    

@@ -48,11 +48,11 @@ void * server_thread(void *reqq);
 
 void * client_thread(void *reqq);
 
-int srv_get_new_request(const struct service *srv, info_request *req);
+int srv_get_new_request(char *buf, info_request *req);
 
 void request_print (const info_request *req);
 
-void main_loop(const struct service *srv);
+void main_loop(struct service *srv);
 
 
 #endif

@@ -28,10 +28,9 @@ do
     # pid index version
     echo "${pid} 1 1" | nc -U ${REP}${SERVICE}
     
-    sleep 1
     # the purpose is to send something in the pipe
     #cat /dev/urandom | base64 | head -n 1 > ${REP}${pid}-1-1-out
-    echo "exit" | nc -U ${REP}${pid}-1-1
+    echo "hello frero" | nc -U ${REP}${pid}-1-1
     #echo "exit" | nc -U ${REP}${pid}-1-1 
 
     # the service will answer with our message

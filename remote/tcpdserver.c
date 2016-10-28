@@ -2,6 +2,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -14,10 +15,13 @@
 #include <linux/limits.h>
 
 #define PORT 6000
-#define BUF_SIZE 1024
 #define TMPDIR "/tmp/ipc/"
 #define NBCLIENT 10
 #define SERVICE_TCP "tcpd"
+#define LISTEN_BACKLOG 50
+#define handle_error(msg) \
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
 
 int init_connection(const info_request *req)
 {
@@ -65,7 +69,7 @@ void write_message(int sock, const char *buffer, size_t size_buf)
 
 int read_message(int sock, char *buffer)
 {
-    return read(sock, buffer, BUF_SIZE);
+    return read(sock, buffer, BUFSIZ);
 }
 
 void endConnection(int sock) {
@@ -77,7 +81,12 @@ void printAddr(struct sockaddr_in *csin) {
     printf("Port : %u\n", ntohs(csin->sin_port));
 }
 
-
+/*
+ * Chaque client correspond à un thread service
+ * Le 1er message du client indiquera le service voulu et sa version
+ * Etablir la connection avec le service
+ * Ecouter ensuite sur la socket client et socket unix pour traiter les messages
+ */
 void * service_thread(void * c_data) {
     client_data *cda = (client_data*) c_data;
     char *service;
@@ -85,12 +94,14 @@ void * service_thread(void * c_data) {
     int clientSock = cda->sfd;
     int nbMessages = 0;
 
-    char *buffer = malloc (BUF_SIZE);
+    //buffer for message
+    size_t nbytes = 0;
+    char *buffer = malloc (BUFSIZ);
     if (buffer == NULL) {
         perror("malloc()");
         return NULL;
     }
-    memset(buffer, 0, BUF_SIZE);
+    memset(buffer, 0, BUFSIZ);
 
     if (read_message(clientSock, buffer) == -1) {
         perror("read_message()");
@@ -98,21 +109,11 @@ void * service_thread(void * c_data) {
     }else {
         parseServiceVersion(buffer, &service, &version);
     }
-    printf("%s\n",buffer );
-    printf("%s %d\n",service, version );
 
     /* TODO : service correspond au service que le client veut utiliser 
      ** il faut comparer service à un tableau qui contient les services 
      ** disponibles
      */
-
-    //path service
-    /*char servicePath[PATH_MAX];
-    memset (servicePath, 0, PATH_MAX);
-    if (servicePath == NULL) {
-        perror("malloc()");
-    }
-    snprintf(servicePath , PATH_MAX, "%s%s" , TMPDIR, service);*/
 
     //pid index version
     char * piv = malloc(PATH_MAX);
@@ -124,61 +125,23 @@ void * service_thread(void * c_data) {
 
     struct service srv;
     srv_init (0, NULL, NULL, &srv, service, NULL);
-    app_srv_connection(&srv, piv, strlen(piv));
+    if (app_srv_connection(&srv, piv, strlen(piv)) == -1) {
+        handle_error("app_srv_connection\n");
+    }
     free(piv);
-
-    //write pid index version in T/I/S of service
-    /*int ret = file_write(servicePath, piv, strlen(piv));
-    if(ret == 0) {
-        perror("file_write()");
-        return NULL;
-    }
-    free(piv);*/
-
-    // gets the service path, such as /tmp/ipc/pid-index-version-in/out
-    /*char * pathname[2];
-    pathname[0] = (char*) malloc(PATH_MAX);
-    memset(pathname[0], 0, PATH_MAX);
-    if (pathname[0] == NULL) {
-        perror("malloc()");
-    }
-    pathname[1] = malloc(PATH_MAX);
-    memset(pathname[1] , 0, PATH_MAX);
-    if (pathname[1] == NULL) {
-        perror("malloc()");
-    }
-    inOutPathCreate(pathname, cda->index, version);*/
 
     struct process p;
     app_create(&p, getpid(), cda->index, version);
     srv_process_print(&p);
-
-    //create in out files
-    /*if(fifo_create(pathname[0]) != 0) {
-        perror("fifo_create()");
-        return NULL;
+    sleep(1);
+    printf("%s\n",p.path_proc );
+    if (proc_connection(&p) == -1){
+        handle_error("proc_connection");
     }
-
-    if(fifo_create(pathname[1]) != 0) {
-        perror("fifo_create()");
-        return NULL;
-    }*/
-
-    //open -in fifo file
-    int fdin = open (p.path_in, O_RDWR);
-    if (fdin <= 0) {
-        printf("open: fd < 0\n");
-        perror ("open()");
-        return NULL;
-    }
-
-    //char *buf = NULL;
-    size_t msize;
-
     //utilisation du select() pour surveiller la socket du client et fichier in
     fd_set rdfs;
 
-    int max = clientSock > fdin ? clientSock : fdin;
+    int max = clientSock > p.proc_fd ? clientSock : p.proc_fd;
 
     printf("Waitting for new messages...\n" );
     while(1) {
@@ -188,7 +151,7 @@ void * service_thread(void * c_data) {
         FD_SET(clientSock, &rdfs);
 
         //add in file
-        FD_SET(fdin, &rdfs);
+        FD_SET(p.proc_fd, &rdfs);
 
         if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
         {
@@ -196,40 +159,44 @@ void * service_thread(void * c_data) {
             exit(errno);
         }
 
-        if (FD_ISSET(fdin, &rdfs)){
-            if(app_read(&p, &buffer, &msize) < 0) {
+        if (FD_ISSET(p.proc_fd, &rdfs)){
+            nbytes = app_read(&p, &buffer);
+            if(nbytes < 0) {
                 perror("app_read()");
             }
-            printf("message from file in : %s\n", buffer );
-            write_message(clientSock, buffer, msize);
+            printf("message from file : %s\n", buffer );
+            write_message(clientSock, buffer, nbytes);
             nbMessages--;
-        } else if (FD_ISSET(clientSock, &rdfs)) {
 
-            int n = read_message(clientSock, buffer);
-            if(n > 0) {
-                printf("Server : message (%d bytes) : %s\n", n, buffer);
-                if(app_write(&p, buffer, strlen(buffer)) < 0) {
+        } else if (FD_ISSET(clientSock, &rdfs)) {
+            nbytes = read_message(clientSock, buffer);
+            if(nbytes > 0 && strncmp(buffer, "exit", 4) != 0) {
+                printf("Server : message (%ld bytes) : %s\n", nbytes, buffer);
+                if(app_write(&p, buffer, nbytes) < 0) {
                     perror("file_write");
                 }
+
                 nbMessages++;
-            } else if (strncmp(buffer, "exit", 4) == 0 && nbMessages == 0){
+            } 
+            if (strncmp(buffer, "exit", 4) == 0 && nbMessages == 0){
                 //message end to server
                 if(app_write(&p, "exit", 4) < 0) {
                     perror("file_write");
                 }
 
-                //close the files descriptors
-                close(fdin);
-                close(clientSock);
-
                 printf("------thread %d shutdown----------\n\n", cda->index );
 
                 break;
-            }
-            
+            }           
         }
     }
+    //close the files descriptors
+    close(p.proc_fd);
+    close(clientSock);
+    free(buffer);
 
+    //release the resources
+    pthread_detach(pthread_self());
     return NULL;
 }
 
@@ -299,6 +266,10 @@ void makePivMessage (char ** piv, int pid, int index, int version) {
 
 }
 
+/*
+ * lancer le serveur, ecouter sur une l'adresse et port
+ * A chaque nouveau client lance un thread service
+ */
 void * server_thread(void * reqq) {
     info_request *req = (info_request*) reqq;
 
@@ -372,28 +343,18 @@ void * server_thread(void * reqq) {
         pthread_join(tab_service_threads[i], NULL); 
     }
 
+    printf("--------------server thread shutdown--------------- \n");
     endConnection(sock);
 
     return NULL;
 }
 
 /*
-*   user cans send 2 types of request to server : listen or connect
+*   user can send 2 types of request to server : listen or connect
 *   listen = server for a service such as pongd
 *   connect = connect to a server
 */
-int srv_get_new_request(const struct service *srv, info_request *req) {
-    if (srv->spath == NULL) {
-        return -1;
-    }
-
-    char *buf = NULL;
-    size_t msize = 0;    
-    int ret = file_read (srv->spath, &buf, &msize);
-    if (ret <= 0) {
-        fprintf (stderr, "err: listening on %s\n", srv->spath);
-        return -1;
-    }
+int srv_get_new_request(char *buf, info_request *req) {
 
     char *token = NULL, *saveptr = NULL;
     char *str = NULL;
@@ -411,6 +372,7 @@ int srv_get_new_request(const struct service *srv, info_request *req) {
 
         if (i == 1) {
             if(strncmp("exit", token, 4) == 0 ) {
+                strncpy(req->request, token, 4);
                 free(str);
                 return 0;
             }
@@ -440,17 +402,24 @@ int srv_get_new_request(const struct service *srv, info_request *req) {
         srv_process_gen (req->p, pid, index, version);
     }
 
-    if (buf != NULL)
-        free(buf);
-    buf = NULL;
-    msize = 0;
-
     return 1;
 }
 
+/*
+ * client thread est lancé suite à une requete "connect"
+ * connecter à une adresse, port le 1er message indiquera le service et le version voulus
+ * Se mettre ensuite sur l'écoute de la socket serveur et le fichier client pour traiter les messages
+ */
 void * client_thread(void *reqq) {
     info_request *req = (info_request*) reqq;
-    char buffer[BUF_SIZE];
+    /* buffer for client data */
+    int nbytes;
+    char *buffer= malloc(BUFSIZ);
+    if (buffer == NULL)
+    {
+        handle_error("malloc");
+    }
+    memset(buffer, 0, BUFSIZ);;
     int nbMessages = 0;
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -470,57 +439,80 @@ void * client_thread(void *reqq) {
     printAddr(&req->addr);
 
     write_message(sock, "pongd 5", strlen("pongd 5"));
-    /*sleep(1);
-    write_message(sock, "is it working ???");
-    sleep(2);
-    write_message(sock, "is it working ???");*/
 
-    //open -out fifo file of client
-    int fdout = open (req->p->path_out, O_RDWR);
-    if (fdout <= 0) {
-        printf("open: fd < 0\n");
-        perror ("open()");
-        return NULL;
+    //init socket unix for server
+    int sfd;
+    struct sockaddr_un peer_addr;
+    socklen_t peer_addr_size;
+
+    sfd = set_listen_socket(req->p->path_proc);
+    if (sfd == -1){
+        handle_error("set_listen_socket");
     }
 
-    //utilisation du select() pour surveiller la socket du server et fichier out du client
-    fd_set rdfs;
+    /* master file descriptor list */
+    fd_set master;
+    /* temp file descriptor list for select() */
+    fd_set read_fds;
 
-    int max = sock > fdout ? sock : fdout;
+    /* maximum file descriptor number */
+    int fdmax;
+    /* listening socket descriptor */
+    int listener = sfd;
+    /* newly accept()ed socket descriptor */
+    int newfd;
+
+    /* clear the master and temp sets */
+    FD_ZERO(&master);
+    FD_ZERO(&read_fds);
+
+    /* add the listener to the master set */
+    FD_SET(listener, &master);
+    FD_SET(sock, &master);
+
+    /* keep track of the biggest file descriptor */
+    fdmax = sock > listener ? sock : listener;
 
     while(1) {
-        FD_ZERO(&rdfs);
+        /* copy it */
+        read_fds = master;
 
-        //add client's socket
-        FD_SET(sock, &rdfs);
-
-        //add in file
-        FD_SET(fdout, &rdfs);
-
-        if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
+        if(select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1)
         {
             perror("select()");
             exit(errno);
         }
+        printf("select...OK\n");
 
-        if (FD_ISSET(fdout, &rdfs)){
-            size_t n_read = read(fdout, &buffer, BUF_SIZE);
-            if(n_read < 0) {
-                perror("read()");
+
+        if(FD_ISSET(listener, &read_fds)) {
+            /* handle new connections */
+            peer_addr_size = sizeof(struct sockaddr_un);
+            newfd = accept(sfd, (struct sockaddr *) &peer_addr, &peer_addr_size);
+            if (newfd == -1) {
+                handle_error("accept");
             }
-            printf("Client : size message %ld \n",n_read );
-            write_message(sock, buffer, n_read);
-            if (strncmp(buffer, "exit", 4) != 0) {
-                nbMessages++;
+            else
+            {
+                printf("Server-accept() is OK...\n");
+                FD_SET(newfd, &master); /* add to master set */
+                if(newfd > fdmax)
+                { /* keep track of the maximum */
+                    fdmax = newfd;
+                }
+                req->p->proc_fd = newfd;
             }
-
-
-        } else if (FD_ISSET(sock, &rdfs)) {
-
+        }
+        /*
+         * TODO:
+         * Que se passe-t-il si on reçoit un message du serveur avant l'app client?
+         * Ou ecrit-on le message ??
+         */ 
+        else if (FD_ISSET(sock, &read_fds)) { 
             int n = read_message(sock, buffer);
             if(n > 0) {
                 printf("Client : message (%d bytes) : %s\n", n, buffer);
-                if(file_write(req->p->path_in, buffer, strlen(buffer)) < 0) {
+                if(app_write(req->p, buffer, strlen(buffer)) < 0) {
                     perror("file_write");
                 }
                 nbMessages--;     
@@ -528,27 +520,38 @@ void * client_thread(void *reqq) {
             } else if (n == 0){
                 //message end from server
                 printf("server down\n");
-
-                //close the files descriptors
-                close(fdout);
-                close(sock);
-
                 printf("------thread client shutdown----------\n");
 
                 break;
             }
-            
-        }
-
-        if (strncmp(buffer, "exit", 4) == 0 && nbMessages == 0) {
-            break;
-        }
+        }else {
+            nbytes = app_read (req->p, &buffer);
+            printf("Client : size message %d : %s\n",nbytes, buffer );
+            if ( nbytes == -1) {
+                handle_error("file_read");
+            } else if( nbytes == 0) {
+                /* close it... */
+                close(req->p->proc_fd);
+                /* remove from master set */
+                FD_CLR(req->p->proc_fd, &master);
+                break;
+            }else {
+                //printf("Client : size message %d \n",nbytes );
+                write_message(sock, buffer, nbytes);
+                if (strncmp(buffer, "exit", 4) != 0) {
+                    nbMessages++;
+                }
+            }
+        }   
     }
 
     printf("------thread client shutdown----------\n");
-    close(fdout);
+    close(sfd);
     close(sock);
+    free(buffer);
 
+    //release the resources
+    pthread_detach(pthread_self());
     return NULL;
 
 }
@@ -557,44 +560,157 @@ void request_print (const info_request *req) {
     printf("%s \n",req->request);
 }
 
-void main_loop (const struct service *srv) {
+/*
+ *Surveiller le fichier tmp/ipc/service
+ *Accepter 2 types de requetes :
+ * listen : lancer un serveur, ecouter sur un port ie "listen 127.0.0.1 6000" 
+ * connect : connecter à une adresse, port ie "connect 127.0.0.1 6000 ${pid} 1 1"
+ */
+void main_loop (struct service *srv) {
     //request
-    info_request req;
-    req.p = malloc(sizeof(struct process));
+    info_request tab_req[NBCLIENT];
     int ret;
-    pthread_t pidS;
-    pthread_t pidC;
+    //pid server
+    pthread_t pid_s;
+    //pid client
+    pthread_t tab_client[NBCLIENT];
+    int nbclient = 0;
 
-    while(1) {
-        ret = srv_get_new_request(srv, &req);
-        if (ret == -1) {
-            perror("srv_get_new_request()");
+    //init socket unix for server
+    int sfd;
+    struct sockaddr_un peer_addr;
+    socklen_t peer_addr_size;
+
+    sfd = set_listen_socket(srv->spath);
+    if (sfd == -1){
+        handle_error("set_listen_socket");
+    }
+
+    /* master file descriptor list */
+    fd_set master;
+    /* temp file descriptor list for select() */
+    fd_set read_fds;
+
+    /* maximum file descriptor number */
+    int fdmax;
+    /* listening socket descriptor */
+    int listener = sfd;
+    /* newly accept()ed socket descriptor */
+    int newfd;
+    /* buffer for client data */
+    char *buf = malloc(BUFSIZ);
+    if (buf == NULL)
+    {
+        handle_error("malloc");
+    }
+    memset(buf, 0, BUFSIZ);
+    int nbytes;
+
+    /* clear the master and temp sets */
+    FD_ZERO(&master);
+    FD_ZERO(&read_fds);
+
+    /* add the listener to the master set */
+    FD_SET(listener, &master);
+    //FD_SET(sfd, &master);
+
+    /* keep track of the biggest file descriptor */
+    fdmax = listener; /* so far, it's this one*/
+
+    for(;;) {
+        /* copy it */
+        read_fds = master;
+        if(select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1)
+        {
+            perror("Server-select() error lol!");
             exit(1);
-        } else if (ret == 0) {
-            free(req.p);
-            break;
         }
+        //printf("Server-select...OK\n");
 
-        request_print(&req);
-
-        if (strcmp("listen", req.request) == 0) {
-            int ret = pthread_create( &pidS, NULL, &server_thread, (void *) &req);
-            if (ret) {
-                perror("pthread_create()");
-                exit(errno);
-            } else {
-                printf("\n----------Creation of server thread ------------\n");
+        if(FD_ISSET(listener, &read_fds)) {
+            /* handle new connections */
+            peer_addr_size = sizeof(struct sockaddr_un);
+            newfd = accept(sfd, (struct sockaddr *) &peer_addr, &peer_addr_size);
+            if (newfd == -1) {
+                handle_error("accept");
             }
-        }else {
-            int ret = pthread_create( &pidC, NULL, &client_thread, (void *) &req);
-            if (ret) {
-                perror("pthread_create()");
-                exit(errno);
-            } else {
-                printf("\n----------Creation of client thread ------------\n");
+            else
+            {
+                printf("Server-accept() is OK...\n");
+                FD_SET(newfd, &master); /* add to master set */
+                if(newfd > fdmax)
+                { /* keep track of the maximum */
+                    fdmax = newfd;
+                }
+                srv->service_fd = newfd;
+            }
+        } else {
+            nbytes = srv_read (srv, &buf);
+            if ( nbytes == -1) {
+                handle_error("file_read");
+            } else if( nbytes == 0) {
+                /* close it... */
+                close(srv->service_fd);
+                /* remove from master set */
+                FD_CLR(srv->service_fd, &master);
+            }else {
+                buf[BUFSIZ - 1] = '\0';
+                printf ("msg received (%d) : %s\n", nbytes, buf);
+                if (strncmp ("exit", buf, 4) == 0) {
+                    break;
+                }
+
+                tab_req[nbclient].p = malloc(sizeof(struct process));
+                // -1 : error, 0 = no new process, 1 = new process
+                ret = srv_get_new_request (buf, &tab_req[nbclient]);
+                if (ret == -1) {
+                    perror("srv_get_new_request()");
+                    exit(1);
+                } else if (ret == 0) {
+                    break;
+                }
+
+                request_print(&tab_req[nbclient]);
+
+                if (strcmp("listen", tab_req[nbclient].request) == 0) {
+                    int ret = pthread_create( &pid_s, NULL, &server_thread, (void *) &tab_req[nbclient]);
+                    if (ret) {
+                        perror("pthread_create()");
+                        exit(errno);
+                    } else {
+                        printf("\n----------Creation of server thread ------------\n");
+                    }
+                    nbclient++;
+                }else {
+                    int ret = pthread_create( &tab_client[nbclient], NULL, &client_thread, (void *) &tab_req[nbclient]);
+                    if (ret) {
+                        perror("pthread_create()");
+                        exit(errno);
+                    } else {
+                        printf("\n----------Creation of client thread ------------\n");
+                    }
+                    nbclient++;
+
+                }
             }
         }
     }
+
+    if (pthread_cancel(pid_s) != 0) {
+        printf("Aucun thread correspond \n");
+    }   
+
+    pthread_join(pid_s, NULL);
+    int i;
+    /*for (i = 0; i < nbclient; i++) {
+        pthread_join(tab_client[i], NULL);
+    }*/
+
+    for (i = 0; i < nbclient; i++) {
+        free(tab_req[i].p);
+    }
+    free(buf);
+    close(sfd);
 }
 
 int main(int argc, char * argv[], char **env) {

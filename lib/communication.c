@@ -3,6 +3,11 @@
 #include <time.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <sys/un.h>
+
+#define LISTEN_BACKLOG 50
+#define handle_error(msg) \
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
 int file_write (const int fd, const char *buf, const int msize)
 {
@@ -147,7 +152,7 @@ int srv_close (struct service *srv)
     return 0;
 }
 
-int srv_get_new_process (const char *buf, struct process *p)
+int srv_get_new_process (char *buf, struct process *p)
 {
     /*char *buf = malloc(BUFSIZ);
     memset(buf, 0, BUFSIZ);
@@ -192,26 +197,73 @@ int srv_get_new_process (const char *buf, struct process *p)
     return 0;
 }
 
-int srv_read (struct process *p, char ** buf)
+int srv_read (const struct service *srv, char ** buf)
 {
-    return file_read (p->proc_fd, buf);
+    return file_read (srv->service_fd, buf);
 }
 
-int srv_write (struct process *p, char * buf, size_t msize)
+int srv_write (const struct service *srv, const char * buf, size_t msize)
 {
-    return file_write (p->proc_fd, buf, msize);
+    return file_write (srv->service_fd, buf, msize);
 }
 
 // APPLICATION
 
+//Init connection with unix socket
 // send the connection string to $TMP/<service>
 int app_srv_connection (struct service *srv, const char *connectionstr, size_t msize)
 {
     if (srv == NULL) {
         return -1;
     }
- 
-    return file_write (srv->server_fd, connectionstr, msize);
+
+    int sfd;
+    struct sockaddr_un my_addr;
+    socklen_t peer_addr_size;
+
+    sfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sfd == -1)
+        return -1;
+
+    memset(&my_addr, 0, sizeof(struct sockaddr_un));
+    // Clear structure 
+    my_addr.sun_family = AF_UNIX;
+    strncpy(my_addr.sun_path, srv->spath, sizeof(my_addr.sun_path) - 1);
+
+    peer_addr_size = sizeof(struct sockaddr_un);
+    if(connect(sfd,(struct sockaddr *) &my_addr, peer_addr_size) == -1)
+    {
+        perror("connect()");
+        exit(errno);
+    }
+    srv->service_fd = sfd;
+    
+    return srv_write(srv, connectionstr, msize);
+}
+
+int proc_connection(struct process *p)  {
+    int sfd;
+    struct sockaddr_un my_addr;
+    socklen_t peer_addr_size;
+
+    sfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sfd == -1)
+        return -1;
+
+    memset(&my_addr, 0, sizeof(struct sockaddr_un));
+    // Clear structure 
+    my_addr.sun_family = AF_UNIX;
+    strncpy(my_addr.sun_path, p->path_proc, sizeof(my_addr.sun_path) - 1);
+
+    peer_addr_size = sizeof(struct sockaddr_un);
+    if(connect(sfd,(struct sockaddr *) &my_addr, peer_addr_size) == -1)
+    {
+        perror("connect()");
+        exit(errno);
+    }
+    p->proc_fd = sfd;
+
+    return 0;
 }
 
 int app_create (struct process *p, pid_t pid, int index, int version)
@@ -341,4 +393,30 @@ int app_read (struct process *p, char ** buf)
 int app_write (struct process *p, char * buf, size_t msize)
 {
     return file_write (p->proc_fd, buf, msize);
+}
+
+/*init a unix socket : bind, listen
+ *and return a socket 
+ */
+int set_listen_socket(const char *path) {
+    int sfd;
+    struct sockaddr_un my_addr;
+
+    sfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sfd == -1)
+        return -1;
+
+    memset(&my_addr, 0, sizeof(struct sockaddr_un));
+    /* Clear structure */
+    my_addr.sun_family = AF_UNIX;
+    strncpy(my_addr.sun_path, path, sizeof(my_addr.sun_path) - 1);
+
+    unlink(my_addr.sun_path);
+    if (bind(sfd, (struct sockaddr *) &my_addr, sizeof(struct sockaddr_un)) == -1)
+        return -1;
+
+    if (listen(sfd, LISTEN_BACKLOG) == -1)
+        return -1;
+
+    return sfd;
 }
