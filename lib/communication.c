@@ -241,6 +241,7 @@ int app_srv_connection (struct service *srv, const char *connectionstr, size_t m
     srv->service_fd = sfd;
     
     return srv_write(srv, connectionstr, msize);
+
 }
 
 int proc_connection(struct process *p)  {

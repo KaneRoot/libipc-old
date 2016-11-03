@@ -10,7 +10,8 @@
 
 /* control the file descriptor*/
 void * pongd_thread(void * pdata) {
-    struct process *proc = (struct process*) pdata;
+    //struct process *proc = (struct process*) pdata;
+    int *sockclient = (int*) pdata;
 
     // about the message
     char *buf = malloc(BUFSIZ);
@@ -22,7 +23,7 @@ void * pongd_thread(void * pdata) {
     int nbytes;
 
     //init unix socket
-    int sfd, cfd;
+    /*int sfd, cfd;
     struct sockaddr_un peer_addr;
     socklen_t peer_addr_size;
     printf("%s\n", proc->path_proc);
@@ -37,22 +38,22 @@ void * pongd_thread(void * pdata) {
     cfd = accept(sfd, (struct sockaddr *) &peer_addr, &peer_addr_size);
     if (cfd == -1)
         handle_error("accept");
-    proc->proc_fd = cfd;
+    proc->proc_fd = cfd;*/
 
     while (1) {
-        if ((nbytes = app_read (proc, &buf)) == -1) {
+        if ((nbytes = file_read (*sockclient, &buf)) == -1) {
             fprintf(stdout, "MAIN_LOOP: error service_read %d\n", nbytes);
         }
         
         if (nbytes == 0 || strncmp ("exit", buf, 4) == 0){
             printf("------thread shutdown------------\n");
-            close(cfd);
-            close(sfd);
+            //close(cfd);
+            //close(sfd);
             free(buf);
             break;
         }else {
             printf ("read, size %d : %s\n", nbytes, buf);
-            if ((nbytes = app_write (proc, buf, nbytes)) == -1) {
+            if ((nbytes = file_write (*sockclient, buf, nbytes)) == -1) {
                 fprintf(stdout, "MAIN_LOOP: error service_write %d\n", nbytes);
             }
         }
@@ -178,7 +179,7 @@ void main_loop (struct service *srv)
 
                         srv_process_print (&tab_proc[cnt]);
 
-                        int ret = pthread_create( &tab_thread[cnt], NULL, &pongd_thread, (void *) &tab_proc[cnt]);
+                        int ret = pthread_create( &tab_thread[cnt], NULL, &pongd_thread, (void *) &i);
                         if (ret) {
                             perror("pthread_create()");
                             exit(errno);

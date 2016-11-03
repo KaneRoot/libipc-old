@@ -11,6 +11,6 @@ fi
 
 for pid in `seq 1 ${NB}`
 do
-    ./tcpdtest.bin &
+    ./tcpdtest.bin
 
 done
