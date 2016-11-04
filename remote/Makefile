@@ -6,11 +6,12 @@ EXEC=$(basename $(wildcard *.c))
 SOURCES=$(wildcard ../lib/communication.c ../lib/process.c)
 OBJECTS=$(SOURCES:.c=.o)
 TESTS=$(addsuffix .test, $(EXEC))
+LCBOR=-lbor
 
 all: $(SOURCES) $(EXEC)
 
 $(EXEC): $(OBJECTS) $(CFILES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) $@.c -lcbor -o $@.bin
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) $@.c -o $@.bin
 
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@

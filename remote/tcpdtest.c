@@ -37,12 +37,14 @@ int main(int argc, char * argv[]) {
 	    perror("connect()");
 	    exit(errno);
 	}
-
+    //printf("connected...\n");
     file_write(sfd, srv_message, strlen(srv_message));
-    file_write(sfd, proc_message, strlen(srv_message));
+    //printf("%s\n", proc_message);
+    //sleep(1);
+    file_write(sfd, proc_message, strlen(proc_message));
     file_read(sfd, &buffer);
     printf("%s\n", buffer);
-
+    //sleep(1);
     file_write(sfd, "exit", 4);
 
     close(sfd);

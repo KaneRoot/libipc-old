@@ -48,7 +48,7 @@ void * pongd_thread(void * pdata) {
         if (nbytes == 0 || strncmp ("exit", buf, 4) == 0){
             printf("------thread shutdown------------\n");
             //close(cfd);
-            //close(sfd);
+            close(*sockclient);
             free(buf);
             break;
         }else {
@@ -147,21 +147,52 @@ void main_loop (struct service *srv)
                     else
                     {
                         printf("Server-accept() is OK...\n");
-                        FD_SET(newfd, &master); /* add to master set */
-                        if(newfd > fdmax)
-                        { /* keep track of the maximum */
-                            fdmax = newfd;
-                        }
-                    }
-                } else {
+                        //FD_SET(newfd, &master); /* add to master set */
+                        //if(newfd > fdmax)
+                        //{ /* keep track of the maximum */
+                            //fdmax = newfd;
+                        //}
+			nbytes = file_read (newfd, &buf);
+                        if ( nbytes == -1) {
+			    handle_error("file_read");
+			} else {
+			    buf[BUFSIZ - 1] = '\0';
+			    printf ("msg received (%d) : %s\n", nbytes, buf);
+			    if (strncmp ("exit", buf, 4) == 0) {
+				break;
+			    }
+
+			    // -1 : error, 0 = no new process, 1 = new process
+			    ret = srv_get_new_process (buf, &tab_proc[cnt]);
+
+			    if (ret == -1) {
+				fprintf (stderr, "MAIN_LOOP: error service_get_new_process\n");
+				continue;
+			    } 
+
+			    srv_process_print (&tab_proc[cnt]);
+
+			    int ret = pthread_create( &tab_thread[cnt], NULL, &pongd_thread, (void *) &newfd);
+			    if (ret) {
+				perror("pthread_create()");
+				exit(errno);
+			    } else {
+				printf ("\n-------New thread created---------\n");
+			    }
+
+			    printf ("%d applications to serve\n",cnt);
+			    cnt++;
+			}
+		    } 
+                /*else {
                     nbytes = file_read (i, &buf);
                     if ( nbytes == -1) {
                         handle_error("file_read");
-                    } else if( nbytes == 0) {
+                    } else if( nbytes == 0) {*/
                         /* close it... */
-                        close(i);
+                        //close(i);
                         /* remove from master set */
-                        FD_CLR(i, &master);
+                        /*FD_CLR(i, &master);
                     }else {
                         buf[BUFSIZ - 1] = '\0';
                         printf ("msg received (%d) : %s\n", nbytes, buf);
@@ -189,7 +220,7 @@ void main_loop (struct service *srv)
 
                         printf ("%d applications to serve\n",cnt);
                         cnt++;
-                    }
+                    }*/
                 }
 
             }
@@ -206,6 +237,7 @@ void main_loop (struct service *srv)
     free(buf);
     close(sfd);
 }
+
 
 /*
  * service ping-pong

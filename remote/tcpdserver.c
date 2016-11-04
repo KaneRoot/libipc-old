@@ -511,7 +511,7 @@ void * client_thread(void *reqq) {
         /*else*/ if (FD_ISSET(sock, &read_fds)) { 
             int n = read_message(sock, buffer);
             if(n > 0) {
-                printf("Client : message (%d bytes) : %s\n", n, buffer);
+                printf("Client : message from server(%d bytes) : %s\n", n, buffer);
                 if(app_write(req->p, buffer, strlen(buffer)) < 0) {
                     perror("file_write");
                 }
@@ -526,7 +526,7 @@ void * client_thread(void *reqq) {
             }
         }else {
             nbytes = app_read (req->p, &buffer);
-            printf("Client : size message %d : %s\n",nbytes, buffer );
+            printf("Client : message from app %d : %s\n",nbytes, buffer );
             if ( nbytes == -1) {
                 handle_error("file_read");
             } else if( nbytes == 0) {
@@ -640,25 +640,75 @@ void main_loop (struct service *srv) {
                     else
                     {
                         printf("Server-accept() is OK...\n");
-                        FD_SET(newfd, &master); /* add to master set */
-                        if(newfd > fdmax)
-                        { /* keep track of the maximum */
-                            fdmax = newfd;
-                        }
+                        //FD_SET(newfd, &master); /* add to master set */
+                        //if(newfd > fdmax)
+                        //{ /* keep track of the maximum */
+                            //fdmax = newfd;
+                        //}
+                        
+                        nbytes = file_read (newfd, &buf);
+			if ( nbytes == -1) {
+			    handle_error("file_read");
+			} else if( nbytes == 0) {
+			    /* close it... */
+			    close(i);
+			    /* remove from master set */
+			    FD_CLR(i, &master);
+			}else {
+			    buf[BUFSIZ - 1] = '\0';
+			    printf ("msg received (%d) : %s\n", nbytes, buf);
+			    if (strncmp ("exit", buf, 4) == 0) {
+				break;
+			    }
+
+			    tab_req[nbclient].p = malloc(sizeof(struct process));
+			    // -1 : error, 0 = no new process, 1 = new process
+			    ret = srv_get_new_request (buf, &tab_req[nbclient]);
+			    tab_req[nbclient].p->proc_fd = newfd;
+			    if (ret == -1) {
+				perror("srv_get_new_request()");
+				exit(1);
+			    } else if (ret == 0) {
+				break;
+			    }
+
+			    request_print(&tab_req[nbclient]);
+
+			    if (strcmp("listen", tab_req[nbclient].request) == 0) {
+				int ret = pthread_create( &pid_s, NULL, &server_thread, (void *) &tab_req[nbclient]);
+				if (ret) {
+				    perror("pthread_create()");
+				    exit(errno);
+				} else {
+				    printf("\n----------Creation of server thread ------------\n");
+				}
+				nbclient++;
+			    }else {
+				int ret = pthread_create( &tab_client[nbclient], NULL, &client_thread, (void *) &tab_req[nbclient]);
+				if (ret) {
+				    perror("pthread_create()");
+				    exit(errno);
+				} else {
+				    printf("\n----------Creation of client thread ------------\n");
+				}
+				nbclient++;
+
+			    }
+			}
                     }
-                } else {
+                } /*else {
                     nbytes = file_read (i, &buf);
                     if ( nbytes == -1) {
                         handle_error("file_read");
-                    } else if( nbytes == 0) {
+                    } else if( nbytes == 0) {*/
                         /* close it... */
-                        close(i);
+                        //close(i);
                         /* remove from master set */
-                        FD_CLR(i, &master);
+                        /*FD_CLR(i, &master);
                     }else {
                         buf[BUFSIZ - 1] = '\0';
                         printf ("msg received (%d) : %s\n", nbytes, buf);
-                        if (strncmp ("exit", buf, 4) == 0) {
+                        if (strncmp ("exit_server", buf, 4) == 0) {
                             break;
                         }
 
@@ -696,7 +746,7 @@ void main_loop (struct service *srv) {
 
                         }
                     }
-                } //i == listener
+                }*/ //i == listener
             } //if FDISSET
         }//boucle for
         if (strncmp ("exit", buf, 4) == 0) {
