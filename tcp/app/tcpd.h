@@ -6,7 +6,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "../lib/communication.h"
+#include "../../lib/communication.h"
 
 typedef struct {
 	struct 	sockaddr_in c_addr;

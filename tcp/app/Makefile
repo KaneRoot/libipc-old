@@ -3,7 +3,7 @@ CFLAGS=-Wall -g
 LDFLAGS= -pthread
 CFILES=$(wildcard *.c) # CFILES => recompiles everything on a C file change
 EXEC=$(basename $(wildcard *.c))
-SOURCES=$(wildcard ../lib/communication.c ../lib/process.c)
+SOURCES=$(wildcard ../../lib/communication.c ../../lib/process.c)
 OBJECTS=$(SOURCES:.c=.o)
 TESTS=$(addsuffix .test, $(EXEC))
 LCBOR=-lbor

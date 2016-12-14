@@ -1,4 +1,4 @@
-#include "../lib/communication.h"
+#include "../../lib/communication.h"
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -9,16 +9,16 @@
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
 int main(int argc, char * argv[]) {
-    char *srv_message = malloc(1024);
-    char *pidfile = malloc(1024);
-    char *buffer = malloc(1024);
+    char *srv_message = malloc(BUFSIZ);
+    char *pidfile = malloc(BUFSIZ);
+    char *buffer = malloc(BUFSIZ);
 
-    snprintf(srv_message , 1024, "%s %d 1 1" ,"connect 127.0.0.1 6000" , getpid());
-    snprintf(pidfile, 1024,"%s%d-1-1", "/tmp/ipc/", getpid());
+    snprintf(srv_message, BUFSIZ, "%s %d 1 1", "connect 127.0.0.1 6000", getpid());
+    snprintf(pidfile, BUFSIZ, "%s%d-1-1", "/tmp/ipc/", getpid());
 
     char *proc_message = "hello frero";
 
-	int sfd;
+    int sfd;
     struct sockaddr_un my_addr;
     socklen_t peer_addr_size;
 
@@ -33,10 +33,10 @@ int main(int argc, char * argv[]) {
 
     peer_addr_size = sizeof(struct sockaddr_un);
     if(connect(sfd,(struct sockaddr *) &my_addr, peer_addr_size) == -1)
-	{
-	    perror("connect()");
-	    exit(errno);
-	}
+    {
+        perror("connect()");
+        exit(errno);
+    }
     //printf("connected...\n");
     file_write(sfd, srv_message, strlen(srv_message));
     //printf("%s\n", proc_message);
@@ -59,8 +59,8 @@ int main(int argc, char * argv[]) {
     //     perror("connect()");
     //     exit(errno);
     // }
-    
+
     // close(cfd);
 
-	return 0;
+    return 0;
 }

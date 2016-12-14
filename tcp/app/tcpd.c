@@ -1,4 +1,4 @@
-#include "tcpdserver.h"
+#include "tcpd.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
