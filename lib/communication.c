@@ -11,20 +11,6 @@
 
 int file_write (const int fd, const char *buf, const int msize)
 {
-    // if (buf == NULL) {
-    //     fprintf (stderr, "file_write: buf == NULL\n");
-    //     return -1;
-    // }
-
-    // TODO debug
-    // printf("file_write: path to open %s\n", path);
-    // int fd = open (path, O_WRONLY);
-    // if (fd <= 0) {
-    //     printf("file_write: fd < 0\n");
-    //     perror ("file_write");
-    //     return ER_FILE_OPEN;
-    // }
-
     int ret = 0;
     //printf ("%ld bytes to write\n", msize);
     ret = send (fd, buf, msize, 0);
@@ -37,22 +23,6 @@ int file_write (const int fd, const char *buf, const int msize)
 
 int file_read (const int fd, char **buf)
 {
-    // if (buf == NULL) {
-    //     fprintf (stderr, "file_read: buf == NULL\n");
-    //     return -1;
-    // }
-
-    // int fd = open (path, O_RDONLY);
-    // if (fd <= 0) {
-    //     return ER_FILE_OPEN;
-    // }
-    // TODO debug
-    // printf("file_read: opened file %s\n", path);
-
-    // if (*buf == NULL) {
-    //     fprintf(stderr, "file_read : *buf == NULL\n", );
-    // }
-
     int ret = 0;
     ret = recv (fd, *buf, BUFSIZ, 0);
     if (ret < 0) {
@@ -154,18 +124,6 @@ int srv_close (struct service *srv)
 
 int srv_get_new_process (char *buf, struct process *p)
 {
-    /*char *buf = malloc(BUFSIZ);
-    memset(buf, 0, BUFSIZ);
-    int ret = 0;
-    ret = file_read (fd, &buf);
-
-    if (ret < 0) {
-        fprintf (stderr, "err: listening on %d\n", fd);
-        exit (1);
-    } else if (ret == 0) {
-        perror("get new process");
-    }*/
-
     char *token = NULL, *saveptr = NULL;
     char *str = NULL;
     int i = 0;
@@ -278,109 +236,11 @@ int app_create (struct process *p, pid_t pid, int index, int version)
     // then creates the structure
     srv_process_gen (p, pid, index, version);
 
-    // creates the pipes
-    int ret;
-    // if ((ret = mkfifo (p->path_in, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)))
-    // {
-    //     switch (errno) {
-    //         case EACCES :
-    //             printf ("file %s : EACCES\n", p->path_in);
-    //             return 1;
-    //         case EEXIST :
-    //             printf ("file %s : EEXIST\n", p->path_in);
-    //             break;
-    //         case ENAMETOOLONG :
-    //             printf ("file %s : ENAMETOOLONG\n", p->path_in);
-    //             return 2;
-    //         case ENOENT :
-    //             printf ("file %s : ENOENT\n", p->path_in);
-    //             return 3;
-    //         case ENOSPC :
-    //             printf ("file %s : ENOSPC\n", p->path_in);
-    //             return 4;
-    //         case ENOTDIR :
-    //             printf ("file %s : ENOTDIR\n", p->path_in);
-    //             return 5;
-    //         case EROFS :
-    //             printf ("file %s : EROFS\n", p->path_in);
-    //             return 6;
-    //         default :
-    //             printf ("err file %s unknown\n", p->path_in);
-    //             return 7;
-    //     }
-    // }
-
-    // if ((ret = mkfifo (p->path_out, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
-    //     switch (errno) {
-    //         case EACCES :
-    //             printf ("file %s : EACCES\n", p->path_out);
-    //             return 1;
-    //         case EEXIST :
-    //             printf ("file %s : EEXIST\n", p->path_out);
-    //             break;
-    //         case ENAMETOOLONG :
-    //             printf ("file %s : ENAMETOOLONG\n", p->path_out);
-    //             return 2;
-    //         case ENOENT :
-    //             printf ("file %s : ENOENT\n", p->path_out);
-    //             return 3;
-    //         case ENOSPC :
-    //             printf ("file %s : ENOSPC\n", p->path_out);
-    //             return 4;
-    //         case ENOTDIR :
-    //             printf ("file %s : ENOTDIR\n", p->path_out);
-    //             return 5;
-    //         case EROFS :
-    //             printf ("file %s : EROFS\n", p->path_out);
-    //             return 6;
-    //         default :
-    //             printf ("err file %s unknown\n", p->path_out);
-    //             return 7;
-    //     }
-    // }
-
-    if ((ret = mkfifo (p->path_proc, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
-        switch (errno) {
-            case EACCES :
-                printf ("file %s : EACCES\n", p->path_out);
-                return 1;
-            case EEXIST :
-                printf ("file %s : EEXIST\n", p->path_out);
-                break;
-            case ENAMETOOLONG :
-                printf ("file %s : ENAMETOOLONG\n", p->path_out);
-                return 2;
-            case ENOENT :
-                printf ("file %s : ENOENT\n", p->path_out);
-                return 3;
-            case ENOSPC :
-                printf ("file %s : ENOSPC\n", p->path_out);
-                return 4;
-            case ENOTDIR :
-                printf ("file %s : ENOTDIR\n", p->path_out);
-                return 5;
-            case EROFS :
-                printf ("file %s : EROFS\n", p->path_out);
-                return 6;
-            default :
-                printf ("err file %s unknown\n", p->path_out);
-                return 7;
-        }
-    }
-
     return 0;
 }
 
 int app_destroy (struct process *p)
 {
-    // if (unlink (p->path_in)) {
-    //     return 1;
-    // }
-
-    // if (unlink (p->path_out)) {
-    //     return 1;
-    // }
-
     if (unlink (p->path_proc)) {
         return 1;
     }
