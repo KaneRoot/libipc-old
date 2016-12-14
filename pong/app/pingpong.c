@@ -1,4 +1,4 @@
-#include "../lib/communication.h"
+#include "../../lib/communication.h"
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -22,23 +22,7 @@ void * pongd_thread(void * pdata) {
     memset(buf, 0, BUFSIZ);
     int nbytes;
 
-    //init unix socket
-    /*int sfd, cfd;
-    struct sockaddr_un peer_addr;
-    socklen_t peer_addr_size;
-    printf("%s\n", proc->path_proc);
-    //app_create(proc, proc->pid, proc->index, proc->version);
-
-    sfd = set_listen_socket(proc->path_proc);
-    if (sfd == -1){
-        handle_error("set_listen_socket");
-    }
-    peer_addr_size = sizeof(struct sockaddr_un);
-
-    cfd = accept(sfd, (struct sockaddr *) &peer_addr, &peer_addr_size);
-    if (cfd == -1)
-        handle_error("accept");
-    proc->proc_fd = cfd;*/
+    // init unix socket
 
     while (1) {
         if ((nbytes = file_read (*sockclient, &buf)) == -1) {
@@ -252,6 +236,9 @@ void main_loop (struct service *srv)
 int main(int argc, char * argv[], char **env)
 {
     struct service srv;
+    memset (&srv, 0, sizeof (struct service));
+    srv->index = 0;
+    srv->version = 0;
     srv_init (argc, argv, env, &srv, PONGD_SERVICE_NAME, NULL);
     printf ("Listening on %s.\n", srv.spath);
 

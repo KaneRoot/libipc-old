@@ -6,7 +6,6 @@
 #include <string.h>
 //#include <cbor.h>
 
-#include "process.h"
 #include <unistd.h> // unlink
 
 #include <sys/types.h> // mkfifo
@@ -33,21 +32,16 @@ struct service {
     int service_fd;
 };
 
+// wrappers
+int msg_recv (int fd, char **buf);
+int msg_send (int fd, const char *buf, const int m_size);
+int close_socket (int fd);
+
+
+// SERVICE
+
 int srv_init (int argc, char **argv, char **env
-        , struct service *srv, const char *sname
-        , int (*cb)(int argc, char **argv, char **env
-            , struct service *srv, const char *sname));
-
-int srv_get_new_process (char *buf, struct process *proc);
-
-/*
- * returns
- *  0 : ok
- *  1 : no service name
- *  2 : service name too long
- *  3 : unable to create fifo
- */
-int srv_create (struct service *srv);
+        , struct service *srv, const char *sname);
 int srv_close (struct service *srv);
 
 int srv_read (const struct service *, char ** buf);
@@ -56,27 +50,10 @@ int srv_write (const struct service *, const char * buf, size_t);
 // APPLICATION
 
 // send the connection string to $TMP/<service>
-int app_srv_connection (struct service *, const char *, size_t);
+int app_connection (struct service *, const char *, const char *, size_t);
+int app_close (struct service *);
 
-int app_create (struct process *, pid_t pid, int index, int version);
-int app_destroy (struct process *);
-
-int app_read (struct process *, char ** buf);
-int app_write (struct process *, char * buf, size_t);
-
-// wrappers
-int file_read (int fd, char **buf);
-int file_write (int fd, const char *buf, const int m_size);
-
-//close socket
-int close_socket(int fd);
-
-//set and return a listen socket
-int set_listen_socket(const char *path);
-
-//init a proc connection
-int proc_connection(struct process *p);
-
-//open, close, read, write
+int app_read (struct service *, char ** buf);
+int app_write (struct service *, char * buf, size_t);
 
 #endif

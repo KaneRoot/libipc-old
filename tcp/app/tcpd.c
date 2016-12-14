@@ -124,6 +124,9 @@ void * service_thread(void * c_data) {
     makePivMessage(&piv, getpid(), cda->index, version);
 
     struct service srv;
+    memset (&srv, 0, sizeof (struct service));
+    srv->index = 0;
+    srv->version = 0;
     srv_init (0, NULL, NULL, &srv, service, NULL);
     if (app_srv_connection(&srv, piv, strlen(piv)) == -1) {
         handle_error("app_srv_connection\n");

@@ -14,6 +14,8 @@ main(int argc, char **argv, char **env)
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
+    srv->index = 0;
+    srv->version = 0;
     srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Listening on %s.\n", srv.spath);
 

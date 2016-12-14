@@ -16,7 +16,6 @@
 struct process {
     unsigned int version;
     unsigned int index;
-    char path_proc [PATH_MAX];
     int proc_fd;
 };
 

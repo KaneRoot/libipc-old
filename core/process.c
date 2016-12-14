@@ -21,7 +21,6 @@ void srv_process_gen (struct process *p
 {
     p->version = version;
     p->index = index;
-    snprintf(p->path_proc, PATH_MAX, "%s%d-%d", TMPDIR, index, version);
 }
 
 void srv_process_print (struct process *p)
