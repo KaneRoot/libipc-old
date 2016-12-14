@@ -126,7 +126,7 @@ void * pubsubd_worker_thread (void *params)
         pubsubd_msg_recv (ale->p, &m);
 
         if (m.type == PUBSUB_TYPE_DISCONNECT) {
-            printf ("process %d disconnecting...\n", ale->p->pid);
+            // printf ("process %d disconnecting...\n", ale->p->pid);
             if ( 0 != pubsubd_subscriber_del (chan->alh, ale)) {
                 fprintf (stderr, "err : subscriber not registered\n");
             }
@@ -462,13 +462,12 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
     file_read (spath, &buf, &msize);
     // parse pubsubd init msg (sent in TMPDIR/<service>)
     //
-    // line fmt : pid index version action chan
+    // line fmt : index version action chan
     // action : quit | pub | sub
 
     size_t i = 0;
     char *str = NULL, *token = NULL, *saveptr = NULL;
 
-    pid_t pid = 0;
     int index = 0;
     int version = 0;
 
@@ -488,10 +487,9 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
             break;
 
         switch (i) {
-            case 1 : pid = strtoul(token, NULL, 10); break;
-            case 2 : index = strtoul(token, NULL, 10); break;
-            case 3 : version = strtoul(token, NULL, 10); break;
-            case 4 : {
+            case 1 : index = strtoul(token, NULL, 10); break;
+            case 2 : version = strtoul(token, NULL, 10); break;
+            case 3 : {
                          if (strncmp("both", token, 4) == 0) {
                              ale->action = PUBSUB_BOTH;
                          }
@@ -506,7 +504,7 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
                          }
                          break;
                      }
-            case 5 : {
+            case 4 : {
                          // for the last element of the line
                          // drop the following \n
                          if (ale->action != PUBSUB_QUIT) {
@@ -534,7 +532,7 @@ int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
 
     ale->p = malloc (sizeof (struct process));
     memset (ale->p, 0, sizeof (struct process)); 
-    srv_process_gen (ale->p, pid, index, version);
+    srv_process_gen (ale->p, index, version);
 
     chan[BUFSIZ -1] = '\0';
 

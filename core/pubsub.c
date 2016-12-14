@@ -113,10 +113,11 @@ void pubsub_connection (struct service *srv, struct process *p, enum app_list_el
     char line[BUFSIZ];
     memset (line, 0, BUFSIZ);
 
-    // line fmt : pid index version action chan
+    // line fmt : index version action chan
     // "quit" action is also possible (see pubsubd_quit)
-    snprintf (line, BUFSIZ, "%d %d %d %s %s\n"
-            , p->pid, p->index, p->version
+    snprintf (line, BUFSIZ, "%d %d %s %s\n"
+            , p->index
+            , p->version
             , straction
             , channame);
     line[BUFSIZ -1] = '\0'; // to be sure

@@ -8,19 +8,6 @@ ohshit(int rvalue, const char* str) {
     exit(rvalue);
 }
 
-/*
- * pipes creation and removal test program
- *
- * 1. S creates the named pipe /tmp/ipc/<service>
- * 2. App creates named pipes in & out, /tmp/ipc/$pid-$index-$version-{in,out}
- *
- * ... some communication between S and App...
- * App wants to stop
- *
- * 3. App removes the named pipes in and out
- * 4. S removes the named pipe /tmp/ipc/<service>
- */
-
 int main(int argc, char * argv[], char *env[])
 {
     struct service srv;
@@ -39,12 +26,11 @@ int main(int argc, char * argv[], char *env[])
     struct process p;
     memset (&p, 0, sizeof (struct process));
 
-    pid_t pid = getpid();
     int index = 0; // first time we communication with the service
     int version = 1;
 
     printf ("app creation\n");
-    if (app_create (&p, pid, index, version)) // called by the application
+    if (app_create (&p, index, version)) // called by the application
         ohshit (1, "app_create");
 
     /*

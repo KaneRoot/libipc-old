@@ -14,11 +14,8 @@
 #include <string.h>
 
 struct process {
-    pid_t pid;
     unsigned int version;
     unsigned int index;
-    char path_in [PATH_MAX];
-    char path_out [PATH_MAX];
     char path_proc [PATH_MAX];
     int proc_fd;
 };
@@ -29,7 +26,7 @@ int srv_process_eq (const struct process *p1, const struct process *p2);
 
 // create the service process structure
 void srv_process_gen (struct process *p
-        , pid_t pid, unsigned int index, unsigned int version);
+        , unsigned int index, unsigned int version);
 
 void srv_process_print (struct process *);
 

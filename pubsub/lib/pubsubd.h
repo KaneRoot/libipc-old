@@ -11,7 +11,7 @@ struct app_list_elm;
 
 // parse pubsubd init msg (sent in TMPDIR/<service>)
 //
-// line fmt : pid index version action chan
+// TODO TLV line fmt : index version action chan
 // action : quit | pub | sub
 int pubsubd_get_new_process (const char *spath, struct app_list_elm *ale
         , struct channels *chans, struct channel **c);

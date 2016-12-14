@@ -9,7 +9,7 @@
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
-int file_write (const int fd, const char *buf, const int msize)
+int msg_send (const int fd, const char *buf, const int msize)
 {
     int ret = 0;
     //printf ("%ld bytes to write\n", msize);
@@ -21,7 +21,7 @@ int file_write (const int fd, const char *buf, const int msize)
     return ret;
 }
 
-int file_read (const int fd, char **buf)
+int msg_recv (const int fd, char **buf)
 {
     int ret = 0;
     ret = recv (fd, *buf, BUFSIZ, 0);
@@ -128,7 +128,6 @@ int srv_get_new_process (char *buf, struct process *p)
     char *str = NULL;
     int i = 0;
 
-    pid_t pid = 0;
     int index = 0;
     int version = 0;
 
@@ -138,19 +137,16 @@ int srv_get_new_process (char *buf, struct process *p)
             break;
 
         if (i == 1) {
-            pid = strtoul(token, NULL, 10);
-        }
-        else if (i == 2) {
             index = strtoul(token, NULL, 10);
         }
-        else if (i == 3) {
+        else if (i == 2) {
             version = strtoul(token, NULL, 10);
         }
     }
 
     //if (buf != NULL)
     //    free (buf);
-    srv_process_gen (p, pid, index, version);
+    srv_process_gen (p, index, version);
 
     return 0;
 }
@@ -158,13 +154,13 @@ int srv_get_new_process (char *buf, struct process *p)
 int srv_read (const struct service *srv, char ** buf)
 {
     //printf("---%s\n", srv->spath);
-    return file_read (srv->service_fd, buf);
+    return msg_recv (srv->service_fd, buf);
 }
 
 int srv_write (const struct service *srv, const char * buf, size_t msize)
 {
     //printf("---%s\n", srv->spath);
-    return file_write (srv->service_fd, buf, msize);
+    return msg_send (srv->service_fd, buf, msize);
 }
 
 // APPLICATION
@@ -227,14 +223,14 @@ int proc_connection(struct process *p)  {
     return 0;
 }
 
-int app_create (struct process *p, pid_t pid, int index, int version)
+int app_create (struct process *p, int index, int version)
 {
     if (version == 0) {
         version = COMMUNICATION_VERSION;
     }
 
     // then creates the structure
-    srv_process_gen (p, pid, index, version);
+    srv_process_gen (p, index, version);
 
     return 0;
 }
@@ -251,13 +247,13 @@ int app_destroy (struct process *p)
 int app_read (struct process *p, char ** buf)
 {   
     //printf("---%s\n", p->path_proc);
-    return file_read (p->proc_fd, buf);
+    return msg_recv (p->proc_fd, buf);
 }
 
 int app_write (struct process *p, char * buf, size_t msize)
 {
     //printf("---%s\n", p->path_proc);
-    return file_write (p->proc_fd, buf, msize);
+    return msg_send (p->proc_fd, buf, msize);
 }
 
 /*init a unix socket : bind, listen

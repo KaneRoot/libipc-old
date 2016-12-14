@@ -35,8 +35,6 @@ void fill_process (struct process *p)
     p->pid = 10;
     p->version = 1;
     p->index = 1;
-    memcpy (p->path_in, "pathin", strlen ("pathin") +1);
-    memcpy (p->path_out, "pathout", strlen ("pathout") +1);
 }
 
 // enum app_list_elm_action {PUBSUB_QUIT = 1, PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BOTH};
