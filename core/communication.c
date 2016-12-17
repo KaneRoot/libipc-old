@@ -6,11 +6,10 @@
 #include <stdio.h>
 #include <errno.h>
 
-#define LISTEN_BACKLOG 50
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
-void service_path (char *path, const char *name, int index, int version)
+void service_path (char *path, const char *sname, int index, int version)
 {
     memset (path, 0, PATH_MAX);
     snprintf (path, PATH_MAX, "%s/%s-%d-%d", TMPDIR, sname, index, version);
@@ -35,7 +34,7 @@ int srv_init (int argc, char **argv, char **env
     // gets the service path
     service_path (srv->spath, sname, srv->index, srv->version);
 
-    usock_listen (&srv->service_fd, srv->spath);
+    usock_init (&srv->service_fd, srv->spath);
 
     return 0;
 }
@@ -43,12 +42,7 @@ int srv_init (int argc, char **argv, char **env
 int srv_close (struct service *srv)
 {
     usock_close (srv->service_fd);
-
-    if (unlink (srv->spath)) {
-        return 1;
-    }
-
-    return 0;
+    return usock_remove (srv->spath);
 }
 
 int srv_read (const struct service *srv, char ** buf, size_t *msize)

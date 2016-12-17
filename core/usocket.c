@@ -1,4 +1,8 @@
 #include "usocket.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
 #include <assert.h>
 
 #define handle_err(fun,msg)\
@@ -66,7 +70,7 @@ int usock_connect (int *fd, const char *path)
     struct sockaddr_un my_addr;
     socklen_t peer_addr_size;
 
-    sfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    sfd = socket (AF_UNIX, SOCK_STREAM, 0);
     if (sfd == -1) {
         handle_err ("usock_connect", "sfd == -1");
         return -1;
@@ -86,20 +90,22 @@ int usock_connect (int *fd, const char *path)
     }
 
     *fd = sfd;
+
+    return 0;
 }
 
-int usock_listen (int *fd, const char *path)
+int usock_init (int *fd, const char *path)
 {
     assert (fd != NULL);
     assert (path != NULL);
 
     if (fd == NULL) {
-        handle_err ("usock_listen", "fd == NULL");
+        handle_err ("usock_init", "fd == NULL");
         return -1;
     }
 
     if (path == NULL) {
-        handle_err ("usock_listen", "path == NULL");
+        handle_err ("usock_init", "path == NULL");
         return -1;
     }
 
@@ -107,9 +113,9 @@ int usock_listen (int *fd, const char *path)
     struct sockaddr_un my_addr;
     socklen_t peer_addr_size;
 
-    sfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    sfd = socket (AF_UNIX, SOCK_STREAM, 0);
     if (sfd == -1) {
-        handle_err ("usock_listen", "sfd == -1");
+        handle_err ("usock_init", "sfd == -1");
         return -1;
     }
 
@@ -121,23 +127,47 @@ int usock_listen (int *fd, const char *path)
 
     // TODO FIXME
     // delete the unix socket if already created
-    unlink(my_addr.sun_path);
 
     peer_addr_size = sizeof(struct sockaddr_un);
-    if (bind(sfd, (struct sockaddr *) &my_addr, peer_addr_size) == -1) {
-        handle_err ("usock_listen", "bind == -1");
+
+    if (bind (sfd, (struct sockaddr *) &my_addr, peer_addr_size) == -1) {
+        handle_err ("usock_init", "bind == -1");
         perror("bind()");
         return -1;
     }
 
-    if (listen(sfd, LISTEN_BACKLOG) == -1) {
-        handle_err ("usock_listen", "listen == -1");
+    if (listen (sfd, LISTEN_BACKLOG) == -1) {
+        handle_err ("usock_init", "listen == -1");
         perror("listen()");
         return -1;
     }
 
     *fd = sfd;
 
+    return 0;
+}
+
+int usock_accept (int fd, int *pfd)
+{
+    assert (pfd != NULL);
+
+    if (pfd == NULL) {
+        handle_err ("usock_accept", "pfd == NULL");
+        return -1;
+    }
+
+    struct sockaddr_un peer_addr;
+    memset (&peer_addr, 0, sizeof (struct sockaddr_un));
+    socklen_t peer_addr_size;
+
+    *pfd = accept (fd, (struct sockaddr *) &peer_addr, &peer_addr_size);
+    if (*pfd < 0) {
+        handle_err ("usock_accept", "accept < 0");
+        perror("listen()");
+        return -1;
+    }
+
+    return 0;
 }
 
 int usock_close (int fd)
@@ -149,4 +179,9 @@ int usock_close (int fd)
         perror ("closing");
     }
     return ret;
+}
+
+int usock_remove (const char *path)
+{
+    return unlink (path);
 }

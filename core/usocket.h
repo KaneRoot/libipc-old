@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#define LISTEN_BACKLOG 128
+
 // same as recv(2)
 int usock_send (int fd, const char *buf, const int m_size);
 
@@ -19,6 +21,17 @@ int usock_close (int fd);
 
 // same as connect(2)
 // if fd == NULL => -1
-int usock_connect (int *fd, const char *path)
+int usock_connect (int *fd, const char *path);
+
+// if not ok => -1
+// if ok => 0
+int usock_init (int *fd, const char *path);
+
+// if not ok => -1
+// if ok => 0
+int usock_accept (int fd, int *pfd);
+
+// same as unlink(2)
+int usock_remove (const char *path);
 
 #endif

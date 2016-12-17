@@ -45,7 +45,7 @@ int srv_init (int argc, char **argv, char **env
         , struct service *srv, const char *sname);
 int srv_close (struct service *srv);
 
-int srv_read (const struct service *, char ** buf);
+int srv_read (const struct service *srv, char ** buf, size_t *msize);
 int srv_write (const struct service *, const char * buf, size_t);
 
 // APPLICATION
