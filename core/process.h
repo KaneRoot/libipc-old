@@ -6,11 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define TMPDIR "/tmp/ipc/"
-
-// TODO to check the right length for a path
-#define PATH_MAX BUFSIZ
-
 #include <string.h>
 
 struct process {

@@ -1,7 +1,7 @@
 #ifndef __PUBSUBD_H__
 #define __PUBSUBD_H__
 
-#include "../../lib/pubsub.h"
+#include "../../core/pubsub.h"
 #include <pthread.h>
 
 struct channel;

@@ -575,7 +575,7 @@ void pubsubd_msg_send (const struct app_list_head *alh, const struct pubsub_msg 
     pubsubd_msg_serialize (m, &buf, &msize);
 
     LIST_FOREACH(ale, alh, entries) {
-        srv_write (ale->p, buf, msize);
+        srv_write (ale->p->proc_fd, buf, msize);
     }
 
     if (buf != NULL) {
@@ -589,7 +589,7 @@ void pubsubd_msg_recv (struct process *p, struct pubsub_msg *m)
     size_t mlen = 0;
     char *buf = NULL;
     while (buf == NULL || mlen == 0) {
-        srv_read (p, &buf, &mlen);
+        srv_read (p->proc_fd, &buf, &mlen);
     }
 
     pubsubd_msg_unserialize (m, buf, mlen);
