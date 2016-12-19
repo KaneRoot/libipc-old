@@ -47,7 +47,7 @@ int srv_init (int argc, char **argv, char **env
 int srv_accept (struct service *srv, struct process *p)
 {
     usock_accept (srv->service_fd, &p->proc_fd);
-    char *buf;
+    char *buf = NULL;
     size_t msgsize = BUFSIZ;
 
     srv_read (p, &buf, &msgsize);
@@ -56,6 +56,8 @@ int srv_accept (struct service *srv, struct process *p)
     msg_format_ack (buf, NULL, &msgsize);
 
     srv_write (p, buf, msgsize);
+
+    free (buf);
 
     return 0;
 }
@@ -104,19 +106,22 @@ int app_connection (int argc, char **argv, char **env
     // TODO: connection algorithm
     // send connection string and receive acknowledgement
     char send_buffer [BUFSIZ];
+    memset (send_buffer, 0, BUFSIZ);
     if (msg_format_con (send_buffer, connectionstr, &msize) < 0) {
         handle_err ("app_connection", "msg_format_con");
         return -1;
     }
     app_write (srv, send_buffer, msize);
 
-    char *buffer;
+    char *buffer = NULL;
     size_t read_msg_size = BUFSIZ;
 
     app_read (srv, &buffer, &read_msg_size);
 
     assert (buffer[0] == MSG_TYPE_ACK);
     assert (read_msg_size == 3);
+
+    free (buffer);
 
     return 0;
 }

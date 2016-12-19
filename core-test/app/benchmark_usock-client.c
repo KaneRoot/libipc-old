@@ -13,11 +13,10 @@
 
 int main (int argc, char * argv[])
 {
-
     argc = argc;
     argv = argv;
 
-    int fd;
+    int fd = 0;
     size_t msize = BUFSIZ;
     char *buf = NULL;
 
@@ -54,6 +53,9 @@ int main (int argc, char * argv[])
         handle_err("main", "usock_close < 0");
         return EXIT_FAILURE;
     }
+
+    if (buf != NULL)
+        free (buf);
 
     return EXIT_SUCCESS;
 }

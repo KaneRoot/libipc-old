@@ -164,7 +164,7 @@ int usock_accept (int fd, int *pfd)
 
     struct sockaddr_un peer_addr;
     memset (&peer_addr, 0, sizeof (struct sockaddr_un));
-    socklen_t peer_addr_size;
+    socklen_t peer_addr_size = 0;
 
     *pfd = accept (fd, (struct sockaddr *) &peer_addr, &peer_addr_size);
     if (*pfd < 0) {

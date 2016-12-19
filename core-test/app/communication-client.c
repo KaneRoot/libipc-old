@@ -53,5 +53,8 @@ int main (int argc, char *argv[], char *env[])
         return EXIT_FAILURE;
     }
 
+    if (buf != NULL)
+        free (buf);
+
     return EXIT_SUCCESS;
 }

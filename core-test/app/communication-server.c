@@ -30,6 +30,7 @@ int main (int argc, char *argv[], char *env[])
     srv.version = 0;
 
     struct process p;
+    memset (&p, 0, sizeof (struct process));
 
     // init service
     if (srv_init (argc, argv, env, &srv, SERVICE_NAME) < 0) {
@@ -63,6 +64,9 @@ int main (int argc, char *argv[], char *env[])
         handle_err("main", "srv_close < 0");
         return EXIT_FAILURE;
     }
+
+    if (buf != NULL)
+        free (buf);
 
     return EXIT_SUCCESS;
 }
