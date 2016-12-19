@@ -1,6 +1,11 @@
 #ifndef __PROCESS_H__
 #define __PROCESS_H__
 
+#if 0
+
+// TODO
+// tout revoir
+
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -24,4 +29,5 @@ void srv_process_gen (struct process *p
 
 void srv_process_print (struct process *);
 
+#endif
 #endif

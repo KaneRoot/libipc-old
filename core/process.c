@@ -1,5 +1,9 @@
 #include "process.h"
 
+// TODO
+// tout revoir ici
+
+#if 0
 struct process * srv_process_copy (const struct process *p)
 {
     if (p == NULL)
@@ -28,3 +32,4 @@ void srv_process_print (struct process *p)
     if (p != NULL)
         printf ("process %d : index %d, version %d\n", p->index, p->version);
 }
+#endif

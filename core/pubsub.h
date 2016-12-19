@@ -5,6 +5,8 @@
 #include "process.h"
 #include "queue.h"
 
+#if 0
+
 #define PUBSUB_TYPE_DISCONNECT                                      0
 #define PUBSUB_TYPE_MESSAGE                                         1
 #define PUBSUB_TYPE_ERROR                                           2
@@ -36,5 +38,7 @@ enum app_list_elm_action {PUBSUB_QUIT = 1, PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BOTH};
 
 void pubsub_connection (struct service *srv, struct process *p, enum app_list_elm_action action, const char *channame);
 void pubsubd_quit (struct service *srv);
+
+#endif
 
 #endif

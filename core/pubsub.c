@@ -1,6 +1,8 @@
 #include "pubsub.h"
 #include <stdlib.h>
 
+#if 0
+
 #include <string.h> // strndup
 
 void pubsubd_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *len)
@@ -186,3 +188,4 @@ void pubsub_msg_recv (struct process *p, struct pubsub_msg *m)
     }
 
 }
+#endif
