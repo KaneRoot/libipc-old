@@ -1,10 +1,16 @@
 #ifndef __PROCESS_H__
 #define __PROCESS_H__
 
-#if 0
+struct process {
+    unsigned int version;
+    unsigned int index;
+    int proc_fd;
+};
 
 // TODO
 // tout revoir
+
+#if 0
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -13,11 +19,6 @@
 
 #include <string.h>
 
-struct process {
-    unsigned int version;
-    unsigned int index;
-    int proc_fd;
-};
 
 struct process * srv_process_copy (const struct process *p);
 

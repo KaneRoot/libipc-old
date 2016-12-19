@@ -1,13 +1,16 @@
 #include "communication.h"
 #include "usocket.h"
+#include "msg-format.h"
 
 #include <assert.h>
-
 #include <stdio.h>
 #include <errno.h>
 
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+#define handle_err(fun,msg)\
+    fprintf (stderr, "%s: file %s line %d %s\n", fun, __FILE__, __LINE__, msg);
 
 void service_path (char *path, const char *sname, int index, int version)
 {
@@ -39,25 +42,47 @@ int srv_init (int argc, char **argv, char **env
     return 0;
 }
 
+// TODO
+int srv_accept (struct service *srv, struct process *p)
+{
+    usock_accept (srv->service_fd, &p->proc_fd);
+
+    char buf[3];
+    msg_format_ack (buf);
+
+    srv_write (p, buf, 3);
+
+    return 0;
+}
+
 int srv_close (struct service *srv)
 {
     usock_close (srv->service_fd);
     return usock_remove (srv->spath);
 }
 
-int srv_read (const struct service *srv, char ** buf, size_t *msize)
+int srv_close_proc (struct process *p)
 {
-    return usock_recv (srv->service_fd, buf, msize);
+    return usock_close (p->proc_fd);
 }
 
-int srv_write (const struct service *srv, const char * buf, size_t msize)
+int srv_read (const struct process *p, char **buf, size_t *msize)
 {
-    return usock_send (srv->service_fd, buf, msize);
+    return usock_recv (p->proc_fd, buf, msize);
 }
 
-int app_connection (struct service *srv, const char *sname
+int srv_write (const struct process *p, const char * buf, size_t msize)
+{
+    return usock_send (p->proc_fd, buf, msize);
+}
+
+int app_connection (int argc, char **argv, char **env
+        , struct service *srv, const char *sname
         , const char *connectionstr, size_t msize)
 {
+    argc = argc;
+    argv = argv;
+    env = env;
 
     assert (srv != NULL);
     assert (sname != NULL);
@@ -69,11 +94,24 @@ int app_connection (struct service *srv, const char *sname
     // gets the service path
     service_path (srv->spath, sname, srv->index, srv->version);
 
-    usock_connect(&srv->service_fd, srv->spath);
+    usock_connect (&srv->service_fd, srv->spath);
 
     // TODO: connection algorithm
     // send connection string and receive acknowledgement
-    srv_write(srv, connectionstr, msize);
+    char send_buffer [BUFSIZ];
+    if (msg_format_con (send_buffer, connectionstr, &msize) < 0) {
+        handle_err ("app_connection", "msg_format_con");
+        return -1;
+    }
+    app_write (srv, send_buffer, msize);
+
+    char *buffer;
+    size_t read_msg_size;
+
+    app_read (srv, &buffer, &read_msg_size);
+
+    assert (read_msg_size == 3);
+    assert (buffer[0] == MSG_TYPE_ACK);
 
     return 0;
 }
