@@ -8,6 +8,6 @@
 #define MSG_TYPE_ACK 4
 
 int msg_format_con (char *buf, const char *constr, size_t *msgsize);
-int msg_format_ack (char *buf);
+int msg_format_ack (char *buf, const char *constr, size_t *msgsize);
 
 #endif

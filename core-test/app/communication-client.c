@@ -35,6 +35,7 @@ int main (int argc, char *argv[], char *env[])
         return EXIT_FAILURE;
     }
 
+    printf ("msg to send: %s\n", MSG);
     if (app_write (&srv, MSG, strlen(MSG)) < 0) {
         handle_err("main", "app_write < 0");
         return EXIT_FAILURE;

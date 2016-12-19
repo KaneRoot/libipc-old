@@ -1,6 +1,7 @@
 #include "communication.h"
 #include "usocket.h"
 #include "msg-format.h"
+#include "utils.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -46,11 +47,15 @@ int srv_init (int argc, char **argv, char **env
 int srv_accept (struct service *srv, struct process *p)
 {
     usock_accept (srv->service_fd, &p->proc_fd);
+    char *buf;
+    size_t msgsize = BUFSIZ;
 
-    char buf[3];
-    msg_format_ack (buf);
+    srv_read (p, &buf, &msgsize);
 
-    srv_write (p, buf, 3);
+    msgsize = 0;
+    msg_format_ack (buf, NULL, &msgsize);
+
+    srv_write (p, buf, msgsize);
 
     return 0;
 }
@@ -106,12 +111,12 @@ int app_connection (int argc, char **argv, char **env
     app_write (srv, send_buffer, msize);
 
     char *buffer;
-    size_t read_msg_size;
+    size_t read_msg_size = BUFSIZ;
 
     app_read (srv, &buffer, &read_msg_size);
 
-    assert (read_msg_size == 3);
     assert (buffer[0] == MSG_TYPE_ACK);
+    assert (read_msg_size == 3);
 
     return 0;
 }

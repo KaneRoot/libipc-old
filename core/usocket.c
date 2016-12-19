@@ -1,4 +1,5 @@
 #include "usocket.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -10,13 +11,15 @@
 
 int usock_send (const int fd, const char *buf, const int msize)
 {
+    print_hexa ("msg send", (unsigned char *)buf, msize);
+    printf ("msg to send: (%d) \n", msize);
+    fflush(stdout);
+
     int ret = 0;
     //printf ("%ld bytes to write\n", msize);
     ret = send (fd, buf, msize, 0);
-    if (ret <= 0) {
-        fprintf (stderr, "usock_send: file %s line %d send ret <= 0\n"
-                , __FILE__, __LINE__);
-    }
+    if (ret <= 0)
+        handle_err ("usock_send", "send ret <= 0");
     return ret;
 }
 
@@ -37,6 +40,8 @@ int usock_recv (const int fd, char **buf, size_t *msize)
 
     if (*buf == NULL) {
         // do not allocate too much memory
+        if (*msize > BUFSIZ)
+            handle_err ("usock_recv", "msize > BUFSIZ");
         *buf = malloc ((*msize < BUFSIZ) ? *msize : BUFSIZ);
     }
 
@@ -48,6 +53,7 @@ int usock_recv (const int fd, char **buf, size_t *msize)
         return ret;
     }
     *msize = (size_t) ret;
+    print_hexa ("msg recv", (unsigned char *)*buf, *msize);
     return ret;
 }
 
