@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <errno.h>
 
+
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
@@ -139,4 +140,73 @@ int app_read (struct service *srv, char ** buf, size_t *msize)
 int app_write (struct service *srv, char * buf, size_t msize)
 {
     return usock_send (srv->service_fd, buf, msize);
+}
+
+
+/*prendre en parametre un tableau de process.
+* trouver le processus/service actif et renvoyer CONNECTION/APPLICATION 
+* si un processus il va etre placer dans proc
+* si un service il va etre placer dans service.
+*/
+int srv_select(struct array_proc *ap, struct service *srv, struct process **proc) {
+    int i, j;
+    /* master file descriptor list */
+    fd_set master;
+    fd_set readf;
+
+    /* maximum file descriptor number */
+    int fdmax;
+    /* listening socket descriptor */
+    int listener = srv->service_fd;
+
+    /* clear the master and temp sets */
+    FD_ZERO(&master);
+    FD_ZERO(&readf);
+    /* add the listener to the master set */
+    FD_SET(listener, &master);
+
+    for(i=0; i < ap->size; i++) {
+        FD_SET(ap->tab_proc[i]->proc_fd, &master);
+    }
+
+    /* keep track of the biggest file descriptor */
+    fdmax = getMaxFd(ap) > srv->service_fd ? getMaxFd(ap) : srv->service_fd; 
+
+    while (1) {
+        readf = master;
+        if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1)
+        {
+            perror("Server-select() error lol!");
+            exit(1);
+        }
+
+        /*run through the existing connections looking for data to be read*/
+        for (i = 0; i <= fdmax; i++) {
+            if (FD_ISSET(i, &readf)) {
+                if (i == listener) {
+                    return CONNECTION;
+                }else {
+                    for(j = 0; j < ap->size; j++) {
+                        if(i == ap->tab_proc[j]->proc_fd ) {
+                            *proc = ap->tab_proc[j];
+                            return APPLICATION;
+                        }
+                    }
+                }
+            }
+        }
+    }
+} 
+
+/*calculer le max filedescriptor*/
+int getMaxFd(struct array_proc *ap) {
+    int i;
+    int max = 0;
+    for (i = 0; i < ap->size; i++ ) {
+        if (ap->tab_proc[i]->proc_fd > max) {
+            max = ap->tab_proc[i]->proc_fd;
+        } 
+    }
+
+    return max;
 }

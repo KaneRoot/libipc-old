@@ -7,8 +7,18 @@ struct process {
     int proc_fd;
 };
 
+struct array_proc {
+	struct process **tab_proc;
+	int size;
+};
+
 // TODO
 // tout revoir
+int add_proc(struct array_proc *, struct process *);
+
+int del_proc(struct array_proc *, struct process *);
+
+void array_proc_print(struct array_proc *);
 
 #if 0
 
