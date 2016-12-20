@@ -1,0 +1,57 @@
+.TH COMMUNICATION.H 3  2016-12-20 "" "Linux Programmer's Manual"
+.SH NAME
+communication.h \- all functions explained
+.SH SYNOPSIS
+.nf
+.B #include <communication.h>
+.sp
+// SERVICE
+.sp
+.BI "int srv_init (int " argc ", char ** " argv ", char **" env ", struct service * " srv "
+.BI "       , const char * " service_name );
+.BI "int srv_accept (struct service * " srv ", struct process * " p );
+.sp
+.BI "int srv_read (const struct process * " p ", char ** " buf ", size_t * " buf_size );
+.BI "int srv_write (const struct process * ", const char * " buf ", size_t " buf_size );
+.sp
+.BI "int srv_close (struct service * " srv );
+.BI "int srv_close_proc (struct process * " p );
+
+// APPLICATION
+
+// Initialize connection with unix socket
+// send the connection string to $TMP/<service>
+// fill srv->spath && srv->service_fd
+.BI "int app_connection (int " argc ", char ** " argv ", char ** " env ", struct service * " srv
+.BI "       , const char * " service_name "
+.BI "       , const char * " connection_str ", size_t " connection_str_size );
+.sp
+.BI "int app_read (struct service * " srv ", char ** " buf ", size_t * " msize );
+.BI "int app_write (struct service * " srv ", char * " buf ", size_t  " msize );
+.sp
+.BI "int app_close (struct service * " srv );
+
+
+.fi
+.SH DESCRIPTION
+The
+.BR srv_init ()
+function let the service declare itself, create a new unix socket and listen.
+.I argc
+, 
+.IR argv
+and
+.IR env
+should be passed to the function in order to automatically change the behavior of the program without the application being modified. \fBTODO\fR.
+
+.I *srv
+is the pointer to the \fBstruct service\fR that should be filled (index and version parameters).
+The \fBsrv_init()\fR function will fill the rest of the parameters of this structure, such as the unix socket path and the unix socket file descriptor in order to be able to receive new connections.
+.PP
+The
+.BR srv_accept ()
+function accepts new connections.
+.IR p
+parameter is the client process that will be provided after the connection.
+.SH RETURN VALUE
+All the functions return an integer less than zero if there is an error.
