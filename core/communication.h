@@ -18,6 +18,9 @@
 
 #define PATH_MAX BUFSIZ
 
+#define CONNECTION 0
+#define APPLICATION 1
+
 struct service {
     unsigned int version;
     unsigned int index;
@@ -39,6 +42,10 @@ int srv_accept (struct service *srv, struct process *p);
 int srv_read (const struct process *, struct msg *m);
 int srv_write (const struct process *, const struct msg *m);
 
+int srv_select(struct array_proc *, struct service *, struct process **);
+
+int getMaxFd(struct array_proc *);
+
 // APPLICATION
 
 // Initialize connection with unix socket
@@ -50,5 +57,7 @@ int app_close (struct service *);
 
 int app_read (struct service *srv, struct msg *m);
 int app_write (struct service *, const struct msg *m);
+
+
 
 #endif

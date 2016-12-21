@@ -1,50 +1,13 @@
-#include "../../lib/communication.h"
-#include <pthread.h>
+#include "../../core/communication.h"
 #include <sys/socket.h>
 #include <sys/un.h>
+#include "../../core/process.h"
+#include <unistd.h>
 
 #define PONGD_SERVICE_NAME "pongd"
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
-
-/* control the file descriptor*/
-void * pongd_thread(void * pdata) {
-    //struct process *proc = (struct process*) pdata;
-    int *sockclient = (int*) pdata;
-
-    // about the message
-    char *buf = malloc(BUFSIZ);
-    if (buf == NULL)
-    {
-        handle_error("malloc");
-    }
-    memset(buf, 0, BUFSIZ);
-    int nbytes;
-
-    // init unix socket
-
-    while (1) {
-        if ((nbytes = file_read (*sockclient, &buf)) == -1) {
-            fprintf(stdout, "MAIN_LOOP: error service_read %d\n", nbytes);
-        }
-        
-        if (nbytes == 0 || strncmp ("exit", buf, 4) == 0){
-            printf("------thread shutdown------------\n");
-            //close(cfd);
-            close(*sockclient);
-            free(buf);
-            break;
-        }else {
-            printf ("read, size %d : %s\n", nbytes, buf);
-            if ((nbytes = file_write (*sockclient, buf, nbytes)) == -1) {
-                fprintf(stdout, "MAIN_LOOP: error service_write %d\n", nbytes);
-            }
-        }
-    }
-
-    return NULL;
-}
 
 
 /*
@@ -57,169 +20,53 @@ void * pongd_thread(void * pdata) {
 
 void main_loop (struct service *srv)
 {
-    int ret;
-    struct process tab_proc[10];
-    //thread 
-    pthread_t tab_thread[10]; 
-    int cnt = 0;
 
-    //init socket unix for server
-    int sfd;
-    struct sockaddr_un peer_addr;
-    socklen_t peer_addr_size;
-
-    sfd = set_listen_socket(srv->spath);
-    if (sfd == -1){
-        handle_error("set_listen_socket");
+    size_t msize = BUFSIZ;
+    char *buf = NULL;
+    if ( (buf = malloc (BUFSIZ)) == NULL) {
+        handle_error ("malloc");
     }
+    memset (buf, 0, BUFSIZ);
 
-    /* master file descriptor list */
-    fd_set master;
-    /* temp file descriptor list for select() */
-    fd_set read_fds;
+    int i,ret, cpt = 0; 
 
-    /* maximum file descriptor number */
-    int fdmax;
-    /* listening socket descriptor */
-    int listener = sfd;
-    /* newly accept()ed socket descriptor */
-    int newfd;
-    /* buffer for client data */
-    char *buf = malloc(BUFSIZ);
-    if (buf == NULL)
-    {
-        handle_error("malloc");
-    }
-    memset(buf, 0, BUFSIZ);
+    struct array_proc ap;
+    memset(&ap, 0, sizeof(struct array_proc));
 
-    int nbytes;
+    struct process *p2 = malloc(sizeof(struct process));
 
-    int i;
+    while(cpt < 5) {
+        ret = srv_select(&ap, srv, &p2);
+        
+        if (ret == CONNECTION) {
+            struct process *p = malloc(sizeof(struct process));
+            memset(p, 0, sizeof(struct process));
+            if (srv_accept (srv, p) < 0) {
+                handle_error("srv_accept < 0");
+            }else {
+                printf("new connection\n");
+            }
 
-    /* clear the master and temp sets */
-    FD_ZERO(&master);
-    FD_ZERO(&read_fds);
-
-    /* add the listener to the master set */
-    FD_SET(listener, &master);
-    //FD_SET(sfd, &master);
-
-    /* keep track of the biggest file descriptor */
-    fdmax = sfd; /* so far, it's this one*/
-
-    for(;;) {
-        /* copy it */
-        read_fds = master;
-        if(select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1)
-        {
-            perror("Server-select() error lol!");
-            exit(1);
-        }
-        //printf("Server-select...OK\n");
-
-        /*run through the existing connections looking for data to be read*/
-        for(i = 0; i <= fdmax; i++) {
-            if(FD_ISSET(i, &read_fds)) {
-                /* we got one... */
-                if(i == listener) {
-                    /* handle new connections */
-                    peer_addr_size = sizeof(struct sockaddr_un);
-                    newfd = accept(sfd, (struct sockaddr *) &peer_addr, &peer_addr_size);
-                    if (newfd == -1) {
-                        handle_error("accept");
-                    }
-                    else
-                    {
-                        printf("Server-accept() is OK...\n");
-                        //FD_SET(newfd, &master); /* add to master set */
-                        //if(newfd > fdmax)
-                        //{ /* keep track of the maximum */
-                            //fdmax = newfd;
-                        //}
-			nbytes = file_read (newfd, &buf);
-                        if ( nbytes == -1) {
-			    handle_error("file_read");
-			} else {
-			    buf[BUFSIZ - 1] = '\0';
-			    printf ("msg received (%d) : %s\n", nbytes, buf);
-			    if (strncmp ("exit", buf, 4) == 0) {
-				break;
-			    }
-
-			    // -1 : error, 0 = no new process, 1 = new process
-			    ret = srv_get_new_process (buf, &tab_proc[cnt]);
-
-			    if (ret == -1) {
-				fprintf (stderr, "MAIN_LOOP: error service_get_new_process\n");
-				continue;
-			    } 
-
-			    srv_process_print (&tab_proc[cnt]);
-
-			    int ret = pthread_create( &tab_thread[cnt], NULL, &pongd_thread, (void *) &newfd);
-			    if (ret) {
-				perror("pthread_create()");
-				exit(errno);
-			    } else {
-				printf ("\n-------New thread created---------\n");
-			    }
-
-			    printf ("%d applications to serve\n",cnt);
-			    cnt++;
-			}
-		    } 
-                /*else {
-                    nbytes = file_read (i, &buf);
-                    if ( nbytes == -1) {
-                        handle_error("file_read");
-                    } else if( nbytes == 0) {*/
-                        /* close it... */
-                        //close(i);
-                        /* remove from master set */
-                        /*FD_CLR(i, &master);
-                    }else {
-                        buf[BUFSIZ - 1] = '\0';
-                        printf ("msg received (%d) : %s\n", nbytes, buf);
-                        if (strncmp ("exit", buf, 4) == 0) {
-                            break;
-                        }
-
-                        // -1 : error, 0 = no new process, 1 = new process
-                        ret = srv_get_new_process (buf, &tab_proc[cnt]);
-
-                        if (ret == -1) {
-                            fprintf (stderr, "MAIN_LOOP: error service_get_new_process\n");
-                            continue;
-                        } 
-
-                        srv_process_print (&tab_proc[cnt]);
-
-                        int ret = pthread_create( &tab_thread[cnt], NULL, &pongd_thread, (void *) &i);
-                        if (ret) {
-                            perror("pthread_create()");
-                            exit(errno);
-                        } else {
-                            printf ("\n-------New thread created---------\n");
-                        }
-
-                        printf ("%d applications to serve\n",cnt);
-                        cnt++;
-                    }*/
-                }
-
+            if (add_proc(&ap, p) < 0) {
+                handle_error("add_proc < 0");
+            }
+            cpt++;
+        } else {
+            if (srv_read(p2, &buf, &msize) < 0) {
+                handle_error("srv_read < 0");
+            }
+            
+            if (srv_write (p2, buf, msize) < 0) {
+                handle_error("srv_write < 0");
             }
         }
-        if (strncmp ("exit", buf, 4) == 0) {
-            break;
-        }
+    }
 
+    for (i = 0; i < ap.size; i++) {
+        if (srv_close_proc (ap.tab_proc[i]) < 0) {
+            handle_error( "srv_close_proc < 0");
+        }
     }
-    
-    for (i = 0; i < cnt; i++) {
-        pthread_join(tab_thread[i], NULL);    
-    }
-    free(buf);
-    close(sfd);
 }
 
 
@@ -237,26 +84,24 @@ int main(int argc, char * argv[], char **env)
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    srv->index = 0;
-    srv->version = 0;
-    srv_init (argc, argv, env, &srv, PONGD_SERVICE_NAME, NULL);
+    srv.index = 0;
+    srv.version = 0;
+    unlink("/tmp/ipc/pongd-0-0");
+    if (srv_init (argc, argv, env, &srv, PONGD_SERVICE_NAME) < 0) {
+        handle_error("srv_init < 0");
+        return EXIT_FAILURE;
+    }
     printf ("Listening on %s.\n", srv.spath);
 
-    // creates the service named pipe, that listens to client applications
-    int ret;
-    if ((ret = srv_create (&srv))) {
-        fprintf(stdout, "error service_create %d\n", ret);
-        exit (1);
-    }
     printf("MAIN: server created\n" );
 
     // the service will loop until the end of time, a specific message, a signal
     main_loop (&srv);
 
     // the application will shut down, and remove the service named pipe
-    if ((ret = srv_close (&srv))) {
-        fprintf(stdout, "error service_close %d\n", ret);
-        exit (1);
+    if (srv_close (&srv) < 0) {
+        handle_error("srv_close < 0");
+
     }
 
     return EXIT_SUCCESS;

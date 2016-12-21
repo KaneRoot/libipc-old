@@ -1,4 +1,7 @@
 #include "process.h"
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 // TODO
 // tout revoir ici
@@ -27,9 +30,54 @@ void srv_process_gen (struct process *p
     p->index = index;
 }
 
-void srv_process_print (struct process *p)
+
+#endif
+
+int add_proc(struct array_proc *aproc, struct process *p) {
+    assert(aproc != NULL);
+    assert(p != NULL);
+    aproc->size++;
+    aproc->tab_proc = realloc(aproc->tab_proc, sizeof(struct process) * aproc->size);
+    if (aproc->tab_proc == NULL) {
+        return -1;
+    }
+
+    aproc->tab_proc[aproc->size - 1] = p;
+    return 0;
+}
+
+int del_proc(struct array_proc *aproc, struct process *p) {
+    assert(aproc != NULL);
+    assert(p != NULL);
+
+    int i;
+    for (i = 0; i < aproc->size; i++) {
+        if (aproc->tab_proc[i] == p) {
+            aproc->tab_proc[i] = aproc->tab_proc[aproc->size-1];
+            aproc->size--;
+            aproc->tab_proc = realloc(aproc->tab_proc, sizeof(struct process) * aproc->size);
+            if (aproc->tab_proc == NULL) {
+                return -1;
+            }
+            return 0;
+        }
+    }
+
+    return -2;
+}
+
+void process_print (struct process *p)
 {
     if (p != NULL)
-        printf ("process %d : index %d, version %d\n", p->index, p->version);
+        printf ("process %d : index %d, version %d\n", p->proc_fd, p->index, p->version);
 }
-#endif
+
+void array_proc_print( struct array_proc *ap) {
+    int i;
+    for (i = 0; i < ap->size; i++) {
+        printf("%d : ", i);
+        process_print(ap->tab_proc[i]);
+    }
+}
+
+
