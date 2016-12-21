@@ -1,18 +1,16 @@
 #include "usocket.h"
 #include "utils.h"
+#include "error.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 #include <assert.h>
 
-#define handle_err(fun,msg)\
-    fprintf (stderr, "%s: file %s line %d %s\n", fun, __FILE__, __LINE__, msg);
-
 int usock_send (const int fd, const char *buf, const int msize)
 {
     print_hexa ("msg send", (unsigned char *)buf, msize);
-    printf ("msg to send: (%d) \n", msize);
     fflush(stdout);
 
     int ret = 0;
@@ -42,6 +40,8 @@ int usock_recv (const int fd, char **buf, size_t *msize)
         // do not allocate too much memory
         if (*msize > BUFSIZ)
             handle_err ("usock_recv", "msize > BUFSIZ");
+        if (*msize == 0)
+            *msize = BUFSIZ;
         *buf = malloc ((*msize < BUFSIZ) ? *msize : BUFSIZ);
     }
 
@@ -54,6 +54,7 @@ int usock_recv (const int fd, char **buf, size_t *msize)
     }
     *msize = (size_t) ret;
     print_hexa ("msg recv", (unsigned char *)*buf, *msize);
+    fflush(stdout);
     return ret;
 }
 

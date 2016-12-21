@@ -2,10 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../../core/msg.h"
+#include "../../core/error.h"
 #include "../../core/communication.h"
-
-#define handle_err(fun,msg)\
-    fprintf (stderr, "%s: file %s line %d %s\n", fun, __FILE__, __LINE__, msg);
 
 #define MSG "coucou"
 #define SERVICE_NAME "test"
@@ -13,17 +12,10 @@
 int main (int argc, char *argv[], char *env[])
 {
 
-    size_t msize = BUFSIZ;
-    char *buf = NULL;
-
-    if ( (buf = malloc (BUFSIZ)) == NULL) {
-        handle_err ("main", "malloc");
-        return EXIT_FAILURE;
-    }
-    memset (buf, 0, BUFSIZ);
-
+    struct msg m;
+    memset (&m, 0, sizeof (struct msg));
     struct service srv;
-    memset(&srv, 0, sizeof (struct service));
+    memset (&srv, 0, sizeof (struct service));
 
     // index and version should be filled
     srv.index = 0;
@@ -36,25 +28,27 @@ int main (int argc, char *argv[], char *env[])
     }
 
     printf ("msg to send: %s\n", MSG);
-    if (app_write (&srv, MSG, strlen(MSG)) < 0) {
+    msg_format_data (&m, MSG, strlen(MSG) +1);
+    printf ("msg to send in the client: ");
+    print_msg (&m);
+    if (app_write (&srv, &m) < 0) {
         handle_err("main", "app_write < 0");
         return EXIT_FAILURE;
     }
+    msg_free (&m);
 
-    if (app_read (&srv, &buf, &msize) < 0) {
+    if (app_read (&srv, &m) < 0) {
         handle_err("main", "app_read < 0");
         return EXIT_FAILURE;
     }
 
-    printf ("msg recv: %s\n", buf);
+    printf ("msg recv: %s\n", m.val);
+    msg_free (&m);
 
     if (app_close (&srv) < 0) {
         handle_err("main", "app_close < 0");
         return EXIT_FAILURE;
     }
-
-    if (buf != NULL)
-        free (buf);
 
     return EXIT_SUCCESS;
 }

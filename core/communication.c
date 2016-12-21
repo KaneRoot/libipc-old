@@ -69,13 +69,6 @@ int srv_close (struct service *srv)
 
 int srv_close_proc (struct process *p)
 {
-    struct msg m;
-    memset (&m, 0, sizeof (struct msg));
-    m.type = MSG_TYPE_DIS;
-    if (msg_write (p->proc_fd, &m) < 0) {
-        handle_err ("srv_close_proc", "msg_write < 0");
-    }
-
     return usock_close (p->proc_fd);
 }
 
