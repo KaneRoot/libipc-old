@@ -86,9 +86,6 @@ int msg_read (int fd, struct msg *m)
     }
     free (buf);
 
-    // printf ("msg received: ");
-    // print_msg (m);
-
     return 0;
 }
 
@@ -96,14 +93,10 @@ int msg_write (int fd, const struct msg *m)
 {
     assert (m != NULL);
 
-    // printf ("msg to write: ");
-    // print_msg (m);
-
     char *buf = NULL;
     size_t msize = 0;
     msg_format_write (m, &buf, &msize);
 
-    // printf ("msg to send, real size %ld\n", msize);
     int ret = usock_send (fd, buf, msize);
     if (ret < 0) {
         handle_err ("msg_write", "usock_send");

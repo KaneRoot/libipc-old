@@ -18,7 +18,8 @@ int add_proc(struct array_proc *, struct process *);
 
 int del_proc(struct array_proc *, struct process *);
 
-void array_proc_print(struct array_proc *);
+void array_proc_print (struct array_proc *);
+void array_proc_free (struct array_proc *);
 
 #if 0
 

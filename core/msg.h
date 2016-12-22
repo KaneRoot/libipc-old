@@ -13,7 +13,7 @@
 
 struct msg {
     char type;
-    short valsize;
+    unsigned short valsize;
     char *val;
 };
 

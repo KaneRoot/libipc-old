@@ -33,11 +33,14 @@ void srv_process_gen (struct process *p
 
 #endif
 
-int add_proc(struct array_proc *aproc, struct process *p) {
+int add_proc (struct array_proc *aproc, struct process *p)
+{
     assert(aproc != NULL);
     assert(p != NULL);
     aproc->size++;
-    aproc->tab_proc = realloc(aproc->tab_proc, sizeof(struct process) * aproc->size);
+    aproc->tab_proc = realloc(aproc->tab_proc
+            , sizeof(struct process) * aproc->size);
+
     if (aproc->tab_proc == NULL) {
         return -1;
     }
@@ -46,16 +49,20 @@ int add_proc(struct array_proc *aproc, struct process *p) {
     return 0;
 }
 
-int del_proc(struct array_proc *aproc, struct process *p) {
+int del_proc (struct array_proc *aproc, struct process *p)
+{
     assert(aproc != NULL);
     assert(p != NULL);
 
     int i;
     for (i = 0; i < aproc->size; i++) {
         if (aproc->tab_proc[i] == p) {
+
             aproc->tab_proc[i] = aproc->tab_proc[aproc->size-1];
             aproc->size--;
-            aproc->tab_proc = realloc(aproc->tab_proc, sizeof(struct process) * aproc->size);
+            aproc->tab_proc = realloc(aproc->tab_proc
+                    , sizeof(struct process) * aproc->size);
+
             if (aproc->tab_proc == NULL) {
                 return -1;
             }
@@ -69,10 +76,12 @@ int del_proc(struct array_proc *aproc, struct process *p) {
 void process_print (struct process *p)
 {
     if (p != NULL)
-        printf ("process %d : index %d, version %d\n", p->proc_fd, p->index, p->version);
+        printf ("process %d : index %d, version %d\n"
+                , p->proc_fd, p->index, p->version);
 }
 
-void array_proc_print( struct array_proc *ap) {
+void array_proc_print (struct array_proc *ap)
+{
     int i;
     for (i = 0; i < ap->size; i++) {
         printf("%d : ", i);
@@ -80,4 +89,8 @@ void array_proc_print( struct array_proc *ap) {
     }
 }
 
-
+void array_proc_free (struct array_proc *ap)
+{
+    if (ap->tab_proc != NULL)
+        free (ap->tab_proc), ap->tab_proc = NULL;
+}
