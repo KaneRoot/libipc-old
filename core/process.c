@@ -52,7 +52,12 @@ int add_proc (struct array_proc *aproc, struct process *p)
 int del_proc (struct array_proc *aproc, struct process *p)
 {
     assert(aproc != NULL);
+    assert(aproc->tab_proc != NULL);
     assert(p != NULL);
+
+    if (aproc->tab_proc == NULL) {
+        return -1;
+    }
 
     int i;
     for (i = 0; i < aproc->size; i++) {
@@ -60,17 +65,23 @@ int del_proc (struct array_proc *aproc, struct process *p)
 
             aproc->tab_proc[i] = aproc->tab_proc[aproc->size-1];
             aproc->size--;
-            aproc->tab_proc = realloc(aproc->tab_proc
-                    , sizeof(struct process) * aproc->size);
-
-            if (aproc->tab_proc == NULL) {
-                return -1;
+            if (aproc->size == 0) {
+                array_proc_free (aproc);
             }
+            else {
+                aproc->tab_proc = realloc(aproc->tab_proc
+                        , sizeof(struct process) * aproc->size);
+
+                if (aproc->tab_proc == NULL) {
+                    return -2;
+                }
+            }
+
             return 0;
         }
     }
 
-    return -2;
+    return -3;
 }
 
 void process_print (struct process *p)
@@ -91,6 +102,9 @@ void array_proc_print (struct array_proc *ap)
 
 void array_proc_free (struct array_proc *ap)
 {
-    if (ap->tab_proc != NULL)
-        free (ap->tab_proc), ap->tab_proc = NULL;
+    if (ap->tab_proc != NULL) {
+        free (ap->tab_proc);
+        ap->tab_proc = NULL;
+    }
+    ap->size = 0;
 }

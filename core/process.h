@@ -12,11 +12,9 @@ struct array_proc {
 	int size;
 };
 
-// TODO
-// tout revoir
-int add_proc(struct array_proc *, struct process *);
+int add_proc (struct array_proc *, struct process *);
 
-int del_proc(struct array_proc *, struct process *);
+int del_proc (struct array_proc *aproc, struct process *p);
 
 void array_proc_print (struct array_proc *);
 void array_proc_free (struct array_proc *);

@@ -9,6 +9,10 @@ TESTS=$(addsuffix .test, $(EXEC))
 
 all: $(SOURCES) $(EXEC)
 
+test:
+	rm /tmp/ipc/pongd-0-0
+	./pongd.bin
+
 $(EXEC): $(OBJECTS) $(CFILES)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) $@.c -lcbor -o $@.bin
 

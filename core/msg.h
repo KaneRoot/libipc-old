@@ -5,11 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MSG_TYPE_CON    1
-#define MSG_TYPE_DIS    2
-#define MSG_TYPE_ERR    3
-#define MSG_TYPE_ACK    4
-#define MSG_TYPE_DATA   5
+#define MSG_TYPE_CON                1
+#define MSG_TYPE_DIS                2
+#define MSG_TYPE_ERR                3
+#define MSG_TYPE_ACK                4
+#define MSG_TYPE_DATA               5
+#define MSG_TYPE_ACK_DIS            6
 
 struct msg {
     char type;

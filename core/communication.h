@@ -18,8 +18,9 @@
 
 #define PATH_MAX BUFSIZ
 
-#define CONNECTION 0
+#define CONNECTION  0
 #define APPLICATION 1
+#define CON_APP     2
 
 struct service {
     unsigned int version;
@@ -42,7 +43,7 @@ int srv_accept (struct service *srv, struct process *p);
 int srv_read (const struct process *, struct msg *m);
 int srv_write (const struct process *, const struct msg *m);
 
-int srv_select(struct array_proc *, struct service *, struct process **);
+int srv_select (struct array_proc *, struct service *, struct array_proc *);
 
 int getMaxFd(struct array_proc *);
 

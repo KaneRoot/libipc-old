@@ -69,6 +69,14 @@ int srv_close (struct service *srv)
 
 int srv_close_proc (struct process *p)
 {
+    // struct msg m_ack_dis;
+    // memset (&m_ack_dis, 0, sizeof (struct msg));
+    // m_ack_dis.type = MSG_TYPE_ACK_DIS;
+
+    // if (msg_write (p->proc_fd, &m_ack_dis) < 0) {
+    //     handle_err ("srv_close_proc", "msg_write < 0");
+    // }
+
     return usock_close (p->proc_fd);
 }
 
@@ -128,6 +136,7 @@ int app_connection (int argc, char **argv, char **env
     return 0;
 }
 
+// send a DIS message then close the socket
 int app_close (struct service *srv)
 {
     struct msg m;
@@ -136,6 +145,14 @@ int app_close (struct service *srv)
     if (msg_write (srv->service_fd, &m) < 0) {
         handle_err ("app_close", "msg_write < 0");
     }
+
+    // if (msg_read (srv->service_fd, &m) < 0) {
+    //     handle_err ("app_close", "msg_read < 0");
+    // }
+
+    // if (m.type != MSG_TYPE_ACK) {
+    //     handle_err ("app_close", "msg received != ACK");
+    // }
 
     return usock_close (srv->service_fd);
 }
@@ -165,8 +182,14 @@ int app_write (struct service *srv, const struct msg *m)
  */
 
 int srv_select (struct array_proc *ap, struct service *srv
-        , struct process **proc)
+        , struct array_proc *proc)
 {
+    assert (ap != NULL);
+    assert (proc != NULL);
+
+    // delete previous read process array
+    array_proc_free (proc);
+
     int i, j;
     /* master file descriptor list */
     fd_set master;
@@ -183,14 +206,17 @@ int srv_select (struct array_proc *ap, struct service *srv
     /* add the listener to the master set */
     FD_SET(listener, &master);
 
-    for(i=0; i < ap->size; i++) {
+    for (i=0; i < ap->size; i++) {
         FD_SET(ap->tab_proc[i]->proc_fd, &master);
     }
 
     /* keep track of the biggest file descriptor */
     fdmax = getMaxFd(ap) > srv->service_fd ? getMaxFd(ap) : srv->service_fd; 
 
-    while (1) {
+    int is_listener = 0;
+
+    do {
+        // printf ("loop srv_select main_loop\n");
         readf = master;
         if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1) {
             perror("select");
@@ -199,20 +225,27 @@ int srv_select (struct array_proc *ap, struct service *srv
 
         /*run through the existing connections looking for data to be read*/
         for (i = 0; i <= fdmax; i++) {
+            // printf ("loop srv_select inner loop\n");
             if (FD_ISSET(i, &readf)) {
                 if (i == listener) {
-                    return CONNECTION;
+                    is_listener = 1;
                 } else {
                     for(j = 0; j < ap->size; j++) {
+                        // printf ("loop srv_select inner inner loop\n");
                         if(i == ap->tab_proc[j]->proc_fd ) {
-                            *proc = ap->tab_proc[j];
-                            return APPLICATION;
+                            add_proc (proc, ap->tab_proc[j]);
                         }
                     }
                 }
             }
         }
-    }
+    } while (0);
+
+    if (proc->size > 0 && is_listener)
+        return CON_APP;
+    if (proc->size > 0)
+        return APPLICATION;
+    return CONNECTION;
 } 
 
 /*calculer le max filedescriptor*/

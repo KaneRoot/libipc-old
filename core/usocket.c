@@ -10,8 +10,8 @@
 
 int usock_send (const int fd, const char *buf, const int msize)
 {
-    print_hexa ("msg send", (unsigned char *)buf, msize);
-    fflush(stdout);
+    // print_hexa ("msg send", (unsigned char *)buf, msize);
+    // fflush(stdout);
 
     int ret = 0;
     //printf ("%ld bytes to write\n", msize);
@@ -53,8 +53,8 @@ int usock_recv (const int fd, char **buf, size_t *msize)
         return ret;
     }
     *msize = (size_t) ret;
-    print_hexa ("msg recv", (unsigned char *)*buf, *msize);
-    fflush(stdout);
+    // print_hexa ("msg recv", (unsigned char *)*buf, *msize);
+    // fflush(stdout);
     return ret;
 }
 
