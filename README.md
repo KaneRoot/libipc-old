@@ -89,12 +89,6 @@ __legend__:
 In order to communicate between the application and the service, we use the Type-Length-Value format.
 This will be used with some conventions.
 
-## programming, debug
-
-## overview
-
-The format will be "type : value".
-
 The type will be a simple byte :
 
     * <0 - 15>   : control, meta data
