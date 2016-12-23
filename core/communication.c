@@ -71,7 +71,7 @@ int srv_close_proc (struct process *p)
 {
     // struct msg m_ack_dis;
     // memset (&m_ack_dis, 0, sizeof (struct msg));
-    // m_ack_dis.type = MSG_TYPE_ACK_DIS;
+    // m_ack_dis.type = MSG_TYPE_CLOSE;
 
     // if (msg_write (p->proc_fd, &m_ack_dis) < 0) {
     //     handle_err ("srv_close_proc", "msg_write < 0");
@@ -136,12 +136,12 @@ int app_connection (int argc, char **argv, char **env
     return 0;
 }
 
-// send a DIS message then close the socket
+// send a CLOSE message then close the socket
 int app_close (struct service *srv)
 {
     struct msg m;
     memset (&m, 0, sizeof (struct msg));
-    m.type = MSG_TYPE_DIS;
+    m.type = MSG_TYPE_CLOSE;
     if (msg_write (srv->service_fd, &m) < 0) {
         handle_err ("app_close", "msg_write < 0");
     }
