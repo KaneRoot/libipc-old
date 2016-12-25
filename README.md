@@ -49,10 +49,23 @@ You have great libraries?
 Don't redevelop them!
 We can use already existing libraries to provide new functionalities to our programs: we just have to write a service and to define new messages to request it, period.
 
+**Language independent**.
+
+You have an awesome library to do X, but it's written in an obscure language.
+Who cares?
+Write a simple service that can be requested following our protocol, everybody will be able to use your library without painful-to-maintain bindings!
+We may even assist you doing that by providing templates for your language, or check the other services!
+
 **The end of "oh, I would like to dev something but this requires too much painful-to-install dependencies"**.
 
 You only need the communication library and the service running (not even on your own computer) without any other dependencies.
 That's it, you're good to go!
+
+# Not adapted to everything
+
+If you need incredible performances for your application, maybe this won't fit.
+There is no silver bullet or one-fit-all solution.
+Still, we think performances won't be much of a problem for most of the everyday life applications and if there are performances hits we still have plenty of room for optimisations!
 
 # Application and services
 
