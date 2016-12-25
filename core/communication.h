@@ -45,8 +45,6 @@ int srv_write (const struct process *, const struct msg *m);
 
 int srv_select (struct array_proc *, struct service *, struct array_proc *);
 
-int getMaxFd(struct array_proc *);
-
 // APPLICATION
 
 // Initialize connection with unix socket
