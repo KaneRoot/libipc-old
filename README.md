@@ -43,6 +43,17 @@ Everything will be developed in the same repository: same coding standards, chan
 We should always try to provide new abstractions, reducing the code needed in both services and end-user applications.
 To that end, code review is a must.
 
+**No need to rewrite everything**.
+
+You have great libraries?
+Don't redevelop them!
+We can use already existing libraries to provide new functionalities to our programs: we just have to write a service and to define new messages to request it, period.
+
+**The end of "oh, I would like to dev something but this requires too much painful-to-install dependencies"**.
+
+You only need the communication library and the service running (not even on your own computer) without any other dependencies.
+That's it, you're good to go!
+
 # Application and services
 
 - Services: daemons providing a feature (windowing, audio, network, input, pubsub, …)
@@ -53,7 +64,7 @@ To that end, code review is a must.
 A browser that can download everything, via every existing protocol.
 No any specific code in the browser itself and no configuration.
 
-You want to play a game on your rasberry pi, but it is not powerful enough, run your application on your laptop but take the inputs from the rpi (or anywhere on the network) !
+You want to play a game on your raspberry pi, but it is not powerful enough, run your application on your laptop but take the inputs from the rpi (or anywhere on the network) !
 No specific code needed.
 
 # TODO
