@@ -2,6 +2,14 @@
 
 End-user applications are huge, with tons of libraries used and are a pain in the ass to maintain.
 Libraries are huge, with a lot of things happening, with changes that break everything on a regular basis, with almost each time very few people working on it.
+Libraries are written for every project, most of the code can be re-used because it is not fundamentally bounded to a single project.
+
+Start a new project is not an easy task neither.
+
+- What language to use?
+- I am doing something already coded somewhere?
+- Is this library working on every platform?
+- Are the libraries I need (and the good version) available for my platform, do I need to install SomeBullshitOS or ProtoContenerizator3000 to code?
 
 # how to change that ?
 
@@ -29,9 +37,11 @@ You will be able to do things without any code.
 * applications don't need to change anything to handle new protocols, no recompilation
 * applications can be statically compiled, the memory footprint should be extremely low (yes, even for a browser)
 
+Let's write *abstractions* together, and less application-specific code !
+
 **Simple applications**.
 
-You only need to code the specific code of your own application.
+You only need to code the specific parts of your own application.
 The only thing your application should have to take care is its functionality, and to communicate to services providing abstractions.
 
 **Consistency**.
@@ -125,3 +135,19 @@ The type will be a simple byte :
     2       | error         | to send an error message
     3       | ack           | to send an acknowledgment
     4       | message       | to send data 
+
+# Services Status
+
+Go to the relevant directory for details.
+
+- pongd: stable
+- tcpd: experimental
+- pubsub: experimental
+
+# Inspiration
+
+This project is inspired by a number of great projects:
+
+- OpenBSD and UNIX in general for most of the concepts
+- Plan9 for the great abstractions and simplicity
+- suckless and cat-v for minimalism
