@@ -46,7 +46,7 @@ The only thing your application should have to take care is its functionality, a
 
 **Consistency**.
 
-Everything will be developed in the same repository: same coding standards, changes will be tested on every provided applications…
+Everything will be developed in the same repository: same [coding standards][codingstyle], changes will be tested on every provided applications…
 
 **Code review**.
 
@@ -148,6 +148,11 @@ Go to the relevant directory for details.
 
 This project is inspired by a number of great projects:
 
-- OpenBSD and UNIX in general for most of the concepts
+- [OpenBSD][openbsd] and UNIX in general for most of the concepts
 - Plan9 for the great abstractions and simplicity
-- suckless and cat-v for minimalism
+- [suckless][suckless] for the [coding style][codingstyle] and [cat-v][catv] for the philosophy
+
+[codingstyle]: http://suckless.org/coding_style
+[suckless]: http://suckless.org
+[catv]: http://cat-v.org
+[openbsd]: https://openbsd.org
