@@ -1,4 +1,4 @@
-# the problem
+# Problem
 
 End-user applications are huge, with tons of libraries used and are a pain in the ass to maintain.
 Libraries are huge, with a lot of things happening, with changes that break everything on a regular basis, with almost each time very few people working on it.
@@ -11,7 +11,7 @@ Start a new project is not an easy task neither.
 - Is this library working on every platform?
 - Are the libraries I need (and the good version) available for my platform, do I need to install SomeBullshitOS or ProtoContenerizator3000 to code?
 
-# how to change that ?
+# How to change that?
 
 **Network protocols**
 
@@ -27,7 +27,7 @@ Just ask a service !
 You want to download a file, you will always have the same input: a string corresponding to the file to get, such as _ftp://example.com/file.txt_.
 You don't have to worry about the protocol to use in your own application, the burden is on the dedicated *downloading* service.
 
-# benefits
+# Benefits
 
 **Awesome abstractions**.
 
@@ -82,7 +82,7 @@ Still, we think performances won't be much of a problem for most of the everyday
 - Services: daemons providing a feature (windowing, audio, network, input, pubsub, …)
 - Applications: end-user applications (browser, mail user agent, instant messaging app, …)
 
-#### examples
+#### Examples
 
 A browser that can download everything, via every existing protocol.
 No any specific code in the browser itself and no configuration.
@@ -94,9 +94,9 @@ No specific code needed.
 
 Figures, a lot of them, to explain everything.
 
-# connection init (draft)
+# Connection init (draft)
 
-## how things happen
+## How things happen
 
 1. Service creates a unix socket /tmp/service-index-version.sock
 1. Application connects to /tmp/service-index-version.sock
@@ -106,19 +106,19 @@ __legend__:
     - index: process index (to launch a service several times)
     - version: service version
 
-# pure "networking" view (what should go in the sockets)
+# Networking point of view (what should go in the sockets)
 
-#### connection
+#### Connection
 1. Application connects to /tmp/service-index-version.sock
 1. Service acknowledges (empty message)
 
-#### disconnection
+#### Disconnection
 1. Application sends a message "CLOSE" to the server
 
-#### data
+#### Data
 1. Application or server sends a message "DATA", no acknowledgement
 
-# messages format
+# Message formats
 
 In order to communicate between the application and the service, we use the Type-Length-Value format.
 This will be used with some conventions.
@@ -136,7 +136,7 @@ The type will be a simple byte :
     3       | ack           | to send an acknowledgment
     4       | message       | to send data 
 
-# Services Status
+# Service Status
 
 Go to the relevant directory for details.
 
