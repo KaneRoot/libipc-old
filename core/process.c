@@ -3,10 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// TODO
-// tout revoir ici
+#include <string.h>
 
-#if 0
 struct process * srv_process_copy (const struct process *p)
 {
     if (p == NULL)
@@ -20,7 +18,8 @@ struct process * srv_process_copy (const struct process *p)
 
 int srv_process_eq (const struct process *p1, const struct process *p2)
 {
-    return (p1->version == p2->version && p1->index == p2->index);
+    return (p1->version == p2->version && p1->index == p2->index
+            && p1->proc_fd == p2->proc_fd);
 }
 
 void srv_process_gen (struct process *p
@@ -29,9 +28,6 @@ void srv_process_gen (struct process *p
     p->version = version;
     p->index = index;
 }
-
-
-#endif
 
 int add_proc (struct array_proc *aproc, struct process *p)
 {
@@ -52,7 +48,6 @@ int add_proc (struct array_proc *aproc, struct process *p)
 int del_proc (struct array_proc *aproc, struct process *p)
 {
     assert(aproc != NULL);
-    assert(aproc->tab_proc != NULL);
     assert(p != NULL);
 
     if (aproc->tab_proc == NULL) {

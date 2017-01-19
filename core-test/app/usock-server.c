@@ -57,6 +57,7 @@ int main (int argc, char * argv[])
         return EXIT_FAILURE;
     }
 
+
     if (usock_close (pfd) < 0) {
         handle_err("main", "usock_close pfd < 0");
         return EXIT_FAILURE;

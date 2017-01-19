@@ -52,7 +52,7 @@ int main (int argc, char *argv[], char *env[])
         handle_err("main", "srv_read < 0");
         return EXIT_FAILURE;
     }
-    if (m.type == MSG_TYPE_DIS) {
+    if (m.type == MSG_TYPE_CLOSE) {
         printf ("the client quits\n");
     }
     else {

@@ -13,12 +13,12 @@ int usock_send (const int fd, const char *buf, const int msize)
     // print_hexa ("msg send", (unsigned char *)buf, msize);
     // fflush(stdout);
 
-    int ret = 0;
+    ssize_t ret = 0;
     //printf ("%ld bytes to write\n", msize);
     ret = send (fd, buf, msize, 0);
     if (ret <= 0)
         handle_err ("usock_send", "send ret <= 0");
-    return ret;
+    return (int) ret;
 }
 
 int usock_recv (const int fd, char **buf, size_t *msize)

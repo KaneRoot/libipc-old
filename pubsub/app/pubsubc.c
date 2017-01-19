@@ -1,16 +1,16 @@
+// int main(void) { return 0; }
+
+// TODO: select on service + input instead of threads
+
+#include "../../core/error.h"
+#include "../lib/pubsub.h"
 #include "../lib/pubsubd.h"
 #include <stdlib.h>
 #include <pthread.h>
+#include <unistd.h>
 
-void
-ohshit(int rvalue, const char* str) {
-    fprintf (stderr, "\033[31merr: %s\033[00m\n", str);
-    exit (rvalue);
-}
-
-void usage (char **argv)
-{
-    printf ( "usage: %s\n", argv[0]);
+void usage (char **argv) {
+    printf ( "usage: %s [chan [pub]]\n", argv[0]);
 }
 
 void print_cmd (void) {
@@ -21,14 +21,15 @@ void print_cmd (void) {
 void * listener (void *params)
 {
     int s = 0;
-    s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    if (s != 0)
-        printf ("pthread_setcancelstate: %d\n", s);
+    s = pthread_setcancelstate (PTHREAD_CANCEL_ENABLE, NULL);
+    if (s != 0) {
+        handle_err ("listener", "pthread_setcancelstate != 0");
+    }
 
-    struct process *p = NULL;
-    p = (struct process *) params;
-    if (p == NULL) {
-        fprintf (stderr, "listener: no process\n");
+    struct service *srv = NULL;
+    srv = (struct service *) params;
+    if (srv == NULL) {
+        handle_err ("listener", "no service passed");
         return NULL;
     }
 
@@ -37,69 +38,70 @@ void * listener (void *params)
         struct pubsub_msg m;
         memset (&m, 0, sizeof (struct pubsub_msg));
 
-        pubsub_msg_recv (p, &m);
-        printf ("\n\033[31m>\033[00m %s\n", m.data);
+        pubsub_msg_recv (srv, &m);
+        printf ("\r\033[31m>\033[00m %s\n", m.data);
         print_cmd ();
 
-        // if (m.type == PUBSUB_TYPE_DISCONNECT) { }
-        pubsubd_msg_free (&m);
+        pubsub_msg_free (&m);
     }
 
     pthread_exit (NULL);
 }
 
+void chan_sub (struct service *srv, char *chan)
+{
+    struct pubsub_msg msg;
+    memset (&msg, 0, sizeof (struct pubsub_msg));
+
+    // meta data on the message
+    msg.type = PUBSUB_MSG_TYPE_SUB;
+    msg.chanlen = strlen (chan) + 1;
+    msg.chan = malloc (msg.chanlen);
+    memset (msg.chan, 0, msg.chanlen);
+    strncpy (msg.chan, chan, msg.chanlen);
+    msg.chan[strlen (chan)] = '\0';
+
+    pubsub_msg_send (srv, &msg);
+    printf ("subscribed to %s\n", chan);
+
+    pubsub_msg_free (&msg);
+}
 
 void main_loop (int argc, char **argv, char **env
-        , pid_t pid, int index, int version
+        , int index, int version
         , char *cmd, char *chan)
 {
-    printf ("connection : pid %d index %d version %d "
+    printf ("connection to pubsubd: index %d version %d "
             "cmd %s chan %s\n"
-          , pid, index, version, cmd, chan );
+          , index, version, cmd, chan );
 
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
-    printf ("Writing on %s.\n", srv.spath);
+    pubsub_connection (argc, argv, env, &srv);
+    printf ("connected\n");
 
-    struct process p;
-    memset (&p, 0, sizeof (struct process));
-
-    printf ("app creation\n");
-    if (app_create (&p, pid, index, version)) // called by the application
-        ohshit (1, "app_create");
+    if (strncmp (cmd, "sub", 3) == 0) {
+        chan_sub (&srv, chan);
+    }
 
     pthread_t thr;
     memset (&thr, 0, sizeof (pthread_t));
 
-    pthread_create (&thr, NULL, listener, &p);
+    pthread_create (&thr, NULL, listener, &srv);
     pthread_detach (thr);
 
     printf ("main_loop\n");
-    // send a message to warn the service we want to do something
-    // line : pid index version action chan
-    enum app_list_elm_action action = PUBSUB_BOTH;
-
-    if (strncmp (cmd, "pub", 3) == 0) {
-        action = PUBSUB_PUB;
-    }
-    else if (strncmp (cmd, "sub", 3) == 0) {
-        action = PUBSUB_SUB;
-    }
-
-    pubsub_connection (&srv, &p, action, chan);
 
     struct pubsub_msg msg;
     memset (&msg, 0, sizeof (struct pubsub_msg));
 
-
     // meta data on the message
-    msg.type = PUBSUB_TYPE_MESSAGE;
-    msg.chan = malloc (strlen (chan) + 1);
-    memset (msg.chan, 0, strlen (chan) + 1);
-    strncpy ((char *) msg.chan, chan, strlen (chan));
+    msg.type = PUBSUB_MSG_TYPE_PUB;
+    msg.chanlen = strlen (chan) + 1;
+    msg.chan = malloc (msg.chanlen);
+    memset (msg.chan, 0, msg.chanlen);
+    strncpy ((char *) msg.chan, chan, msg.chanlen);
     msg.chan[strlen (chan)] = '\0';
-    msg.chanlen = strlen (chan);
 
     // msg loop
     for (;;) {
@@ -110,63 +112,62 @@ void main_loop (int argc, char **argv, char **env
 
         size_t mlen = read (0, buf, BUFSIZ);
 
+        // remove \n
         if (mlen > 1) {
             mlen--;
         }
         buf[mlen] = '\0';
 
-        // TODO debug
-        // printf ("data (%ld): %s\n", mlen, buf);
-
         if (strncmp(buf, "quit", strlen ("quit")) == 0) {
             break;
         }
 
-        msg.data = malloc (strlen (buf) + 1);
-        memset (msg.data, 0, strlen (buf) + 1);
-        strncpy ((char *) msg.data, buf, strlen (buf) + 1);
-        msg.datalen = strlen (buf);
+        msg.datalen = strlen (buf) + 1;
+        msg.data = malloc (msg.datalen);
+        memset (msg.data, 0, msg.datalen);
+        strncpy ((char *) msg.data, buf, msg.datalen);
+        msg.data[strlen(buf)] = '\0';
 
-        // TODO debug
-        // printf ("send message\n");
-        pubsub_msg_send (&p, &msg);
+        pubsub_msg_send (&srv, &msg);
         free (msg.data);
         msg.data = NULL;
         msg.datalen = 0;
     }
 
     // free everything
-    pubsubd_msg_free (&msg);
+    pubsub_msg_free (&msg);
 
     pthread_cancel (thr);
     pthread_join (thr, NULL);
 
     printf ("disconnection...\n");
     // disconnect from the server
-    pubsub_disconnect (&p);
-
-    printf ("destroying app\n");
-    // the application will shut down, and remove the application named pipes
-    if (app_destroy (&p))
-        ohshit (1, "app_destroy");
+    pubsub_disconnect (&srv);
 }
 
 int main(int argc, char **argv, char **env)
 {
-
-    if (argc != 1) {
-        usage (argv);
-        exit (1);
-    }
-
-    pid_t pid = getpid();
-    int index = 0;
-    // don't care about the version
-    int version = COMMUNICATION_VERSION;
-    char *cmd = "both";
+    char *cmd = "sub";
     char *chan = "chan1";
 
-    main_loop (argc, argv, env, pid, index, version, cmd, chan);
+    if (argc == 2 && strncmp("-h", argv[1], 2) == 0) {
+        usage (argv);
+        exit (0);
+    }
+
+    if (argc >= 2) {
+        chan = argv[1];
+    }
+
+    if (argc >= 3) {
+        cmd = argv[2];
+    }
+
+    int index = 0;
+    // don't care about the version
+    int version = 0;
+
+    main_loop (argc, argv, env, index, version, cmd, chan);
 
     return EXIT_SUCCESS;
 }

@@ -146,14 +146,6 @@ int app_close (struct service *srv)
         handle_err ("app_close", "msg_write < 0");
     }
 
-    // if (msg_read (srv->service_fd, &m) < 0) {
-    //     handle_err ("app_close", "msg_read < 0");
-    // }
-
-    // if (m.type != MSG_TYPE_ACK) {
-    //     handle_err ("app_close", "msg received != ACK");
-    // }
-
     return usock_close (srv->service_fd);
 }
 
@@ -167,6 +159,22 @@ int app_write (struct service *srv, const struct msg *m)
     return msg_write (srv->service_fd, m);
 }
 
+
+/*calculer le max filedescriptor*/
+int getMaxFd(struct array_proc *ap)
+{
+
+    int i;
+    int max = 0;
+
+    for (i = 0; i < ap->size; i++ ) {
+        if (ap->tab_proc[i]->proc_fd > max) {
+            max = ap->tab_proc[i]->proc_fd;
+        } 
+    }
+
+    return max;
+}
 
 /*
  * srv_select prend en parametre
@@ -247,19 +255,3 @@ int srv_select (struct array_proc *ap, struct service *srv
         return APPLICATION;
     return CONNECTION;
 } 
-
-/*calculer le max filedescriptor*/
-int getMaxFd(struct array_proc *ap)
-{
-
-    int i;
-    int max = 0;
-
-    for (i = 0; i < ap->size; i++ ) {
-        if (ap->tab_proc[i]->proc_fd > max) {
-            max = ap->tab_proc[i]->proc_fd;
-        } 
-    }
-
-    return max;
-}

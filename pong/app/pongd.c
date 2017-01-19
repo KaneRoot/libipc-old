@@ -41,14 +41,14 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
         }
 
         // close the process then delete it from the process array
-        if (m.type == MSG_TYPE_DIS) {
+        if (m.type == MSG_TYPE_CLOSE) {
             cpt--;
             printf ("disconnection => %d client(s) remaining\n", cpt);
 
             if (srv_close_proc (proc_to_read->tab_proc[i]) < 0)
-                handle_error( "srv_close_proc < 0");
+                handle_err( "handle_new_msg", "srv_close_proc < 0");
             if (del_proc (ap, proc_to_read->tab_proc[i]) < 0)
-                handle_error( "del_proc < 0");
+                handle_err( "handle_new_msg", "del_proc < 0");
             if (del_proc (proc_to_read, proc_to_read->tab_proc[i]) < 0)
                 handle_err( "handle_new_msg", "del_proc < 0");
             i--;
@@ -57,7 +57,7 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
 
         printf ("new message : %s", m.val);
         if (srv_write (proc_to_read->tab_proc[i], &m) < 0) {
-            handle_error("srv_write < 0");
+            handle_err( "handle_new_msg", "srv_write < 0");
         }
     }
 }
@@ -67,7 +67,7 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
  *
  * accept new application connections
  * read a message and send it back
- * close a connection if MSG_TYPE_DIS received
+ * close a connection if MSG_TYPE_CLOSE received
  */
 
 void main_loop (struct service *srv)
