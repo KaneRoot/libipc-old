@@ -1,8 +1,9 @@
 // int main(void) { return 0; }
 
+#include "../../core/communication.h"
 #include "../../core/error.h"
-#include "../lib/remote.h"
 #include "../lib/remoted.h"
+#include "../lib/remote.h"
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -12,6 +13,7 @@ void usage (char **argv) {
     printf ( "usage: %s uri service\n", argv[0]);
 }
 
+#if 0
 void * listener (void *params)
 {
     int s = 0;
@@ -41,12 +43,19 @@ void * listener (void *params)
 
     pthread_exit (NULL);
 }
+#endif
 
 void main_loop (int argc, char **argv, char **env
         , int index, int version, char *uri, char *service)
 {
     printf ("connection to remoted: index %d version %d uri %s service %s\n"
           , index, version, uri, service);
+
+    (void) argc;
+    (void) argv;
+    (void) env;
+
+#if 0
 
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
@@ -86,6 +95,7 @@ void main_loop (int argc, char **argv, char **env
     printf ("disconnection...\n");
     // disconnect from the server
     remote_disconnect (&srv);
+#endif
 }
 
 int main(int argc, char **argv, char **env)

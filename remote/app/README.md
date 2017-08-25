@@ -1,0 +1,3 @@
+# remoted
+
+This service creates a path on the relevent remote location, going through anything network-related: TCP, UDP, HTTP, ...

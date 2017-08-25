@@ -1,7 +1,7 @@
 #include "../../core/communication.h"
 #include "../../core/process.h"
 #include "../../core/error.h"
-#include "../lib/pubsubd.h"
+#include "../lib/remoted.h"
 #include <stdlib.h>
 
 #include <sys/socket.h>
@@ -11,7 +11,6 @@
 
 // to quit them properly if a signal occurs
 struct service srv;
-struct channels chans;
 
 void handle_signal (int signalnumber)
 {
@@ -24,7 +23,7 @@ void handle_signal (int signalnumber)
     exit (EXIT_SUCCESS);
 }
 
-void remoted_init () {}
+void remoted_init () { /* TODO */}
 
 int
 main(int argc, char **argv, char **env)
@@ -48,7 +47,7 @@ main(int argc, char **argv, char **env)
     printf("MAIN: server created\n" );
 
     // the service will loop until the end of time, a specific message, a signal
-    pubsubd_main_loop (&srv, &chans);
+    remoted_main_loop (&srv);
 
     // the application will shut down, and remove the service named pipe
     if (srv_close (&srv) < 0) {
