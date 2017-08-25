@@ -23,7 +23,12 @@ void handle_signal (int signalnumber)
     exit (EXIT_SUCCESS);
 }
 
-void remoted_init () { /* TODO */}
+void remoted_init ()
+{
+    /* TODO
+     * handle authorizations
+    */
+}
 
 int
 main(int argc, char **argv, char **env)
@@ -49,7 +54,7 @@ main(int argc, char **argv, char **env)
     // the service will loop until the end of time, a specific message, a signal
     remoted_main_loop (&srv);
 
-    // the application will shut down, and remove the service named pipe
+    // the application will shut down, and remove the service unix socket
     if (srv_close (&srv) < 0) {
         handle_error("srv_close < 0");
     }
