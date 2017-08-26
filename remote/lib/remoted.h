@@ -6,6 +6,10 @@
 
 #define REMOTED_SERVICE_NAME "remoted"
 
+struct remoted_ctx {
+    /* TODO */
+};
+
 void remoted_main_loop (struct service *srv);
 
 #endif

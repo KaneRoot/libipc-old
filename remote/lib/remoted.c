@@ -3,6 +3,7 @@
 #include "../../core/process.h"
 #include "../../core/utils.h"
 #include "../../core/error.h"
+#include "../../core/logger.h"
 
 #include "remoted.h"
 
@@ -13,5 +14,6 @@
 void remoted_main_loop (struct service *srv)
 {
     (void) srv;
+    log_debug ("remoted entering main loop");
     /* TODO */
 }

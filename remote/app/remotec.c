@@ -55,15 +55,12 @@ void main_loop (int argc, char **argv, char **env
     (void) argv;
     (void) env;
 
+#if 0
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
 
     remote_connection (argc, argv, env, &srv);
     printf ("connected\n");
-
-    if (strncmp (cmd, "sub", 3) == 0) {
-        chan_sub (&srv, chan);
-    }
 
     printf ("main_loop\n");
 

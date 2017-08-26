@@ -34,9 +34,7 @@ int srv_init (int argc, char **argv, char **env
     // gets the service path
     service_path (srv->spath, sname, srv->index, srv->version);
 
-    usock_init (&srv->service_fd, srv->spath);
-
-    return 0;
+    return usock_init (&srv->service_fd, srv->spath);
 }
 
 int srv_accept (struct service *srv, struct process *p)
