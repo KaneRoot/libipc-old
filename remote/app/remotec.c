@@ -1,9 +1,8 @@
-// int main(void) { return 0; }
-
 #include "../../core/communication.h"
 #include "../../core/error.h"
 #include "../lib/remoted.h"
-#include "../lib/remote.h"
+#include "../lib/remotec.h"
+#include "../lib/msg.h"
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -31,8 +30,8 @@ void * listener (void *params)
 
     // main loop
     while (1) {
-        struct remote_msg m;
-        memset (&m, 0, sizeof (struct remote_msg));
+        struct remoted_msg m;
+        memset (&m, 0, sizeof (struct remoted_msg));
 
         remote_msg_recv (srv, &m);
         printf ("\r\033[31m>\033[00m %s\n", m.data);
@@ -55,31 +54,30 @@ void main_loop (int argc, char **argv, char **env
     (void) argv;
     (void) env;
 
-#if 0
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
 
-    remote_connection (argc, argv, env, &srv);
-    printf ("connected\n");
+    remotec_connection (argc, argv, env, &srv);
+    log_debug ("remotec connected");
+    log_debug ("remotec main loop");
 
-    printf ("main_loop\n");
+    struct remoted_msg msg;
+    memset (&msg, 0, sizeof (struct remoted_msg));
 
-    struct remote_msg msg;
-    memset (&msg, 0, sizeof (struct remote_msg));
-
+#if 0
     // msg loop
     for (;;) {
         char buf[BUFSIZ];
         memset (buf, 0, BUFSIZ);
 
-        msg.datalen = /* TODO  */0;
-        msg.data = /* TODO */ NULL;
+        /* TODO  */
+        msg.datalen = 5; // FIXME: take parameters into account
+        msg.data = malloc (msg.datalen);
         memset (msg.data, 0, msg.datalen);
-        strncpy ((char *) msg.data, /* TODO */NULL, msg.datalen);
-        msg.data[msg.datalen -1] = '\0';
+        strncpy ((char *) msg.data, "salut", msg.datalen);
 
         /* TODO */
-        remote_msg_send (&srv, &msg);
+        remotec_msg_send (&srv, &msg);
         free (msg.data);
         msg.data = NULL;
         msg.datalen = 0;
@@ -87,11 +85,11 @@ void main_loop (int argc, char **argv, char **env
 
     // free everything
     remote_msg_free (&msg);
-
-    printf ("disconnection...\n");
-    // disconnect from the server
-    remote_disconnect (&srv);
 #endif
+
+    log_debug ("remotec disconnection...");
+    // disconnect from the server
+    remotec_disconnection (&srv);
 }
 
 int main(int argc, char **argv, char **env)

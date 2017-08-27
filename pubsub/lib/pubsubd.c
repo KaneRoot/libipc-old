@@ -55,6 +55,10 @@ void pubsubd_send (const struct array_proc *ap, const struct pubsub_msg * m)
 //     msg_free (&m_data);
 // }
 
+/**
+ * new connection, once accepted the process is added to the array_proc
+ * structure to be checked periodically for new messages
+ */
 void handle_new_connection (struct service *srv, struct array_proc *ap)
 {
     struct process *p = malloc(sizeof(struct process));

@@ -4,6 +4,9 @@ This service creates a path on the relevent remote location, going through anyth
 
 # TODO
 
+* authorizations
+* code the -d option
+
 ### authorizations
 
 The idea is to have a simple configuration file for authentication of remote connections, such as:
