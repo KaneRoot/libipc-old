@@ -8,6 +8,20 @@
 #include <pthread.h>
 #include <unistd.h>
 
+/**
+ * remoted test application
+ *
+ * this application can:
+ *   listen, given an URI (including a transport layer and eventually a port)
+ *   connect to a remote service through a tunnel
+ *      the remote service used for testing is pongd
+ *
+ *  TODO: this test application is a work in progress
+ *  currently, this application will:
+ *      connect itself to the remoted service
+ *      hang up the connection with the remoted service
+ */
+
 void usage (char **argv) {
     printf ( "usage: %s uri service\n", argv[0]);
 }
@@ -58,8 +72,7 @@ void main_loop (int argc, char **argv, char **env
     memset (&srv, 0, sizeof (struct service));
 
     remotec_connection (argc, argv, env, &srv);
-    log_debug ("remotec connected");
-    log_debug ("remotec main loop");
+    log_debug ("remotec connected, entering main loop");
 
     struct remoted_msg msg;
     memset (&msg, 0, sizeof (struct remoted_msg));

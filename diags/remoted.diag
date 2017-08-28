@@ -1,0 +1,23 @@
+diagram {
+    edge_length = 300;
+    default_fontsize = 13;  // default value is 11
+    span_height = 10;  // default value is 40
+    activation = none;
+
+    // Numbering edges automaticaly
+    autonumber = True;
+
+    // Change note color
+    default_note_color = lightblue;
+
+
+    client; remoted; transportd; service;
+
+    client -> remoted [label = "service-name"];
+    client -> remoted [label = "REMOTED_VAR=URI"];
+    client -> remoted [label = "END"];
+    remoted -> transportd [label = "connect URI"];
+    transportd -> remoted [label = "socket"];
+    remoted -> client [label = "socket"];
+    client -> service [label = "connection"];
+}
