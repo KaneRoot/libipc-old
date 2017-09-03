@@ -22,22 +22,22 @@ do
     fi
 done
 
-# PKTDIAG=pktdiag
-# for i in *\.$PKTDIAG
-# do
-#     PNG=$(echo ${i} | sed "s/$PKTDIAG$/pdf/")
-# 
-#     if [ ! -f ${PNG} ] || [ $(stat -c "%X" ${PNG}) -lt  $(stat -c "%X" ${i}) ]
-#     then
-# 
-#         echo seqdiag ${i}
-#         packetdiag -Tpdf -a -f $FONT ${i}
-# 
-#         echo touch ${PNG}
-#         touch ${PNG}
-#     fi
-# done
-# 
+PKTDIAG=pktdiag
+for i in *\.$PKTDIAG
+do
+    PNG=$(echo ${i} | sed "s/$PKTDIAG$/pdf/")
+
+    if [ ! -f ${PNG} ] || [ $(stat -c "%X" ${PNG}) -lt  $(stat -c "%X" ${i}) ]
+    then
+
+        echo seqdiag ${i}
+        packetdiag -Tpdf -a -f $FONT ${i}
+
+        echo touch ${PNG}
+        touch ${PNG}
+    fi
+done
+
 # GDOT="gviz-dot"
 # for i in *\.$GDOT
 # do
