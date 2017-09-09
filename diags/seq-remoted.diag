@@ -1,0 +1,38 @@
+diagram {
+    edge_length = 300;
+    default_fontsize = 16;  // default value is 11
+    span_height = 8;  // default value is 40
+    node_height = 60;  // default value is 40
+    activation = none;
+
+    // Numbering edges automaticaly
+    autonumber = True;
+
+    // Change note color
+    default_note_color = lightblue;
+
+
+    client [label = "client\nlocal"];
+    remoted [label = "remoted\nlocal"];
+    transportd [label = "transportd\n(ex: tcpd)\nlocal"];
+    transportd2 [label = "transportd\n(ex: tcpd)\nremote"];
+    remoted2 [label = "remoted\nremote"];
+    service [label = "service\nremote"];
+
+    client -> remoted [label = "service-name (ex: pongd)"];
+    client -> remoted [label = "REMOTED_VAR=URI
+        ex: tcp://user:password@example.com:9000", fontsize=13];
+    client -> remoted [label = "END (mark the end of the options)"
+        , rightnote = "Remoted: authenticates, authorizes, determines the right transport daemon and
+        applies forwarding rules", fontsize=13];
+    remoted -> transportd [label = "connect URI + service name"];
+    transportd -> transportd2 [label = "connection init
+        service name + URI"];
+    transportd2 -> remoted2 [label = "connection request
+        service name + URI"];
+    remoted2 -> transportd2 [label = "authorization (yes|no)"];
+    transportd2 -> transportd [label = "connection established"];
+    transportd -> remoted [label = "socket"];
+    remoted -> client [label = "socket"];
+    client -> service [label = "connection"];
+}

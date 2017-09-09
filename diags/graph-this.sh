@@ -7,9 +7,10 @@ fi
 
 echo "font : $FONT"
 
-for i in *\.diag
+DIAG=diag
+for i in *\.$DIAG
 do
-    PNG=$(echo ${i} | sed "s/diag$/pdf/")
+    PNG=$(echo ${i} | sed "s/$DIAG$/pdf/")
 
     if [ ! -f ${PNG} ] || [ $(stat -c "%X" ${PNG}) -lt  $(stat -c "%X" ${i}) ]
     then

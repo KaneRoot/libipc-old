@@ -1,0 +1,13 @@
+packetdiag {
+    colwidth = 64
+    node_height = 60
+    node_width = 15
+    default_fontsize = 16;  // default value is 11
+
+    // basic header (type then length)
+    0-7: type\n1 byte [color = "#CCEECC"]
+    8-23: length\n2 bytes [color = "#CCEECC"]
+
+    // payload
+    24-63: END\n3 bytes [color = "#CCCCEE"]
+}
