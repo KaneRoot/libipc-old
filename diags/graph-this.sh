@@ -7,50 +7,40 @@ fi
 
 echo "font : $FONT"
 
-DIAG=diag
-for i in *\.$DIAG
-do
-    PNG=$(echo ${i} | sed "s/$DIAG$/pdf/")
+# $1 = program, $2 = filename extension
+function graphit()
+{
+    PROG=$1
+    FNEXT=$2
+    ls *.$FNEXT 2>/dev/null 1>&2
+    if [ $? -eq 0 ]; then
+        for i in *\.$FNEXT
+        do
+            PDF=$(echo ${i} | sed "s/$FNEXT$/pdf/")
+            if [ ! -f ${PDF} ] || [ $(stat -c "%X" ${PDF}) -lt  $(stat -c "%X" ${i}) ]
+            then
 
-    if [ ! -f ${PNG} ] || [ $(stat -c "%X" ${PNG}) -lt  $(stat -c "%X" ${i}) ]
-    then
+                PROGOPT="-Tpdf"
+                case $PROG in
+                    "seqdiag" | "packetdiag" | "nwdiag")
+                        PROGOPT="$PROGOPT -a -f $FONT"
+                        echo ${PROG} ${PROGOPT} ${i}
+                        ${PROG} ${PROGOPT} ${i}
+                        ;;
+                    "dot")
+                        echo "${PROG} ${PROGOPT} ${i} > ${PDF}"
+                        ${PROG} ${PROGOPT} ${i} > ${PDF}
+                        ;;
+                esac
 
-        echo seqdiag ${i}
-        seqdiag -Tpdf -a -f $FONT ${i}
-
-        echo touch ${PNG}
-        touch ${PNG}
+                echo touch ${PDF}
+                touch ${PDF}
+            fi
+        done
     fi
-done
+}
 
-PKTDIAG=pktdiag
-for i in *\.$PKTDIAG
-do
-    PNG=$(echo ${i} | sed "s/$PKTDIAG$/pdf/")
-
-    if [ ! -f ${PNG} ] || [ $(stat -c "%X" ${PNG}) -lt  $(stat -c "%X" ${i}) ]
-    then
-
-        echo seqdiag ${i}
-        packetdiag -Tpdf -a -f $FONT ${i}
-
-        echo touch ${PNG}
-        touch ${PNG}
-    fi
-done
-
-# GDOT="gviz-dot"
-# for i in *\.$GDOT
-# do
-#     PDF=$(echo ${i} | sed "s/$GDOT$/pdf/")
-# 
-#     if [ ! -f ${PDF} ] || [ $(stat -c "%X" ${PDF}) -lt  $(stat -c "%X" ${i}) ]
-#     then
-# 
-#         echo dot ${i}
-#         dot -Tpdf ${i} > ${PDF}
-# 
-#         echo touch ${PDF}
-#         touch ${PDF}
-#     fi
-# done
+graphit "seqdiag" "diag"
+graphit "packetdiag" "pktdiag"
+graphit "nwdiag" "nwdiag"
+graphit "dot" "gviz-dot"
