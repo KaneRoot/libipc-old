@@ -12,11 +12,11 @@ int main(int argc, char * argv[], char *env[])
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    srv_init (argc, argv, env, &srv, SERVICE, NULL);
+    server_init (argc, argv, env, &srv, SERVICE, NULL);
     printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications
-    if (srv_create (&srv))
+    if (server_create (&srv))
         ohshit(1, "service_create error");
 
     /*
@@ -30,8 +30,8 @@ int main(int argc, char * argv[], char *env[])
     int version = 1;
 
     printf ("app creation\n");
-    if (app_create (&p, index, version)) // called by the application
-        ohshit (1, "app_create");
+    if (application_create (&p, index, version)) // called by the application
+        ohshit (1, "application_create");
 
     /*
      * some exchanges between App and S
@@ -41,16 +41,16 @@ int main(int argc, char * argv[], char *env[])
 
     printf ("destroying app\n");
     // the application will shut down, and remove the application named pipes
-    if (app_destroy (&p))
-        ohshit (1, "app_destroy");
+    if (application_destroy (&p))
+        ohshit (1, "application_destroy");
 
     /*
      *  /PROCESS
      */
 
     // the application will shut down, and remove the service named pipe
-    if (srv_close (&srv))
-        ohshit (1, "srv_close error");
+    if (server_close (&srv))
+        ohshit (1, "server_close error");
 
     return EXIT_SUCCESS;
 }

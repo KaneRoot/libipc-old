@@ -9,11 +9,11 @@
 
 int remotec_connection (int argc, char **argv, char **env, struct service *srv)
 {
-    int ret = app_connection (argc, argv, env
+    int ret = application_connection (argc, argv, env
             , srv, REMOTED_SERVICE_NAME, NULL, 0);
 
     if (ret != 0) {
-        handle_err ("remote remotec_connection", "app_connection != 0");
+        handle_err ("remote remotec_connection", "application_connection != 0");
     }
 
     return ret;
@@ -21,7 +21,7 @@ int remotec_connection (int argc, char **argv, char **env, struct service *srv)
 
 int remotec_disconnection (struct service *srv)
 {
-    return app_close (srv);
+    return application_close (srv);
 }
 
 int remotec_msg_send (struct service *srv, const struct remoted_msg * m)
@@ -41,7 +41,7 @@ int remotec_msg_send (struct service *srv, const struct remoted_msg * m)
         return -1;
     }
 
-    app_write (srv, &m_data);
+    application_write (srv, &m_data);
     msg_free (&m_data);
 
     if (buf != NULL)
@@ -65,7 +65,7 @@ int remotec_msg_recv (struct service *srv, struct remoted_msg *m)
     struct msg m_recv;
     memset (&m_recv, 0, sizeof (struct msg));
 
-    app_read (srv, &m_recv);
+    application_read (srv, &m_recv);
     remote_msg_unserialize (m, m_recv.val, m_recv.valsize);
 
     msg_free (&m_recv);

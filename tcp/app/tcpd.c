@@ -15,7 +15,6 @@
 #include <linux/limits.h>
 
 #define PORT 6000
-#define TMPDIR "/tmp/ipc/"
 #define NBCLIENT 10
 #define SERVICE_TCP "tcpd"
 #define LISTEN_BACKLOG 50
@@ -127,15 +126,15 @@ void * service_thread(void * c_data) {
     memset (&srv, 0, sizeof (struct service));
     srv->index = 0;
     srv->version = 0;
-    srv_init (0, NULL, NULL, &srv, service, NULL);
-    if (app_srv_connection(&srv, piv, strlen(piv)) == -1) {
-        handle_error("app_srv_connection\n");
+    server_init (0, NULL, NULL, &srv, service, NULL);
+    if (application_server_connection(&srv, piv, strlen(piv)) == -1) {
+        handle_error("application_server_connection\n");
     }
     free(piv);
 
     /*struct process p;
-    app_create(&p, getpid(), cda->index, version);
-    srv_process_print(&p);*/
+    application_create(&p, getpid(), cda->index, version);
+    server_process_print(&p);*/
     //sleep(1);
     //printf("%s\n",p.path_proc );
     /*if (proc_connection(&p) == -1){
@@ -165,7 +164,7 @@ void * service_thread(void * c_data) {
         if (FD_ISSET(srv.service_fd, &rdfs)){
             nbytes = file_read(srv.service_fd, &buffer);
             if(nbytes < 0) {
-                perror("app_read()");
+                perror("application_read()");
             }
             printf("message from file : %s\n", buffer );
             write_message(clientSock, buffer, nbytes);
@@ -357,7 +356,7 @@ void * server_thread(void * reqq) {
 *   listen = server for a service such as pongd
 *   connect = connect to a server
 */
-int srv_get_new_request(char *buf, info_request *req) {
+int server_get_new_request(char *buf, info_request *req) {
 
     char *token = NULL, *saveptr = NULL;
     char *str = NULL;
@@ -402,7 +401,7 @@ int srv_get_new_request(char *buf, info_request *req) {
     req->addr.sin_family = AF_INET;
 
     if (strcmp("connect", req->request) == 0) {
-        srv_process_gen (req->p, pid, index, version);
+        server_process_gen (req->p, pid, index, version);
     }
 
     return 1;
@@ -515,7 +514,7 @@ void * client_thread(void *reqq) {
             int n = read_message(sock, buffer);
             if(n > 0) {
                 printf("Client : message from server(%d bytes) : %s\n", n, buffer);
-                if(app_write(req->p, buffer, strlen(buffer)) < 0) {
+                if(application_write(req->p, buffer, strlen(buffer)) < 0) {
                     perror("file_write");
                 }
                 nbMessages--;     
@@ -528,7 +527,7 @@ void * client_thread(void *reqq) {
                 break;
             }
         }else {
-            nbytes = app_read (req->p, &buffer);
+            nbytes = application_read (req->p, &buffer);
             printf("Client : message from app %d : %s\n",nbytes, buffer );
             if ( nbytes == -1) {
                 handle_error("file_read");
@@ -666,10 +665,10 @@ void main_loop (struct service *srv) {
 
 			    tab_req[nbclient].p = malloc(sizeof(struct process));
 			    // -1 : error, 0 = no new process, 1 = new process
-			    ret = srv_get_new_request (buf, &tab_req[nbclient]);
+			    ret = server_get_new_request (buf, &tab_req[nbclient]);
 			    tab_req[nbclient].p->proc_fd = newfd;
 			    if (ret == -1) {
-				perror("srv_get_new_request()");
+				perror("server_get_new_request()");
 				exit(1);
 			    } else if (ret == 0) {
 				break;
@@ -717,10 +716,10 @@ void main_loop (struct service *srv) {
 
                         tab_req[nbclient].p = malloc(sizeof(struct process));
                         // -1 : error, 0 = no new process, 1 = new process
-                        ret = srv_get_new_request (buf, &tab_req[nbclient]);
+                        ret = server_get_new_request (buf, &tab_req[nbclient]);
                         tab_req[nbclient].p->proc_fd = i;
                         if (ret == -1) {
-                            perror("srv_get_new_request()");
+                            perror("server_get_new_request()");
                             exit(1);
                         } else if (ret == 0) {
                             break;
@@ -776,12 +775,12 @@ void main_loop (struct service *srv) {
 
 int main(int argc, char * argv[], char **env) {
     struct service srv;
-    srv_init (argc, argv, env, &srv, SERVICE_TCP, NULL);
+    server_init (argc, argv, env, &srv, SERVICE_TCP, NULL);
     printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications
     int ret;
-    if ((ret = srv_create (&srv))) {
+    if ((ret = server_create (&srv))) {
         fprintf(stdout, "error service_create %d\n", ret);
         exit (1);
     }
@@ -791,7 +790,7 @@ int main(int argc, char * argv[], char **env) {
     main_loop (&srv);
 
     // the application will shut down, and remove the service named pipe
-    if ((ret = srv_close (&srv))) {
+    if ((ret = server_close (&srv))) {
         fprintf(stdout, "error service_close %d\n", ret);
         exit (1);
     }

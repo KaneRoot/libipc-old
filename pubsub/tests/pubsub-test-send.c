@@ -19,7 +19,7 @@ main(int argc, char **argv, char **env)
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
+    server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Writing on %s.\n", srv.spath);
 
     struct process p;
@@ -28,8 +28,8 @@ main(int argc, char **argv, char **env)
 
     pid_t pid = getpid();
 
-    if (app_create (&p, pid, index, COMMUNICATION_VERSION))
-        ohshit (1, "app_create");
+    if (application_create (&p, pid, index, COMMUNICATION_VERSION))
+        ohshit (1, "application_create");
 
     // send a message to warn the service we want to do something
     // line : pid index version action chan
@@ -55,8 +55,8 @@ main(int argc, char **argv, char **env)
     pubsubd_msg_free (&m);
 
     // the application will shut down, and remove the application named pipes
-    if (app_destroy (&p))
-        ohshit (1, "app_destroy");
+    if (application_destroy (&p))
+        ohshit (1, "application_destroy");
 
     return EXIT_SUCCESS;
 }

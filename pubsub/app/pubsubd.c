@@ -16,8 +16,8 @@ struct channels chans;
 void handle_signal (int signalnumber)
 {
     // the application will shut down, and remove the service named pipe
-    if (srv_close (&srv) < 0) {
-        handle_error("srv_close < 0");
+    if (server_close (&srv) < 0) {
+        handle_error("server_close < 0");
     }
 
     pubsubd_channels_del_all (&chans);
@@ -40,8 +40,8 @@ main(int argc, char **argv, char **env)
     memset (&chans, 0, sizeof (struct channels));
     pubsubd_channels_init (&chans);
 
-    if (srv_init (argc, argv, env, &srv, PUBSUBD_SERVICE_NAME) < 0) {
-        handle_error("srv_init < 0");
+    if (server_init (argc, argv, env, &srv, PUBSUBD_SERVICE_NAME) < 0) {
+        handle_error("server_init < 0");
         return EXIT_FAILURE;
     }
     printf ("Listening on %s.\n", srv.spath);
@@ -52,8 +52,8 @@ main(int argc, char **argv, char **env)
     pubsubd_main_loop (&srv, &chans);
 
     // the application will shut down, and remove the service named pipe
-    if (srv_close (&srv) < 0) {
-        handle_error("srv_close < 0");
+    if (server_close (&srv) < 0) {
+        handle_error("server_close < 0");
     }
 
     return EXIT_SUCCESS;

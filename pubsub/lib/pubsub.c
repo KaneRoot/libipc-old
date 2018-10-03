@@ -29,18 +29,18 @@ void pubsub_quit (struct service *srv)
     // line fmt : 0 0 0 quit
     char line[BUFSIZ];
     snprintf (line, BUFSIZ, "0 0 0 quit\n");
-    app_srv_connection (srv, line, strlen (line));
+    application_server_connection (srv, line, strlen (line));
 }
 #endif
 
 int pubsub_connection (int argc, char **argv, char **env
         , struct service *srv)
 {
-    int ret = app_connection (argc, argv, env
+    int ret = application_connection (argc, argv, env
             , srv, PUBSUBD_SERVICE_NAME, NULL, 0);
 
     if (ret != 0) {
-        handle_err ("pubsub_connection", "app_connection != 0");
+        handle_err ("pubsub_connection", "application_connection != 0");
     }
 
     return ret;
@@ -48,7 +48,7 @@ int pubsub_connection (int argc, char **argv, char **env
 
 int pubsub_disconnect (struct service *srv)
 {
-    return app_close (srv);
+    return application_close (srv);
 }
 
 int pubsub_msg_send (struct service *srv, const struct pubsub_msg * m)
@@ -68,7 +68,7 @@ int pubsub_msg_send (struct service *srv, const struct pubsub_msg * m)
         return -1;
     }
 
-    app_write (srv, &m_data);
+    application_write (srv, &m_data);
     msg_free (&m_data);
 
     if (buf != NULL)
@@ -92,7 +92,7 @@ int pubsub_msg_recv (struct service *srv, struct pubsub_msg *m)
     struct msg m_recv;
     memset (&m_recv, 0, sizeof (struct msg));
 
-    app_read (srv, &m_recv);
+    application_read (srv, &m_recv);
     pubsub_msg_unserialize (m, m_recv.val, m_recv.valsize);
 
     msg_free (&m_recv);

@@ -48,7 +48,7 @@ void * server_thread(void *reqq);
 
 void * client_thread(void *reqq);
 
-int srv_get_new_request(char *buf, info_request *req);
+int server_get_new_request(char *buf, info_request *req);
 
 void request_print (const info_request *req);
 

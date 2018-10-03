@@ -15,8 +15,8 @@ void handle_new_connection (struct service *srv, struct array_proc *ap)
     struct process *p = malloc(sizeof(struct process));
     memset(p, 0, sizeof(struct process));
 
-    if (srv_accept (srv, p) < 0) {
-        handle_error("srv_accept < 0");
+    if (ipc_server_accept (srv, p) < 0) {
+        handle_error("server_accept < 0");
     } else {
         printf("new connection\n");
     }
@@ -36,8 +36,8 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
     int i;
     for (i = 0; i < proc_to_read->size; i++) {
         // printf ("loop handle_new_msg\n");
-        if (srv_read (proc_to_read->tab_proc[i], &m) < 0) {
-            handle_error("srv_read < 0");
+        if (ipc_server_read (proc_to_read->tab_proc[i], &m) < 0) {
+            handle_error("server_read < 0");
         }
 
         // close the process then delete it from the process array
@@ -45,8 +45,8 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
             cpt--;
             printf ("disconnection => %d client(s) remaining\n", cpt);
 
-            if (srv_close_proc (proc_to_read->tab_proc[i]) < 0)
-                handle_err( "handle_new_msg", "srv_close_proc < 0");
+            if (ipc_server_close_proc (proc_to_read->tab_proc[i]) < 0)
+                handle_err( "handle_new_msg", "server_close_proc < 0");
             if (del_proc (ap, proc_to_read->tab_proc[i]) < 0)
                 handle_err( "handle_new_msg", "del_proc < 0");
             if (del_proc (proc_to_read, proc_to_read->tab_proc[i]) < 0)
@@ -56,8 +56,8 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
         }
 
         printf ("new message : %s", m.val);
-        if (srv_write (proc_to_read->tab_proc[i], &m) < 0) {
-            handle_err( "handle_new_msg", "srv_write < 0");
+        if (ipc_server_write (proc_to_read->tab_proc[i], &m) < 0) {
+            handle_err( "handle_new_msg", "server_write < 0");
         }
     }
 }
@@ -81,7 +81,7 @@ void main_loop (struct service *srv)
     memset(&proc_to_read, 0, sizeof(struct array_proc));
 
     while(1) {
-        ret = srv_select (&ap, srv, &proc_to_read);
+        ret = ipc_server_select (&ap, srv, &proc_to_read);
         // printf ("on peut lire ces process:\n");
         // array_proc_print (&proc_to_read);
         // printf ("-- \n\n");
@@ -98,8 +98,8 @@ void main_loop (struct service *srv)
     }
 
     for (i = 0; i < ap.size; i++) {
-        if (srv_close_proc (ap.tab_proc[i]) < 0) {
-            handle_error( "srv_close_proc < 0");
+        if (ipc_server_close_proc (ap.tab_proc[i]) < 0) {
+            handle_error( "server_close_proc < 0");
         }
     }
 }
@@ -124,8 +124,8 @@ int main(int argc, char * argv[], char **env)
 
     // unlink("/tmp/ipc/pongd-0-0");
 
-    if (srv_init (argc, argv, env, &srv, PONGD_SERVICE_NAME) < 0) {
-        handle_error("srv_init < 0");
+    if (ipc_server_init (argc, argv, env, &srv, PONGD_SERVICE_NAME) < 0) {
+        handle_error("server_init < 0");
         return EXIT_FAILURE;
     }
     printf ("Listening on %s.\n", srv.spath);
@@ -136,8 +136,8 @@ int main(int argc, char * argv[], char **env)
     main_loop (&srv);
 
     // the application will shut down, and remove the service named pipe
-    if (srv_close (&srv) < 0) {
-        handle_error("srv_close < 0");
+    if (ipc_server_close (&srv) < 0) {
+        handle_error("server_close < 0");
     }
 
     return EXIT_SUCCESS;

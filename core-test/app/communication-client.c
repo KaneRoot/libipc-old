@@ -22,8 +22,8 @@ int main (int argc, char *argv[], char *env[])
     srv.version = 0;
 
     // init service
-    if (app_connection (argc, argv, env, &srv, SERVICE_NAME, NULL, 0) < 0) {
-        handle_err("main", "srv_init < 0");
+    if (application_connection (argc, argv, env, &srv, SERVICE_NAME, NULL, 0) < 0) {
+        handle_err("main", "server_init < 0");
         return EXIT_FAILURE;
     }
 
@@ -31,22 +31,22 @@ int main (int argc, char *argv[], char *env[])
     msg_format_data (&m, MSG, strlen(MSG) +1);
     printf ("msg to send in the client: ");
     print_msg (&m);
-    if (app_write (&srv, &m) < 0) {
-        handle_err("main", "app_write < 0");
+    if (application_write (&srv, &m) < 0) {
+        handle_err("main", "application_write < 0");
         return EXIT_FAILURE;
     }
     msg_free (&m);
 
-    if (app_read (&srv, &m) < 0) {
-        handle_err("main", "app_read < 0");
+    if (application_read (&srv, &m) < 0) {
+        handle_err("main", "application_read < 0");
         return EXIT_FAILURE;
     }
 
     printf ("msg recv: %s\n", m.val);
     msg_free (&m);
 
-    if (app_close (&srv) < 0) {
-        handle_err("main", "app_close < 0");
+    if (application_close (&srv) < 0) {
+        handle_err("main", "application_close < 0");
         return EXIT_FAILURE;
     }
 

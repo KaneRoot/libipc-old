@@ -33,7 +33,7 @@ void pubsubd_send (const struct array_proc *ap, const struct pubsub_msg * m)
 
     int i;
     for (i = 0; i < ap->size ; i++) {
-        srv_write (ap->tab_proc[i], &m_data);
+        server_write (ap->tab_proc[i], &m_data);
     }
     msg_free (&m_data);
 
@@ -48,7 +48,7 @@ void pubsubd_send (const struct array_proc *ap, const struct pubsub_msg * m)
 //     memset (&m_data, 0, sizeof (struct msg));
 // 
 //     // read the message from the process
-//     srv_read (p, &m_data);
+//     server_read (p, &m_data);
 // 
 //     pubsub_msg_unserialize (m, m_data.val, m_data.valsize);
 // 
@@ -64,8 +64,8 @@ void handle_new_connection (struct service *srv, struct array_proc *ap)
     struct process *p = malloc(sizeof(struct process));
     memset(p, 0, sizeof(struct process));
 
-    if (srv_accept (srv, p) < 0) {
-        handle_error("srv_accept < 0");
+    if (server_accept (srv, p) < 0) {
+        handle_error("server_accept < 0");
     } else {
         printf("new connection\n");
     }
@@ -83,8 +83,8 @@ void handle_new_msg (struct channels *chans
     int i;
     for (i = 0; i < proc_to_read->size; i++) {
         // printf ("loop handle_new_msg\n");
-        if (srv_read (proc_to_read->tab_proc[i], &m) < 0) {
-            handle_error("srv_read < 0");
+        if (server_read (proc_to_read->tab_proc[i], &m) < 0) {
+            handle_error("server_read < 0");
         }
 
         mprint_hexa ("msg received: ", (unsigned char *) m.val, m.valsize);
@@ -99,8 +99,8 @@ void handle_new_msg (struct channels *chans
             pubsubd_channels_unsubscribe_everywhere (chans, p);
 
             // close the connection to the process
-            if (srv_close_proc (p) < 0)
-                handle_error( "srv_close_proc < 0");
+            if (server_close_proc (p) < 0)
+                handle_error( "server_close_proc < 0");
 
 
             // remove the process from the processes list
@@ -176,7 +176,7 @@ void pubsubd_main_loop (struct service *srv, struct channels *chans)
     memset(&proc_to_read, 0, sizeof(struct array_proc));
 
     while(1) {
-        ret = srv_select (&ap, srv, &proc_to_read);
+        ret = server_select (&ap, srv, &proc_to_read);
 
         if (ret == CONNECTION) {
             handle_new_connection (srv, &ap);
@@ -190,8 +190,8 @@ void pubsubd_main_loop (struct service *srv, struct channels *chans)
     }
 
     for (i = 0; i < ap.size; i++) {
-        if (srv_close_proc (ap.tab_proc[i]) < 0) {
-            handle_error( "srv_close_proc < 0");
+        if (server_close_proc (ap.tab_proc[i]) < 0) {
+            handle_error( "server_close_proc < 0");
         }
     }
 

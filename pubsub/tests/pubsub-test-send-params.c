@@ -26,15 +26,15 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
 
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
+    server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Writing on %s.\n", srv.spath);
 
     struct process p;
     memset (&p, 0, sizeof (struct process));
 
     printf ("app creation\n");
-    if (app_create (&p, pid, index, version)) // called by the application
-        ohshit (1, "app_create");
+    if (application_create (&p, pid, index, version)) // called by the application
+        ohshit (1, "application_create");
 
     printf ("connection\n");
     // send a message to warn the service we want to do something
@@ -74,22 +74,22 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
 
     printf ("destroying app\n");
     // the application will shut down, and remove the application named pipes
-    if (app_destroy (&p))
-        ohshit (1, "app_destroy");
+    if (application_destroy (&p))
+        ohshit (1, "application_destroy");
 }
 
 void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index, int version)
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    srv_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
+    server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Disconnecting from %s.\n", srv.spath);
 
     struct process p;
     memset (&p, 0, sizeof (struct process));
 
     // create the fake process
-    srv_process_gen (&p, pid, index, version);
+    server_process_gen (&p, pid, index, version);
 
     // send a message to disconnect
     // line : pid index version action chan

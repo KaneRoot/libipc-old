@@ -5,7 +5,7 @@
 
 #include <string.h>
 
-struct process * srv_process_copy (const struct process *p)
+struct process * server_process_copy (const struct process *p)
 {
     if (p == NULL)
         return NULL;
@@ -16,13 +16,13 @@ struct process * srv_process_copy (const struct process *p)
     return copy;
 }
 
-int srv_process_eq (const struct process *p1, const struct process *p2)
+int server_process_eq (const struct process *p1, const struct process *p2)
 {
     return (p1->version == p2->version && p1->index == p2->index
             && p1->proc_fd == p2->proc_fd);
 }
 
-void srv_process_gen (struct process *p
+void server_process_gen (struct process *p
         , unsigned int index, unsigned int version)
 {
     p->version = version;

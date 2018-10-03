@@ -19,8 +19,8 @@ struct service srv;
 void handle_signal (int signalnumber)
 {
     // the application will shut down, and remove the service unix socket
-    if (srv_close (&srv) < 0) {
-        handle_error("srv_close < 0");
+    if (server_close (&srv) < 0) {
+        handle_error("server_close < 0");
     }
 
     log_info ("remoted received a signal %d\n", signalnumber);
@@ -95,8 +95,8 @@ int main(int argc, char **argv, char **env)
     else
         log_info ("remoted configuration loaded");
 
-    if (srv_init (argc, argv, env, &srv, REMOTED_SERVICE_NAME) < 0) {
-        handle_error("srv_init < 0");
+    if (server_init (argc, argv, env, &srv, REMOTED_SERVICE_NAME) < 0) {
+        handle_error("server_init < 0");
     }
     log_info ("remoted listening on %s", srv.spath);
 
@@ -106,8 +106,8 @@ int main(int argc, char **argv, char **env)
     remoted_main_loop (&srv, &ctx);
 
     // the application will shut down, and remove the service unix socket
-    if (srv_close (&srv) < 0) {
-        handle_error("srv_close < 0");
+    if (server_close (&srv) < 0) {
+        handle_error("server_close < 0");
     }
     log_info ("remoted ended");
 

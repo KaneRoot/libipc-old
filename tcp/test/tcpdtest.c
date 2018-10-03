@@ -9,11 +9,11 @@
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
 int main(int argc, char * argv[]) {
-    char *srv_message = malloc(BUFSIZ);
+    char *server_message = malloc(BUFSIZ);
     char *pidfile = malloc(BUFSIZ);
     char *buffer = malloc(BUFSIZ);
 
-    snprintf(srv_message, BUFSIZ, "%s %d 1 1", "connect 127.0.0.1 6000", getpid());
+    snprintf(server_message, BUFSIZ, "%s %d 1 1", "connect 127.0.0.1 6000", getpid());
     snprintf(pidfile, BUFSIZ, "%s%d-1-1", "/tmp/ipc/", getpid());
 
     char *proc_message = "hello frero";
@@ -38,7 +38,7 @@ int main(int argc, char * argv[]) {
         exit(errno);
     }
     //printf("connected...\n");
-    file_write(sfd, srv_message, strlen(srv_message));
+    file_write(sfd, server_message, strlen(server_message));
     //printf("%s\n", proc_message);
     //sleep(1);
     file_write(sfd, proc_message, strlen(proc_message));

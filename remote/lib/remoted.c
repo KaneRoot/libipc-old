@@ -20,8 +20,8 @@ void handle_new_connection (struct service *srv, struct array_proc *ap)
     struct process *p = malloc(sizeof(struct process));
     memset(p, 0, sizeof(struct process));
 
-    if (srv_accept (srv, p) < 0) {
-        handle_error("srv_accept < 0");
+    if (server_accept (srv, p) < 0) {
+        handle_error("server_accept < 0");
     } else {
         log_debug ("remoted, new connection", p->proc_fd);
     }
@@ -37,8 +37,8 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
     memset (&m, 0, sizeof (struct msg));
     int i;
     for (i = 0; i < proc_to_read->size; i++) {
-        if (srv_read (proc_to_read->tab_proc[i], &m) < 0) {
-            handle_error("srv_read < 0");
+        if (server_read (proc_to_read->tab_proc[i], &m) < 0) {
+            handle_error("server_read < 0");
         }
 
         mprint_hexa ("msg received: ", (unsigned char *) m.val, m.valsize);
@@ -50,8 +50,8 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
             log_debug ("remoted, proc %d disconnecting", p->proc_fd);
 
             // close the connection to the process
-            if (srv_close_proc (p) < 0)
-                handle_error( "srv_close_proc < 0");
+            if (server_close_proc (p) < 0)
+                handle_error( "server_close_proc < 0");
 
             // remove the process from the processes list
             if (del_proc (ap, p) < 0)
@@ -122,7 +122,7 @@ void remoted_main_loop (struct service *srv, struct remoted_ctx *ctx)
 
     while(1) {
         /* TODO: authorizations */
-        ret = srv_select (&ap, srv, &proc_to_read);
+        ret = server_select (&ap, srv, &proc_to_read);
 
         if (ret == CONNECTION) {
             handle_new_connection (srv, &ap);
@@ -136,8 +136,8 @@ void remoted_main_loop (struct service *srv, struct remoted_ctx *ctx)
     }
 
     for (i = 0; i < ap.size; i++) {
-        if (srv_close_proc (ap.tab_proc[i]) < 0) {
-            handle_error( "srv_close_proc < 0");
+        if (server_close_proc (ap.tab_proc[i]) < 0) {
+            handle_error( "server_close_proc < 0");
         }
     }
 }

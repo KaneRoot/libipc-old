@@ -24,32 +24,32 @@ int main (int argc, char *argv[], char *env[])
     memset (&p, 0, sizeof (struct process));
 
     // init service
-    if (srv_init (argc, argv, env, &srv, SERVICE_NAME) < 0) {
-        handle_err("main", "srv_init < 0");
+    if (server_init (argc, argv, env, &srv, SERVICE_NAME) < 0) {
+        handle_err("main", "server_init < 0");
         return EXIT_FAILURE;
     }
 
-    if (srv_accept (&srv, &p) < 0) {
-        handle_err("main", "srv_accept < 0");
+    if (server_accept (&srv, &p) < 0) {
+        handle_err("main", "server_accept < 0");
         return EXIT_FAILURE;
     }
 
-    if (srv_read (&p, &m) < 0) {
-        handle_err("main", "srv_read < 0");
+    if (server_read (&p, &m) < 0) {
+        handle_err("main", "server_read < 0");
         return EXIT_FAILURE;
     }
 
     printf ("msg recv: %s\n", m.val);
 
-    if (srv_write (&p, &m) < 0) {
-        handle_err("main", "srv_write < 0");
+    if (server_write (&p, &m) < 0) {
+        handle_err("main", "server_write < 0");
         return EXIT_FAILURE;
     }
     msg_free (&m);
 
     // client quits
-    if (srv_read (&p, &m) < 0) {
-        handle_err("main", "srv_read < 0");
+    if (server_read (&p, &m) < 0) {
+        handle_err("main", "server_read < 0");
         return EXIT_FAILURE;
     }
     if (m.type == MSG_TYPE_CLOSE) {
@@ -60,13 +60,13 @@ int main (int argc, char *argv[], char *env[])
     }
     msg_free (&m);
 
-    if (srv_close_proc (&p) < 0) {
-        handle_err("main", "srv_close_proc < 0");
+    if (server_close_proc (&p) < 0) {
+        handle_err("main", "server_close_proc < 0");
         return EXIT_FAILURE;
     }
 
-    if (srv_close (&srv) < 0) {
-        handle_err("main", "srv_close < 0");
+    if (server_close (&srv) < 0) {
+        handle_err("main", "server_close < 0");
         return EXIT_FAILURE;
     }
 
