@@ -28,14 +28,14 @@ int main (int argc, char *argv[], char *env[])
     }
 
     printf ("msg to send: %s\n", MSG);
-    msg_format_data (&m, MSG, strlen(MSG) +1);
+    ipc_message_format_data (&m, MSG, strlen(MSG) +1);
     printf ("msg to send in the client: ");
     print_msg (&m);
     if (application_write (&srv, &m) < 0) {
         handle_err("main", "application_write < 0");
         return EXIT_FAILURE;
     }
-    msg_free (&m);
+    ipc_message_free (&m);
 
     if (application_read (&srv, &m) < 0) {
         handle_err("main", "application_read < 0");
@@ -43,7 +43,7 @@ int main (int argc, char *argv[], char *env[])
     }
 
     printf ("msg recv: %s\n", m.val);
-    msg_free (&m);
+    ipc_message_free (&m);
 
     if (application_close (&srv) < 0) {
         handle_err("main", "application_close < 0");

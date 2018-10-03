@@ -30,24 +30,24 @@ int main(int argc, char * argv[])
     memcpy (msg.data, DATA, msg.datalen);
 
     printf ("msg 1: ");
-    pubsub_msg_print (&msg);
+    pubsub_message_print (&msg);
 
     char *buffer = NULL;
     size_t len = 0;
 
-    pubsub_msg_serialize (&msg, &buffer, &len);
+    pubsub_message_serialize (&msg, &buffer, &len);
     mprint_hexa ("buffer msg 1", (unsigned char *) buffer, len);
 
     struct pubsub_msg msg2;
     memset (&msg2, 0, sizeof (struct pubsub_msg));
 
-    pubsub_msg_unserialize (&msg2, buffer, len);
+    pubsub_message_unserialize (&msg2, buffer, len);
 
     printf ("msg 2: ");
-    pubsub_msg_print (&msg2);
+    pubsub_message_print (&msg2);
 
-    pubsub_msg_free (&msg);
-    pubsub_msg_free (&msg2);
+    pubsub_message_free (&msg);
+    pubsub_message_free (&msg2);
 
     if (buffer != NULL)
         free (buffer);

@@ -29,14 +29,14 @@ void pubsub_quit (struct service *srv)
     // line fmt : 0 0 0 quit
     char line[BUFSIZ];
     snprintf (line, BUFSIZ, "0 0 0 quit\n");
-    application_server_connection (srv, line, strlen (line));
+    ipc_application_server_connection (srv, line, strlen (line));
 }
 #endif
 
 int pubsub_connection (int argc, char **argv, char **env
         , struct service *srv)
 {
-    int ret = application_connection (argc, argv, env
+    int ret = ipc_application_connection (argc, argv, env
             , srv, PUBSUBD_SERVICE_NAME, NULL, 0);
 
     if (ret != 0) {
@@ -48,28 +48,28 @@ int pubsub_connection (int argc, char **argv, char **env
 
 int pubsub_disconnect (struct service *srv)
 {
-    return application_close (srv);
+    return ipc_application_close (srv);
 }
 
-int pubsub_msg_send (struct service *srv, const struct pubsub_msg * m)
+int pubsub_message_send (struct service *srv, const struct pubsub_msg * m)
 {
     size_t msize = 0;
     char * buf = NULL;
-    pubsub_msg_serialize (m, &buf, &msize);
+    pubsub_message_serialize (m, &buf, &msize);
 
     struct msg m_data;
     memset (&m_data, 0, sizeof (struct msg));
 
     // format the connection msg
     if (msg_format_data (&m_data, buf, msize) < 0) {
-        handle_err ("pubsub_msg_send", "msg_format_data");
+        handle_err ("pubsub_message_send", "msg_format_data");
         if (buf != NULL)
             free (buf);
         return -1;
     }
 
-    application_write (srv, &m_data);
-    msg_free (&m_data);
+    ipc_application_write (srv, &m_data);
+    ipc_message_free (&m_data);
 
     if (buf != NULL)
         free(buf);
@@ -77,25 +77,25 @@ int pubsub_msg_send (struct service *srv, const struct pubsub_msg * m)
     return 0;
 }
 
-int pubsub_msg_recv (struct service *srv, struct pubsub_msg *m)
+int pubsub_message_recv (struct service *srv, struct pubsub_msg *m)
 {
     if (srv == NULL) {
-        handle_err ("pubsub_msg_recv", "srv == NULL");
+        handle_err ("pubsub_message_recv", "srv == NULL");
         return -1;
     }
 
     if (m == NULL) {
-        handle_err ("pubsub_msg_recv", "m == NULL");
+        handle_err ("pubsub_message_recv", "m == NULL");
         return -1;
     }
 
     struct msg m_recv;
     memset (&m_recv, 0, sizeof (struct msg));
 
-    application_read (srv, &m_recv);
-    pubsub_msg_unserialize (m, m_recv.val, m_recv.valsize);
+    ipc_application_read (srv, &m_recv);
+    pubsub_message_unserialize (m, m_recv.val, m_recv.valsize);
 
-    msg_free (&m_recv);
+    ipc_message_free (&m_recv);
 
     return 0;
 }

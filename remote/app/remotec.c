@@ -47,11 +47,11 @@ void * listener (void *params)
         struct remoted_msg m;
         memset (&m, 0, sizeof (struct remoted_msg));
 
-        remote_msg_recv (srv, &m);
+        remote_message_recv (srv, &m);
         printf ("\r\033[31m>\033[00m %s\n", m.data);
         print_cmd ();
 
-        remote_msg_free (&m);
+        remote_message_free (&m);
     }
 
     pthread_exit (NULL);
@@ -90,14 +90,14 @@ void main_loop (int argc, char **argv, char **env
         strncpy ((char *) msg.data, "salut", msg.datalen);
 
         /* TODO */
-        remotec_msg_send (&srv, &msg);
+        remotec_message_send (&srv, &msg);
         free (msg.data);
         msg.data = NULL;
         msg.datalen = 0;
     }
 
     // free everything
-    remote_msg_free (&msg);
+    remote_message_free (&msg);
 #endif
 
     log_debug ("remotec disconnection...");

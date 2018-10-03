@@ -129,7 +129,7 @@ void * pubsubd_worker_thread (void *params)
         struct pubsub_msg m;
         memset (&m, 0, sizeof (struct pubsub_msg));
 
-        pubsub_msg_recv (ale->p, &m);
+        pubsub_message_recv (ale->p, &m);
 
         if (m.type == PUBSUB_TYPE_DISCONNECT) {
             // printf ("process %d disconnecting...\n", ale->p->pid);
@@ -145,13 +145,13 @@ void * pubsubd_worker_thread (void *params)
             }
             else {
                 printf ("what should be sent: ");
-                pubsub_msg_print (&m);
+                pubsub_message_print (&m);
                 printf ("send the message to:\t");
                 pubsubd_channel_print (ch);
-                pubsub_msg_send (ch->alh, &m);
+                pubsub_message_send (ch->alh, &m);
             }
         }
-        pubsub_msg_free (&m);
+        pubsub_message_free (&m);
     }
 
     pubsubd_subscriber_free (ale);

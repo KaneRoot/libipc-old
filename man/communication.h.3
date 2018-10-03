@@ -5,31 +5,31 @@ communication.h \- all functions explained
 .nf
 .B #include <communication.h>
 .sp
-.BI "int server_init (int "argc ", char **" argv ", char **" env ", struct service *" srv "
+.BI "int ipc_server_init (int "argc ", char **" argv ", char **" env ", struct service *" srv "
 .BI "       , const char *" service_name );
-.BI "int server_accept (struct service *" srv ", struct process *" p );
+.BI "int ipc_server_accept (struct service *" srv ", struct process *" p );
 .sp
-.BI "int server_read (const struct process *" p ", struct msg *" message );
-.BI "int server_write (const struct process *" p ", const struct msg *" message );
+.BI "int ipc_server_read (const struct process *" p ", struct msg *" message );
+.BI "int ipc_server_write (const struct process *" p ", const struct msg *" message );
 .sp
-.BI "int server_close (struct service *" srv );
-.BI "int server_close_proc (struct process *" p );
-.BI "int server_select (struct array_proc *" fds ", struct service *" srv ", struct array_proc *" readfds );
+.BI "int ipc_server_close (struct service *" srv );
+.BI "int ipc_server_close_proc (struct process *" p );
+.BI "int ipc_server_select (struct array_proc *" fds ", struct service *" srv ", struct array_proc *" readfds );
 
-.BI "int application_connection (int " argc ", char **" argv ", char **" env ", struct service *" srv
+.BI "int ipc_application_connection (int " argc ", char **" argv ", char **" env ", struct service *" srv
 .BI "       , const char *" service_name "
 .BI "       , const char *" connection_buffer ", size_t " bufsize );
 .sp
-.BI "int application_read (const struct service *" srv ", struct msg *" message );
-.BI "int application_write (const struct service *" srv ", const struct msg *" message );
+.BI "int ipc_application_read (const struct service *" srv ", struct msg *" message );
+.BI "int ipc_application_write (const struct service *" srv ", const struct msg *" message );
 .sp
-.BI "int application_close (struct service *" srv );
+.BI "int ipc_application_close (struct service *" srv );
 
 
 .fi
 .SH DESCRIPTION
 The
-.BR server_init ()
+.BR ipc_server_init ()
 function let the service declare itself, create a new unix socket and listen.
 .I argc
 , 
@@ -43,25 +43,25 @@ is the pointer to the \fBstruct service\fR that should be filled (index and vers
 The \fBserver_init()\fR function will fill the rest of the elements of this structure, such as the unix socket path and the unix socket file descriptor in order to be able to receive new connections.
 .PP
 The
-.BR server_accept ()
+.BR ipc_server_accept ()
 function accepts new connections.
 .IR p
 parameter is the client process that will be provided after the connection.
 .PP
 The
-.BR server_read ()
+.BR ipc_server_read ()
 and
-.BR server_write ()
+.BR ipc_server_write ()
 functions take respectively a message to read from, and a message to write to a process.
 .PP
 The
-.BR server_close_proc ()
+.BR ipc_server_close_proc ()
 and
-.BR server_close ()
+.BR ipc_server_close ()
 functions terminate respectively a process (closing its unix socket) and the service (closing and removing its named unix socket).
 .PP
 The
-.BR server_select ()
+.BR ipc_server_select ()
 takes three arguments,
 .IR *ap
 an array of processes you want to listen on,
@@ -71,7 +71,7 @@ the service which receives new connections and
 an array of processes which have sent a message we need to read.
 .PP
 The
-.BR application_connection ()
+.BR ipc_application_connection ()
 function takes
 .I argc
 , 
@@ -95,17 +95,17 @@ The function finally connects itself to the service.
 \fBIn a near future, this function will be completed to invoke transparently the remote service\fR.
 .PP
 The
-.BR application_read ()
+.BR ipc_application_read ()
 and
-.BR application_write ()
+.BR ipc_application_write ()
 functions take respectively a message to read from, and a message to write to the service.
 .PP
 The
-.BR application_close ()
+.BR ipc_application_close ()
 function finally ends the communication to the service.
 .SH RETURN VALUE
 Most of the functions return an integer less than zero if there is an error.
 .PP
 For
-.BR server_select()
+.BR ipc_server_select()
 if there is a new connection, the function will return \fBCONNECTION\fR, if there is one or more processes talking the function will return \fBAPPLICATION\fR and finally if there are both a new connection and a process talking the function will return \fBCON_APP\fR.

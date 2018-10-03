@@ -1,5 +1,5 @@
-#ifndef __LOGGER_H__
-#define __LOGGER_H__
+#ifndef __IPC_LOGGER_H__
+#define __IPC_LOGGER_H__
 
 #define LOG
 

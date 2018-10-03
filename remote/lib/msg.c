@@ -5,25 +5,25 @@
 #include "msg.h"
 #include "../../core/error.h"
 
-void remote_msg_serialize (const struct remoted_msg *msg, char **data, size_t *len)
+void remote_message_serialize (const struct remoted_msg *msg, char **data, size_t *len)
 {
     if (msg == NULL) {
-        handle_err ("remote remote_msg_serialize", "msg == NULL");
+        handle_err ("remote remote_message_serialize", "msg == NULL");
         return;
     }
 
     if (data == NULL) {
-        handle_err ("remote remote_msg_serialize", "data == NULL");
+        handle_err ("remote remote_message_serialize", "data == NULL");
         return;
     }
 
     if (*data != NULL) {
-        handle_err ("remote remote_msg_serialize", "*data != NULL");
+        handle_err ("remote remote_message_serialize", "*data != NULL");
         return;
     }
 
     if (len == NULL) {
-        handle_err ("remote remote_msg_serialize", "len == NULL");
+        handle_err ("remote remote_message_serialize", "len == NULL");
         return;
     }
 
@@ -31,7 +31,7 @@ void remote_msg_serialize (const struct remoted_msg *msg, char **data, size_t *l
     size_t buflen = 1 + sizeof (size_t) + msg->datalen;
 
     if (buflen > BUFSIZ) {
-        handle_err ("remote remote_msg_serialize", "datalen too high");
+        handle_err ("remote remote_message_serialize", "datalen too high");
         return;
     }
 
@@ -53,17 +53,17 @@ void remote_msg_serialize (const struct remoted_msg *msg, char **data, size_t *l
     *len = buflen;
 }
 
-void remote_msg_unserialize (struct remoted_msg *msg, const char *buf, size_t mlen)
+void remote_message_unserialize (struct remoted_msg *msg, const char *buf, size_t mlen)
 {
     if (msg == NULL) {
-        handle_err ("remote remote_msg_unserialize", "msg == NULL");
+        handle_err ("remote remote_message_unserialize", "msg == NULL");
         return;
     }
 
-    remote_msg_free (msg);
+    remote_message_free (msg);
 
     if (mlen > BUFSIZ) {
-        handle_err ("remote remote_msg_unserialize", "mlen > BUFSIZ");
+        handle_err ("remote remote_message_unserialize", "mlen > BUFSIZ");
         return;
     }
 
@@ -75,7 +75,7 @@ void remote_msg_unserialize (struct remoted_msg *msg, const char *buf, size_t ml
     // data
     memcpy (&msg->datalen, buf + offset, sizeof (size_t));
     if (msg->datalen > BUFSIZ) {
-        handle_err ("remote remote_msg_unserialize", "datalen > BUFSIZ");
+        handle_err ("remote remote_message_unserialize", "datalen > BUFSIZ");
         return;
     }
     msg->data = malloc (msg->datalen);
@@ -85,10 +85,10 @@ void remote_msg_unserialize (struct remoted_msg *msg, const char *buf, size_t ml
     offset += msg->datalen;
 }
 
-void remote_msg_free (struct remoted_msg *msg)
+void remote_message_free (struct remoted_msg *msg)
 {
     if (msg == NULL) {
-        handle_err ("remote remote_msg_free", "msg == NULL");
+        handle_err ("remote remote_message_free", "msg == NULL");
         return;
     }
 
@@ -98,10 +98,10 @@ void remote_msg_free (struct remoted_msg *msg)
     }
 }
 
-void remote_msg_print (const struct remoted_msg *msg)
+void remote_message_print (const struct remoted_msg *msg)
 {
     if (msg == NULL) {
-        handle_err ("remote remote_msg_print", "msg == NULL");
+        handle_err ("remote remote_message_print", "msg == NULL");
         return;
     }
 

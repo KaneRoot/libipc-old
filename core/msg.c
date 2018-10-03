@@ -4,13 +4,13 @@
 
 #include <assert.h>
 
-void print_msg (const struct msg *m)
+void ipc_message_print (const struct msg *m)
 {
     assert (m != NULL);
     printf ("msg: type %d len %d\n", m->type, m->valsize);
 }
 
-int msg_format_read (struct msg *m, const char *buf, size_t msize)
+int ipc_message_format_read (struct msg *m, const char *buf, size_t msize)
 {
     assert (m != NULL);
     assert (buf != NULL);
@@ -37,7 +37,7 @@ int msg_format_read (struct msg *m, const char *buf, size_t msize)
     return 0;
 }
 
-int msg_format_write (const struct msg *m, char **buf, size_t *msize)
+int ipc_message_format_write (const struct msg *m, char **buf, size_t *msize)
 {
     assert (m != NULL);
     assert (buf != NULL);
@@ -68,7 +68,7 @@ int msg_format_write (const struct msg *m, char **buf, size_t *msize)
     return 0;
 }
 
-int msg_read (int fd, struct msg *m)
+int ipc_message_read (int fd, struct msg *m)
 {
     assert (m != NULL);
 
@@ -81,7 +81,7 @@ int msg_read (int fd, struct msg *m)
         return ret;
     }
 
-    if (msg_format_read (m, buf, msize) < 0) {
+    if (ipc_message_format_read (m, buf, msize) < 0) {
         return -1;
     }
     free (buf);
@@ -89,13 +89,13 @@ int msg_read (int fd, struct msg *m)
     return 0;
 }
 
-int msg_write (int fd, const struct msg *m)
+int ipc_message_write (int fd, const struct msg *m)
 {
     assert (m != NULL);
 
     char *buf = NULL;
     size_t msize = 0;
-    msg_format_write (m, &buf, &msize);
+    ipc_message_format_write (m, &buf, &msize);
 
     int ret = usock_send (fd, buf, msize);
     if (ret < 0) {
@@ -111,7 +111,7 @@ int msg_write (int fd, const struct msg *m)
 
 // MSG FORMAT
 
-int msg_format (struct msg *m, char type, const char *val, size_t valsize)
+int ipc_message_format (struct msg *m, char type, const char *val, size_t valsize)
 {
     assert (m != NULL);
     assert (valsize + 3 <= BUFSIZ);
@@ -132,22 +132,22 @@ int msg_format (struct msg *m, char type, const char *val, size_t valsize)
     return 0;
 }
 
-int msg_format_con (struct msg *m, const char *val, size_t valsize)
+int ipc_message_format_con (struct msg *m, const char *val, size_t valsize)
 {
-    return msg_format (m, MSG_TYPE_CON, val, valsize);
+    return ipc_message_format (m, MSG_TYPE_CON, val, valsize);
 }
 
-int msg_format_data (struct msg *m, const char *val, size_t valsize)
+int ipc_message_format_data (struct msg *m, const char *val, size_t valsize)
 {
-    return msg_format (m, MSG_TYPE_DATA, val, valsize);
+    return ipc_message_format (m, MSG_TYPE_DATA, val, valsize);
 }
 
-int msg_format_ack (struct msg *m, const char *val, size_t valsize)
+int ipc_message_format_ack (struct msg *m, const char *val, size_t valsize)
 {
-    return msg_format (m, MSG_TYPE_ACK, val, valsize);
+    return ipc_message_format (m, MSG_TYPE_ACK, val, valsize);
 }
 
-int msg_free (struct msg *m)
+int ipc_message_free (struct msg *m)
 {
     assert (m != NULL);
 

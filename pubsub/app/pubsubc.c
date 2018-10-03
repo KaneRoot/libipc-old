@@ -38,11 +38,11 @@ void * listener (void *params)
         struct pubsub_msg m;
         memset (&m, 0, sizeof (struct pubsub_msg));
 
-        pubsub_msg_recv (srv, &m);
+        pubsub_message_recv (srv, &m);
         printf ("\r\033[31m>\033[00m %s\n", m.data);
         print_cmd ();
 
-        pubsub_msg_free (&m);
+        pubsub_message_free (&m);
     }
 
     pthread_exit (NULL);
@@ -61,10 +61,10 @@ void chan_sub (struct service *srv, char *chan)
     strncpy (msg.chan, chan, msg.chanlen);
     msg.chan[strlen (chan)] = '\0';
 
-    pubsub_msg_send (srv, &msg);
+    pubsub_message_send (srv, &msg);
     printf ("subscribed to %s\n", chan);
 
-    pubsub_msg_free (&msg);
+    pubsub_message_free (&msg);
 }
 
 void main_loop (int argc, char **argv, char **env
@@ -128,14 +128,14 @@ void main_loop (int argc, char **argv, char **env
         strncpy ((char *) msg.data, buf, msg.datalen);
         msg.data[strlen(buf)] = '\0';
 
-        pubsub_msg_send (&srv, &msg);
+        pubsub_message_send (&srv, &msg);
         free (msg.data);
         msg.data = NULL;
         msg.datalen = 0;
     }
 
     // free everything
-    pubsub_msg_free (&msg);
+    pubsub_message_free (&msg);
 
     pthread_cancel (thr);
     pthread_join (thr, NULL);

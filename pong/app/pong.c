@@ -28,14 +28,14 @@ void non_interactive (int argc, char *argv[], char *env[])
     }
 
     printf ("msg to send: %s\n", MSG);
-    msg_format_data (&m, MSG, strlen(MSG) +1);
+    ipc_message_format_data (&m, MSG, strlen(MSG) +1);
     printf ("msg to send in the client: ");
-    print_msg (&m);
+    ipc_message_print (&m);
     if (ipc_application_write (&srv, &m) < 0) {
         handle_err("main", "application_write < 0");
         exit (EXIT_FAILURE);
     }
-    msg_free (&m);
+    ipc_message_free (&m);
 
     if (ipc_application_read (&srv, &m) < 0) {
         handle_err("main", "application_read < 0");
@@ -43,7 +43,7 @@ void non_interactive (int argc, char *argv[], char *env[])
     }
 
     printf ("msg recv: %s\n", m.val);
-    msg_free (&m);
+    ipc_message_free (&m);
 
     if (ipc_application_close (&srv) < 0) {
         handle_err("main", "application_close < 0");
@@ -80,7 +80,7 @@ void interactive (int argc, char *argv[], char *env[])
         if (n == 0 || strncmp (buf, "exit", 4) == 0)
             break;
 
-        msg_format_data (&m, buf, strlen(buf) +1);
+        ipc_message_format_data (&m, buf, strlen(buf) +1);
         memset (buf, 0, BUFSIZ);
 
         // print_msg (&m);
@@ -89,7 +89,7 @@ void interactive (int argc, char *argv[], char *env[])
             handle_err("main", "application_write < 0");
             exit (EXIT_FAILURE);
         }
-        msg_free (&m);
+        ipc_message_free (&m);
 
         if (ipc_application_read (&srv, &m) < 0) {
             handle_err("main", "application_read < 0");
@@ -97,7 +97,7 @@ void interactive (int argc, char *argv[], char *env[])
         }
 
         printf ("msg recv: %s", m.val);
-        msg_free (&m);
+        ipc_message_free (&m);
     }
 
     if (ipc_application_close (&srv) < 0) {

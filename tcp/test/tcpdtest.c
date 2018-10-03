@@ -38,7 +38,7 @@ int main(int argc, char * argv[]) {
         exit(errno);
     }
     //printf("connected...\n");
-    file_write(sfd, server_message, strlen(server_message));
+    file_write(sfd, ipc_server_message, strlen(server_message));
     //printf("%s\n", proc_message);
     //sleep(1);
     file_write(sfd, proc_message, strlen(proc_message));

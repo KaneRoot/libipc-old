@@ -59,7 +59,7 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
             if (del_proc (proc_to_read, p) < 0)
                 handle_err( "handle_new_msg", "del_proc < 0");
 
-            msg_free (&m);
+            ipc_message_free (&m);
 
             // free process
             free (p);
@@ -72,7 +72,7 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
         struct pubsub_msg m_data;
         memset (&m_data, 0, sizeof (struct pubsub_msg));
 
-        pubsub_msg_unserialize (&m_data, m.val, m.valsize);
+        pubsub_message_unserialize (&m_data, m.val, m.valsize);
 
         if (m_data.type == PUBSUB_MSG_TYPE_SUB) {
             printf ("proc %d subscribing to %s\n"
@@ -97,15 +97,15 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
             struct channel *chan = pubsubd_channel_search (chans, m_data.chan);
             if (chan == NULL) {
                 handle_err ("handle_new_msg", "publish on nonexistent channel");
-                msg_free (&m);
+                ipc_message_free (&m);
                 return ;
             }
             pubsubd_send (chan->subs, &m_data);
         }
 
-        pubsub_msg_free (&m_data);
+        pubsub_message_free (&m_data);
 #endif
-        msg_free (&m);
+        ipc_message_free (&m);
     }
 }
 
@@ -122,7 +122,7 @@ void remoted_main_loop (struct service *srv, struct remoted_ctx *ctx)
 
     while(1) {
         /* TODO: authorizations */
-        ret = server_select (&ap, srv, &proc_to_read);
+        ret = ipc_server_select (&ap, srv, &proc_to_read);
 
         if (ret == CONNECTION) {
             handle_new_connection (srv, &ap);

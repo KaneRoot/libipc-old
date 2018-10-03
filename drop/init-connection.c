@@ -12,7 +12,7 @@ int main(int argc, char * argv[], char *env[])
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    server_init (argc, argv, env, &srv, SERVICE, NULL);
+    ipc_server_init (argc, argv, env, &srv, SERVICE, NULL);
     printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications

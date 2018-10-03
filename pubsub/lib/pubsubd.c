@@ -25,17 +25,17 @@ void pubsubd_send (const struct array_proc *ap, const struct pubsub_msg * m)
 
     char *buf = NULL;
     size_t msize = 0;
-    pubsub_msg_serialize (m, &buf, &msize);
+    pubsub_message_serialize (m, &buf, &msize);
 
     struct msg m_data;
     memset (&m_data, 0, sizeof (struct msg));
-    msg_format_data (&m_data, buf, msize);
+    ipc_message_format_data (&m_data, buf, msize);
 
     int i;
     for (i = 0; i < ap->size ; i++) {
-        server_write (ap->tab_proc[i], &m_data);
+        ipc_server_write (ap->tab_proc[i], &m_data);
     }
-    msg_free (&m_data);
+    ipc_message_free (&m_data);
 
     if (buf != NULL) {
         free (buf);
@@ -48,11 +48,11 @@ void pubsubd_send (const struct array_proc *ap, const struct pubsub_msg * m)
 //     memset (&m_data, 0, sizeof (struct msg));
 // 
 //     // read the message from the process
-//     server_read (p, &m_data);
+//     ipc_server_read (p, &m_data);
 // 
-//     pubsub_msg_unserialize (m, m_data.val, m_data.valsize);
+//     pubsub_message_unserialize (m, m_data.val, m_data.valsize);
 // 
-//     msg_free (&m_data);
+//     ipc_message_free (&m_data);
 // }
 
 /**
@@ -109,7 +109,7 @@ void handle_new_msg (struct channels *chans
             if (del_proc (proc_to_read, p) < 0)
                 handle_err( "handle_new_msg", "del_proc < 0");
 
-            msg_free (&m);
+            ipc_message_free (&m);
 
             // free process
             free (p);
@@ -121,7 +121,7 @@ void handle_new_msg (struct channels *chans
         struct pubsub_msg m_data;
         memset (&m_data, 0, sizeof (struct pubsub_msg));
 
-        pubsub_msg_unserialize (&m_data, m.val, m.valsize);
+        pubsub_message_unserialize (&m_data, m.val, m.valsize);
 
         if (m_data.type == PUBSUB_MSG_TYPE_SUB) {
             printf ("proc %d subscribing to %s\n"
@@ -146,14 +146,14 @@ void handle_new_msg (struct channels *chans
             struct channel *chan = pubsubd_channel_search (chans, m_data.chan);
             if (chan == NULL) {
                 handle_err ("handle_new_msg", "publish on nonexistent channel");
-                msg_free (&m);
+                ipc_message_free (&m);
                 return ;
             }
             pubsubd_send (chan->subs, &m_data);
         }
 
-        pubsub_msg_free (&m_data);
-        msg_free (&m);
+        pubsub_message_free (&m_data);
+        ipc_message_free (&m);
     }
 }
 
@@ -176,7 +176,7 @@ void pubsubd_main_loop (struct service *srv, struct channels *chans)
     memset(&proc_to_read, 0, sizeof(struct array_proc));
 
     while(1) {
-        ret = server_select (&ap, srv, &proc_to_read);
+        ret = ipc_server_select (&ap, srv, &proc_to_read);
 
         if (ret == CONNECTION) {
             handle_new_connection (srv, &ap);

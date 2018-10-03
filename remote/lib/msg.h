@@ -11,10 +11,10 @@ struct remoted_msg {
     size_t datalen;
 };
 
-void remote_msg_serialize (const struct remoted_msg *msg, char **data, size_t *len);
-void remote_msg_unserialize (struct remoted_msg *msg, const char *data, size_t len);
+void remote_message_serialize (const struct remoted_msg *msg, char **data, size_t *len);
+void remote_message_unserialize (struct remoted_msg *msg, const char *data, size_t len);
 
-void remote_msg_free (struct remoted_msg *msg);
-void remote_msg_print (const struct remoted_msg *msg);
+void remote_message_free (struct remoted_msg *msg);
+void remote_message_print (const struct remoted_msg *msg);
 
 #endif

@@ -19,7 +19,7 @@ main(int argc, char **argv, char **env)
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
+    ipc_server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Writing on %s.\n", srv.spath);
 
     struct process p;
@@ -44,15 +44,15 @@ main(int argc, char **argv, char **env)
     m.chanlen = strlen (MYCHAN);
     m.data = malloc (strlen (MYMESSAGE));
     m.datalen = strlen (MYMESSAGE);
-    pubsub_msg_send (&p, &m);
+    pubsub_message_send (&p, &m);
 
     // second message, to disconnect from the server
     m.type = PUBSUB_TYPE_DISCONNECT;
-    pubsub_msg_send (&p, &m);
+    pubsub_message_send (&p, &m);
 
     // free everything
 
-    pubsubd_msg_free (&m);
+    pubsubd_message_free (&m);
 
     // the application will shut down, and remove the application named pipes
     if (application_destroy (&p))

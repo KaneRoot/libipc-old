@@ -5,25 +5,25 @@
 #include "msg.h"
 #include "../../core/error.h"
 
-void pubsub_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *len)
+void pubsub_message_serialize (const struct pubsub_msg *msg, char **data, size_t *len)
 {
     if (msg == NULL) {
-        handle_err ("pubsub_msg_serialize", "msg == NULL");
+        handle_err ("pubsub_message_serialize", "msg == NULL");
         return;
     }
 
     if (data == NULL) {
-        handle_err ("pubsub_msg_serialize", "data == NULL");
+        handle_err ("pubsub_message_serialize", "data == NULL");
         return;
     }
 
     if (*data != NULL) {
-        handle_err ("pubsub_msg_serialize", "*data != NULL");
+        handle_err ("pubsub_message_serialize", "*data != NULL");
         return;
     }
 
     if (len == NULL) {
-        handle_err ("pubsub_msg_serialize", "len == NULL");
+        handle_err ("pubsub_message_serialize", "len == NULL");
         return;
     }
 
@@ -31,7 +31,7 @@ void pubsub_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *le
     size_t buflen = 1 + 2 * sizeof (size_t) + msg->chanlen + msg->datalen;
 
     if (buflen > BUFSIZ) {
-        handle_err ("pubsub_msg_serialize", "chanlen + datalen too high");
+        handle_err ("pubsub_message_serialize", "chanlen + datalen too high");
         return;
     }
 
@@ -59,17 +59,17 @@ void pubsub_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *le
     *len = buflen;
 }
 
-void pubsub_msg_unserialize (struct pubsub_msg *msg, const char *buf, size_t mlen)
+void pubsub_message_unserialize (struct pubsub_msg *msg, const char *buf, size_t mlen)
 {
     if (msg == NULL) {
-        handle_err ("pubsub_msg_unserialize", "msg == NULL");
+        handle_err ("pubsub_message_unserialize", "msg == NULL");
         return;
     }
 
-    pubsub_msg_free (msg);
+    pubsub_message_free (msg);
 
     if (mlen > BUFSIZ) {
-        handle_err ("pubsub_msg_unserialize", "mlen > BUFSIZ");
+        handle_err ("pubsub_message_unserialize", "mlen > BUFSIZ");
         return;
     }
 
@@ -81,7 +81,7 @@ void pubsub_msg_unserialize (struct pubsub_msg *msg, const char *buf, size_t mle
     // chan
     memcpy (&msg->chanlen, buf + offset, sizeof (size_t));
     if (msg->chanlen > BUFSIZ) {
-        handle_err ("pubsub_msg_unserialize", "chanlen > BUFSIZ");
+        handle_err ("pubsub_message_unserialize", "chanlen > BUFSIZ");
         return;
     }
     msg->chan = malloc (msg->chanlen);
@@ -93,7 +93,7 @@ void pubsub_msg_unserialize (struct pubsub_msg *msg, const char *buf, size_t mle
     // data
     memcpy (&msg->datalen, buf + offset, sizeof (size_t));
     if (msg->datalen > BUFSIZ) {
-        handle_err ("pubsub_msg_unserialize", "datalen > BUFSIZ");
+        handle_err ("pubsub_message_unserialize", "datalen > BUFSIZ");
         return;
     }
     msg->data = malloc (msg->datalen);
@@ -103,10 +103,10 @@ void pubsub_msg_unserialize (struct pubsub_msg *msg, const char *buf, size_t mle
     offset += msg->datalen;
 }
 
-void pubsub_msg_free (struct pubsub_msg *msg)
+void pubsub_message_free (struct pubsub_msg *msg)
 {
     if (msg == NULL) {
-        handle_err ("pubsub_msg_free", "msg == NULL");
+        handle_err ("pubsub_message_free", "msg == NULL");
         return;
     }
 
@@ -120,10 +120,10 @@ void pubsub_msg_free (struct pubsub_msg *msg)
     }
 }
 
-void pubsub_msg_print (const struct pubsub_msg *msg)
+void pubsub_message_print (const struct pubsub_msg *msg)
 {
     if (msg == NULL) {
-        handle_err ("pubsub_msg_print", "msg == NULL");
+        handle_err ("pubsub_message_print", "msg == NULL");
         return;
     }
 

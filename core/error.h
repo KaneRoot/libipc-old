@@ -1,5 +1,5 @@
-#ifndef __ERROR_H__
-#define __ERROR_H__
+#ifndef __IPC_ERROR_H__
+#define __IPC_ERROR_H__
 
 #include "logger.h"
 

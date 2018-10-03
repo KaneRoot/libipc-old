@@ -13,9 +13,9 @@ struct pubsub_msg {
     size_t datalen;
 };
 
-void pubsub_msg_serialize (const struct pubsub_msg *msg, char **data, size_t *len);
-void pubsub_msg_unserialize (struct pubsub_msg *msg, const char *data, size_t len);
-void pubsub_msg_free (struct pubsub_msg *msg);
-void pubsub_msg_print (const struct pubsub_msg *msg);
+void pubsub_message_serialize (const struct pubsub_msg *msg, char **data, size_t *len);
+void pubsub_message_unserialize (struct pubsub_msg *msg, const char *data, size_t len);
+void pubsub_message_free (struct pubsub_msg *msg);
+void pubsub_message_print (const struct pubsub_msg *msg);
 
 #endif

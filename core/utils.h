@@ -1,5 +1,5 @@
-#ifndef __UTIL_H__
-#define __UTIL_H__
+#ifndef __IPC_UTIL_H__
+#define __IPC_UTIL_H__
 
 #include <stdio.h>
 #include <stdlib.h>

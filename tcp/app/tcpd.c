@@ -126,15 +126,15 @@ void * service_thread(void * c_data) {
     memset (&srv, 0, sizeof (struct service));
     srv->index = 0;
     srv->version = 0;
-    server_init (0, NULL, NULL, &srv, service, NULL);
+    ipc_server_init (0, NULL, NULL, &srv, service, NULL);
     if (application_server_connection(&srv, piv, strlen(piv)) == -1) {
         handle_error("application_server_connection\n");
     }
     free(piv);
 
     /*struct process p;
-    application_create(&p, getpid(), cda->index, version);
-    server_process_print(&p);*/
+    ipc_application_create(&p, getpid(), cda->index, version);
+    ipc_server_process_print(&p);*/
     //sleep(1);
     //printf("%s\n",p.path_proc );
     /*if (proc_connection(&p) == -1){
@@ -272,7 +272,7 @@ void makePivMessage (char ** piv, int pid, int index, int version) {
  * lancer le serveur, ecouter sur une l'adresse et port
  * A chaque nouveau client lance un thread service
  */
-void * server_thread(void * reqq) {
+void * ipc_server_thread(void * reqq) {
     info_request *req = (info_request*) reqq;
 
     //client 
@@ -356,7 +356,7 @@ void * server_thread(void * reqq) {
 *   listen = server for a service such as pongd
 *   connect = connect to a server
 */
-int server_get_new_request(char *buf, info_request *req) {
+int ipc_server_get_new_request(char *buf, info_request *req) {
 
     char *token = NULL, *saveptr = NULL;
     char *str = NULL;
@@ -401,7 +401,7 @@ int server_get_new_request(char *buf, info_request *req) {
     req->addr.sin_family = AF_INET;
 
     if (strcmp("connect", req->request) == 0) {
-        server_process_gen (req->p, pid, index, version);
+        ipc_server_process_gen (req->p, pid, index, version);
     }
 
     return 1;
@@ -527,7 +527,7 @@ void * client_thread(void *reqq) {
                 break;
             }
         }else {
-            nbytes = application_read (req->p, &buffer);
+            nbytes = ipc_application_read (req->p, &buffer);
             printf("Client : message from app %d : %s\n",nbytes, buffer );
             if ( nbytes == -1) {
                 handle_error("file_read");
@@ -665,7 +665,7 @@ void main_loop (struct service *srv) {
 
 			    tab_req[nbclient].p = malloc(sizeof(struct process));
 			    // -1 : error, 0 = no new process, 1 = new process
-			    ret = server_get_new_request (buf, &tab_req[nbclient]);
+			    ret = ipc_server_get_new_request (buf, &tab_req[nbclient]);
 			    tab_req[nbclient].p->proc_fd = newfd;
 			    if (ret == -1) {
 				perror("server_get_new_request()");
@@ -716,7 +716,7 @@ void main_loop (struct service *srv) {
 
                         tab_req[nbclient].p = malloc(sizeof(struct process));
                         // -1 : error, 0 = no new process, 1 = new process
-                        ret = server_get_new_request (buf, &tab_req[nbclient]);
+                        ret = ipc_server_get_new_request (buf, &tab_req[nbclient]);
                         tab_req[nbclient].p->proc_fd = i;
                         if (ret == -1) {
                             perror("server_get_new_request()");
@@ -775,12 +775,12 @@ void main_loop (struct service *srv) {
 
 int main(int argc, char * argv[], char **env) {
     struct service srv;
-    server_init (argc, argv, env, &srv, SERVICE_TCP, NULL);
+    ipc_server_init (argc, argv, env, &srv, SERVICE_TCP, NULL);
     printf ("Listening on %s.\n", srv.spath);
 
     // creates the service named pipe, that listens to client applications
     int ret;
-    if ((ret = server_create (&srv))) {
+    if ((ret = ipc_server_create (&srv))) {
         fprintf(stdout, "error service_create %d\n", ret);
         exit (1);
     }
@@ -790,7 +790,7 @@ int main(int argc, char * argv[], char **env) {
     main_loop (&srv);
 
     // the application will shut down, and remove the service named pipe
-    if ((ret = server_close (&srv))) {
+    if ((ret = ipc_server_close (&srv))) {
         fprintf(stdout, "error service_close %d\n", ret);
         exit (1);
     }

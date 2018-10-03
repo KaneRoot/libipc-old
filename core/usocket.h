@@ -1,5 +1,5 @@
-#ifndef __USOCKET_H__
-#define __USOCKET_H__
+#ifndef __IPC_USOCKET_H__
+#define __IPC_USOCKET_H__
 
 #include <time.h>
 #include <sys/socket.h>

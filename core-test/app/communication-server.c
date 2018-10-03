@@ -45,7 +45,7 @@ int main (int argc, char *argv[], char *env[])
         handle_err("main", "server_write < 0");
         return EXIT_FAILURE;
     }
-    msg_free (&m);
+    ipc_message_free (&m);
 
     // client quits
     if (server_read (&p, &m) < 0) {
@@ -58,7 +58,7 @@ int main (int argc, char *argv[], char *env[])
     else {
         fprintf (stderr, "err: should have received the client dis msg\n");
     }
-    msg_free (&m);
+    ipc_message_free (&m);
 
     if (server_close_proc (&p) < 0) {
         handle_err("main", "server_close_proc < 0");

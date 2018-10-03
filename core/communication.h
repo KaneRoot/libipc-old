@@ -1,5 +1,5 @@
-#ifndef __COMMUNICATION_H__
-#define __COMMUNICATION_H__
+#ifndef __IPC_COMMUNICATION_H__
+#define __IPC_COMMUNICATION_H__
 
 #include <stdio.h>
 #include <stdlib.h>

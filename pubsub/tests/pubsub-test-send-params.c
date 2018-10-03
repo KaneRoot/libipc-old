@@ -26,7 +26,7 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
 
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
+    ipc_server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Writing on %s.\n", srv.spath);
 
     struct process p;
@@ -58,15 +58,15 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
         m.datalen = strlen (MYMESSAGE);
 
         printf ("send message\n");
-        pubsub_msg_send (&p, &m);
+        pubsub_message_send (&p, &m);
     }
     else {
-        pubsub_msg_recv (&p, &m);
-        pubsubd_msg_print (&m);
+        pubsub_message_recv (&p, &m);
+        pubsubd_message_print (&m);
     }
 
     // free everything
-    pubsubd_msg_free (&m);
+    pubsubd_message_free (&m);
 
     printf ("disconnection\n");
     // disconnect from the server
@@ -82,14 +82,14 @@ void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index,
 {
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
-    server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
+    ipc_server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Disconnecting from %s.\n", srv.spath);
 
     struct process p;
     memset (&p, 0, sizeof (struct process));
 
     // create the fake process
-    server_process_gen (&p, pid, index, version);
+    ipc_server_process_gen (&p, pid, index, version);
 
     // send a message to disconnect
     // line : pid index version action chan
