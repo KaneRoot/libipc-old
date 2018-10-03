@@ -23,8 +23,8 @@ int main(int argc, char * argv[], char *env[])
      *  PROCESS
      */
 
-    struct process p;
-    memset (&p, 0, sizeof (struct process));
+    struct ipc_process p;
+    memset (&p, 0, sizeof (struct ipc_process));
 
     int index = 0; // first time we communication with the service
     int version = 1;

@@ -22,8 +22,8 @@ main(int argc, char **argv, char **env)
     ipc_server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Writing on %s.\n", srv.spath);
 
-    struct process p;
-    memset (&p, 0, sizeof (struct process));
+    struct ipc_process p;
+    memset (&p, 0, sizeof (struct ipc_process));
     int index = 1;
 
     pid_t pid = getpid();

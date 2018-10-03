@@ -12,7 +12,7 @@ LIST_HEAD(channels, channel);
 struct channel {
     char *chan;
     size_t chanlen;
-    struct array_proc *subs;
+    struct ipc_process_array *subs;
     LIST_ENTRY(channel) entries;
 };
 
@@ -32,15 +32,15 @@ void pubsubd_channels_del_all (struct channels *chans);
 struct channel * pubsubd_channel_search (struct channels *chans, char *chan);
 
 // add and remove subscribers
-void pubsubd_channel_subscribe (const struct channel *c, struct process *p);
-void pubsubd_channel_unsubscribe (const struct channel *c, struct process *p);
+void pubsubd_channel_subscribe (const struct channel *c, struct ipc_process *p);
+void pubsubd_channel_unsubscribe (const struct channel *c, struct ipc_process *p);
 
 void pubsubd_channels_subscribe (struct channels *chans
-        , char *chname, struct process *p);
+        , char *chname, struct ipc_process *p);
 void pubsubd_channels_unsubscribe (struct channels *chans
-        , char *chname, struct process *p);
+        , char *chname, struct ipc_process *p);
 
 void pubsubd_channels_unsubscribe_everywhere (struct channels *chans
-        , struct process *p);
+        , struct ipc_process *p);
 
 #endif

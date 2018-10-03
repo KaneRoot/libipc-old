@@ -19,7 +19,7 @@ void pubsubd_channel_print (const struct channel *chan)
         handle_err ("pubsubd_channel_print", "chan->subs == NULL");
     }
     else {
-        array_proc_print (chan->subs);
+        ipc_process_array_print (chan->subs);
     }
 }
 
@@ -98,8 +98,8 @@ int pubsubd_channel_new (struct channel *c, const char * name)
     memcpy (c->chan, name, nlen);
     c->chanlen = nlen;
 
-    c->subs = malloc (sizeof (struct array_proc));
-    memset (c->subs, 0, sizeof (struct array_proc));
+    c->subs = malloc (sizeof (struct ipc_process_array));
+    memset (c->subs, 0, sizeof (struct ipc_process_array));
 
     return 0;
 }
@@ -115,7 +115,7 @@ void pubsubd_channel_free (struct channel * c)
     }
 
     if (c->subs != NULL) {
-        array_proc_free (c->subs);
+        ipc_process_array_free (c->subs);
         free (c->subs);
     }
 }
@@ -152,18 +152,18 @@ int pubsubd_channel_eq (const struct channel *c1, const struct channel *c2)
         strncmp (c1->chan, c2->chan, c1->chanlen) == 0;
 }
 
-void pubsubd_channel_subscribe (const struct channel *c, struct process *p)
+void pubsubd_channel_subscribe (const struct channel *c, struct ipc_process *p)
 {
-    add_proc (c->subs, p);
+    ipc_process_add (c->subs, p);
 }
 
-void pubsubd_channel_unsubscribe (const struct channel *c, struct process *p)
+void pubsubd_channel_unsubscribe (const struct channel *c, struct ipc_process *p)
 {
-    del_proc (c->subs, p);
+    ipc_process_del (c->subs, p);
 }
 
 void pubsubd_channels_subscribe (struct channels *chans
-        , char *chname, struct process *p)
+        , char *chname, struct ipc_process *p)
 {
     struct channel *chan = pubsubd_channel_search (chans, chname);
     if (chan == NULL) {
@@ -175,7 +175,7 @@ void pubsubd_channels_subscribe (struct channels *chans
 }
 
 void pubsubd_channels_unsubscribe (struct channels *chans
-        , char *chname, struct process *p)
+        , char *chname, struct ipc_process *p)
 {
     struct channel *chan = pubsubd_channel_search (chans, chname);
     if (chan == NULL) {
@@ -186,7 +186,7 @@ void pubsubd_channels_unsubscribe (struct channels *chans
 }
 
 void pubsubd_channels_unsubscribe_everywhere (struct channels *chans
-        , struct process *p)
+        , struct ipc_process *p)
 {
     struct channel * chan = NULL;
     LIST_FOREACH(chan, chans, entries) {

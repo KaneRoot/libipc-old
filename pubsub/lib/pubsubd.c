@@ -11,7 +11,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-void pubsubd_send (const struct array_proc *ap, const struct pubsub_msg * m)
+void pubsubd_send (const struct ipc_process_array *ap, const struct pubsub_msg * m)
 {
     if (ap == NULL) {
         fprintf (stderr, "pubsubd_send: ap == NULL");
@@ -27,8 +27,8 @@ void pubsubd_send (const struct array_proc *ap, const struct pubsub_msg * m)
     size_t msize = 0;
     pubsub_message_serialize (m, &buf, &msize);
 
-    struct msg m_data;
-    memset (&m_data, 0, sizeof (struct msg));
+    struct ipc_message m_data;
+    memset (&m_data, 0, sizeof (struct ipc_message));
     ipc_message_format_data (&m_data, buf, msize);
 
     int i;
@@ -42,10 +42,10 @@ void pubsubd_send (const struct array_proc *ap, const struct pubsub_msg * m)
     }
 }
 
-// void pubsubd_recv (struct process *p, struct pubsub_msg *m)
+// void pubsubd_recv (struct ipc_process *p, struct pubsub_msg *m)
 // {
-//     struct msg m_data;
-//     memset (&m_data, 0, sizeof (struct msg));
+//     struct ipc_message m_data;
+//     memset (&m_data, 0, sizeof (struct ipc_message));
 // 
 //     // read the message from the process
 //     ipc_server_read (p, &m_data);
@@ -59,10 +59,10 @@ void pubsubd_send (const struct array_proc *ap, const struct pubsub_msg * m)
  * new connection, once accepted the process is added to the array_proc
  * structure to be checked periodically for new messages
  */
-void handle_new_connection (struct service *srv, struct array_proc *ap)
+void handle_new_connection (struct service *srv, struct ipc_process_array *ap)
 {
-    struct process *p = malloc(sizeof(struct process));
-    memset(p, 0, sizeof(struct process));
+    struct ipc_process *p = malloc(sizeof(struct ipc_process));
+    memset(p, 0, sizeof(struct ipc_process));
 
     if (server_accept (srv, p) < 0) {
         handle_error("server_accept < 0");
@@ -70,16 +70,16 @@ void handle_new_connection (struct service *srv, struct array_proc *ap)
         printf("new connection\n");
     }
 
-    if (add_proc (ap, p) < 0) {
-        handle_error("add_proc < 0");
+    if (ipc_process_add (ap, p) < 0) {
+        handle_error("ipc_process_add < 0");
     }
 }
 
 void handle_new_msg (struct channels *chans
-        , struct array_proc *ap, struct array_proc *proc_to_read)
+        , struct ipc_process_array *ap, struct ipc_process_array *proc_to_read)
 {
-    struct msg m;
-    memset (&m, 0, sizeof (struct msg));
+    struct ipc_message m;
+    memset (&m, 0, sizeof (struct ipc_message));
     int i;
     for (i = 0; i < proc_to_read->size; i++) {
         // printf ("loop handle_new_msg\n");
@@ -91,7 +91,7 @@ void handle_new_msg (struct channels *chans
 
         // close the process then delete it from the process array
         if (m.type == MSG_TYPE_CLOSE) {
-            struct process *p = proc_to_read->tab_proc[i];
+            struct ipc_process *p = proc_to_read->tab_proc[i];
 
             printf ("proc %d disconnecting\n", p->proc_fd);
 
@@ -104,10 +104,10 @@ void handle_new_msg (struct channels *chans
 
 
             // remove the process from the processes list
-            if (del_proc (ap, p) < 0)
-                handle_error( "del_proc < 0");
-            if (del_proc (proc_to_read, p) < 0)
-                handle_err( "handle_new_msg", "del_proc < 0");
+            if (ipc_process_del (ap, p) < 0)
+                handle_error( "ipc_process_del < 0");
+            if (ipc_process_del (proc_to_read, p) < 0)
+                handle_err( "handle_new_msg", "ipc_process_del < 0");
 
             ipc_message_free (&m);
 
@@ -169,11 +169,11 @@ void pubsubd_main_loop (struct service *srv, struct channels *chans)
 {
     int i, ret = 0; 
 
-    struct array_proc ap;
-    memset(&ap, 0, sizeof(struct array_proc));
+    struct ipc_process_array ap;
+    memset(&ap, 0, sizeof(struct ipc_process_array));
 
-    struct array_proc proc_to_read;
-    memset(&proc_to_read, 0, sizeof(struct array_proc));
+    struct ipc_process_array proc_to_read;
+    memset(&proc_to_read, 0, sizeof(struct ipc_process_array));
 
     while(1) {
         ret = ipc_server_select (&ap, srv, &proc_to_read);
@@ -186,7 +186,7 @@ void pubsubd_main_loop (struct service *srv, struct channels *chans)
             handle_new_connection (srv, &ap);
             handle_new_msg (chans, &ap, &proc_to_read);
         }
-        array_proc_free (&proc_to_read);
+        ipc_process_array_free (&proc_to_read);
     }
 
     for (i = 0; i < ap.size; i++) {

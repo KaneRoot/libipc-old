@@ -247,7 +247,7 @@ int build_unix_socket (char * path)
 static
 void sendfd (int socket, int fd)  // send fd by socket
 {
-    struct msghdr msg = { 0 };
+    struct ipc_messagehdr msg = { 0 };
     char buf[CMSG_SPACE(sizeof(fd))];
     memset(buf, '\0', sizeof(buf));
 

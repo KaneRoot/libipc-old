@@ -30,8 +30,8 @@ int remotec_message_send (struct service *srv, const struct remoted_msg * m)
     char * buf = NULL;
     remote_message_serialize (m, &buf, &msize);
 
-    struct msg m_data;
-    memset (&m_data, 0, sizeof (struct msg));
+    struct ipc_message m_data;
+    memset (&m_data, 0, sizeof (struct ipc_message));
 
     // format the connection msg
     if (msg_format_data (&m_data, buf, msize) < 0) {
@@ -62,8 +62,8 @@ int remotec_message_recv (struct service *srv, struct remoted_msg *m)
         return -1;
     }
 
-    struct msg m_recv;
-    memset (&m_recv, 0, sizeof (struct msg));
+    struct ipc_message m_recv;
+    memset (&m_recv, 0, sizeof (struct ipc_message));
 
     ipc_application_read (srv, &m_recv);
     remote_message_unserialize (m, m_recv.val, m_recv.valsize);

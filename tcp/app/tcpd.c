@@ -132,7 +132,7 @@ void * service_thread(void * c_data) {
     }
     free(piv);
 
-    /*struct process p;
+    /*struct ipc_process p;
     ipc_application_create(&p, getpid(), cda->index, version);
     ipc_server_process_print(&p);*/
     //sleep(1);
@@ -663,7 +663,7 @@ void main_loop (struct service *srv) {
 				break;
 			    }
 
-			    tab_req[nbclient].p = malloc(sizeof(struct process));
+			    tab_req[nbclient].p = malloc(sizeof(struct ipc_process));
 			    // -1 : error, 0 = no new process, 1 = new process
 			    ret = ipc_server_get_new_request (buf, &tab_req[nbclient]);
 			    tab_req[nbclient].p->proc_fd = newfd;
@@ -714,7 +714,7 @@ void main_loop (struct service *srv) {
                             break;
                         }
 
-                        tab_req[nbclient].p = malloc(sizeof(struct process));
+                        tab_req[nbclient].p = malloc(sizeof(struct ipc_process));
                         // -1 : error, 0 = no new process, 1 = new process
                         ret = ipc_server_get_new_request (buf, &tab_req[nbclient]);
                         tab_req[nbclient].p->proc_fd = i;

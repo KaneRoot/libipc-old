@@ -5,7 +5,7 @@
 #include "../lib/channels.h"
 #include "../../core/error.h"
 
-void fake_process (struct process *p
+void fake_process (struct ipc_process *p
         , unsigned int index, unsigned int version, int fake_fd)
 {
     p->version = version;
@@ -84,10 +84,10 @@ void phase4 ()
     struct channel * chan1 = pubsubd_channels_add (&chans, "chan1");
     struct channel * chan2 = pubsubd_channels_add (&chans, "chan2");
 
-    struct process proc1;
+    struct ipc_process proc1;
     fake_process (&proc1, 0, 0, 1);
 
-    struct process proc2;
+    struct ipc_process proc2;
     fake_process (&proc2, 0, 0, 2);
 
     printf ("chan1: proc1, chan2: proc2\n");
@@ -110,10 +110,10 @@ void phase5 ()
     pubsubd_channels_add (&chans, "chan1");
     pubsubd_channels_add (&chans, "chan2");
 
-    struct process proc1;
+    struct ipc_process proc1;
     fake_process (&proc1, 0, 0, 1);
 
-    struct process proc2;
+    struct ipc_process proc2;
     fake_process (&proc2, 0, 0, 2);
 
     printf ("chan1 & 2 => proc1 and 2 added\n");

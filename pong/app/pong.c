@@ -12,8 +12,8 @@
 
 void non_interactive (int argc, char *argv[], char *env[])
 {
-    struct msg m;
-    memset (&m, 0, sizeof (struct msg));
+    struct ipc_message m;
+    memset (&m, 0, sizeof (struct ipc_message));
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
 
@@ -53,8 +53,8 @@ void non_interactive (int argc, char *argv[], char *env[])
 
 void interactive (int argc, char *argv[], char *env[])
 {
-    struct msg m;
-    memset (&m, 0, sizeof (struct msg));
+    struct ipc_message m;
+    memset (&m, 0, sizeof (struct ipc_message));
     struct service srv;
     memset (&srv, 0, sizeof (struct service));
 

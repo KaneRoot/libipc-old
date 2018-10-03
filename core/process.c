@@ -5,37 +5,37 @@
 
 #include <string.h>
 
-struct process * ipc_server_process_copy (const struct process *p)
+struct ipc_process * ipc_server_process_copy (const struct ipc_process *p)
 {
     if (p == NULL)
         return NULL;
 
-    struct process * copy = malloc (sizeof(struct process));
-    memcpy (copy, p, sizeof (struct process));
+    struct ipc_process * copy = malloc (sizeof(struct ipc_process));
+    memcpy (copy, p, sizeof (struct ipc_process));
 
     return copy;
 }
 
-int ipc_server_process_eq (const struct process *p1, const struct process *p2)
+int ipc_server_process_eq (const struct ipc_process *p1, const struct ipc_process *p2)
 {
     return (p1->version == p2->version && p1->index == p2->index
             && p1->proc_fd == p2->proc_fd);
 }
 
-void ipc_server_process_gen (struct process *p
+void ipc_server_process_gen (struct ipc_process *p
         , unsigned int index, unsigned int version)
 {
     p->version = version;
     p->index = index;
 }
 
-int add_proc (struct array_proc *aproc, struct process *p)
+int ipc_process_add (struct ipc_process_array *aproc, struct ipc_process *p)
 {
     assert(aproc != NULL);
     assert(p != NULL);
     aproc->size++;
     aproc->tab_proc = realloc(aproc->tab_proc
-            , sizeof(struct process) * aproc->size);
+            , sizeof(struct ipc_process) * aproc->size);
 
     if (aproc->tab_proc == NULL) {
         return -1;
@@ -45,7 +45,7 @@ int add_proc (struct array_proc *aproc, struct process *p)
     return 0;
 }
 
-int del_proc (struct array_proc *aproc, struct process *p)
+int ipc_process_del (struct ipc_process_array *aproc, struct ipc_process *p)
 {
     assert(aproc != NULL);
     assert(p != NULL);
@@ -61,11 +61,11 @@ int del_proc (struct array_proc *aproc, struct process *p)
             aproc->tab_proc[i] = aproc->tab_proc[aproc->size-1];
             aproc->size--;
             if (aproc->size == 0) {
-                array_proc_free (aproc);
+                ipc_process_array_free (aproc);
             }
             else {
                 aproc->tab_proc = realloc(aproc->tab_proc
-                        , sizeof(struct process) * aproc->size);
+                        , sizeof(struct ipc_process) * aproc->size);
 
                 if (aproc->tab_proc == NULL) {
                     return -2;
@@ -79,14 +79,14 @@ int del_proc (struct array_proc *aproc, struct process *p)
     return -3;
 }
 
-void process_print (struct process *p)
+void process_print (struct ipc_process *p)
 {
     if (p != NULL)
         printf ("process %d : index %d, version %d\n"
                 , p->proc_fd, p->index, p->version);
 }
 
-void array_proc_print (struct array_proc *ap)
+void ipc_process_array_print (struct ipc_process_array *ap)
 {
     int i;
     for (i = 0; i < ap->size; i++) {
@@ -95,7 +95,7 @@ void array_proc_print (struct array_proc *ap)
     }
 }
 
-void array_proc_free (struct array_proc *ap)
+void ipc_process_array_free (struct ipc_process_array *ap)
 {
     if (ap->tab_proc != NULL) {
         free (ap->tab_proc);

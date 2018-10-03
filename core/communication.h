@@ -37,13 +37,13 @@ struct service {
 int ipc_server_init (int argc, char **argv, char **env
 		, struct service *srv, const char *sname);
 int ipc_server_close (struct service *srv);
-int ipc_server_close_proc (struct process *p);
-int ipc_server_accept (struct service *srv, struct process *p);
+int ipc_server_close_proc (struct ipc_process *p);
+int ipc_server_accept (struct service *srv, struct ipc_process *p);
 
-int ipc_server_read (const struct process *, struct msg *m);
-int ipc_server_write (const struct process *, const struct msg *m);
+int ipc_server_read (const struct ipc_process *, struct ipc_message *m);
+int ipc_server_write (const struct ipc_process *, const struct ipc_message *m);
 
-int ipc_server_select (struct array_proc *, struct service *, struct array_proc *);
+int ipc_server_select (struct ipc_process_array *, struct service *, struct ipc_process_array *);
 
 // APPLICATION
 
@@ -54,8 +54,8 @@ int ipc_application_connection (int argc, char **argv, char **env
 		, struct service *, const char *, const char *, size_t);
 int ipc_application_close (struct service *);
 
-int ipc_application_read (struct service *srv, struct msg *m);
-int ipc_application_write (struct service *, const struct msg *m);
+int ipc_application_read (struct service *srv, struct ipc_message *m);
+int ipc_application_write (struct service *, const struct ipc_message *m);
 
 
 

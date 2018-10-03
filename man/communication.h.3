@@ -7,21 +7,21 @@ communication.h \- all functions explained
 .sp
 .BI "int ipc_server_init (int "argc ", char **" argv ", char **" env ", struct service *" srv "
 .BI "       , const char *" service_name );
-.BI "int ipc_server_accept (struct service *" srv ", struct process *" p );
+.BI "int ipc_server_accept (struct service *" srv ", struct ipc_process *" p );
 .sp
-.BI "int ipc_server_read (const struct process *" p ", struct msg *" message );
-.BI "int ipc_server_write (const struct process *" p ", const struct msg *" message );
+.BI "int ipc_server_read (const struct ipc_process *" p ", struct ipc_message *" message );
+.BI "int ipc_server_write (const struct ipc_process *" p ", const struct ipc_message *" message );
 .sp
 .BI "int ipc_server_close (struct service *" srv );
-.BI "int ipc_server_close_proc (struct process *" p );
-.BI "int ipc_server_select (struct array_proc *" fds ", struct service *" srv ", struct array_proc *" readfds );
+.BI "int ipc_server_close_proc (struct ipc_process *" p );
+.BI "int ipc_server_select (struct ipc_process_array *" fds ", struct service *" srv ", struct ipc_process_array *" readfds );
 
 .BI "int ipc_application_connection (int " argc ", char **" argv ", char **" env ", struct service *" srv
 .BI "       , const char *" service_name "
 .BI "       , const char *" connection_buffer ", size_t " bufsize );
 .sp
-.BI "int ipc_application_read (const struct service *" srv ", struct msg *" message );
-.BI "int ipc_application_write (const struct service *" srv ", const struct msg *" message );
+.BI "int ipc_application_read (const struct service *" srv ", struct ipc_message *" message );
+.BI "int ipc_application_write (const struct service *" srv ", const struct ipc_message *" message );
 .sp
 .BI "int ipc_application_close (struct service *" srv );
 

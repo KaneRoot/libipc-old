@@ -18,7 +18,7 @@ typedef struct {
 typedef struct {
 	struct 	sockaddr_in addr;
 	char * request;
-	struct process *p;
+	struct ipc_process *p;
 } info_request;
 
 int initConnection (const info_request *req);

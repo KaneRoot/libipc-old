@@ -57,8 +57,8 @@ int pubsub_message_send (struct service *srv, const struct pubsub_msg * m)
     char * buf = NULL;
     pubsub_message_serialize (m, &buf, &msize);
 
-    struct msg m_data;
-    memset (&m_data, 0, sizeof (struct msg));
+    struct ipc_message m_data;
+    memset (&m_data, 0, sizeof (struct ipc_message));
 
     // format the connection msg
     if (msg_format_data (&m_data, buf, msize) < 0) {
@@ -89,8 +89,8 @@ int pubsub_message_recv (struct service *srv, struct pubsub_msg *m)
         return -1;
     }
 
-    struct msg m_recv;
-    memset (&m_recv, 0, sizeof (struct msg));
+    struct ipc_message m_recv;
+    memset (&m_recv, 0, sizeof (struct ipc_message));
 
     ipc_application_read (srv, &m_recv);
     pubsub_message_unserialize (m, m_recv.val, m_recv.valsize);

@@ -37,21 +37,21 @@ int ipc_server_init (int argc, char **argv, char **env
     return usock_init (&srv->service_fd, srv->spath);
 }
 
-int ipc_server_accept (struct service *srv, struct process *p)
+int ipc_server_accept (struct service *srv, struct ipc_process *p)
 {
     assert (srv != NULL);
     assert (p != NULL);
 
     usock_accept (srv->service_fd, &p->proc_fd);
 
-    struct msg m_con;
-    memset (&m_con, 0, sizeof (struct msg));
+    struct ipc_message m_con;
+    memset (&m_con, 0, sizeof (struct ipc_message));
     ipc_server_read (p, &m_con);
     // TODO: handle the parameters in the first message
     ipc_message_free (&m_con);
 
-    struct msg m_ack;
-    memset (&m_ack, 0, sizeof (struct msg));
+    struct ipc_message m_ack;
+    memset (&m_ack, 0, sizeof (struct ipc_message));
     ipc_message_format_ack (&m_ack, NULL, 0);
     ipc_server_write (p, &m_ack);
     ipc_message_free (&m_ack);
@@ -65,10 +65,10 @@ int ipc_server_close (struct service *srv)
     return usock_remove (srv->spath);
 }
 
-int ipc_server_close_proc (struct process *p)
+int ipc_server_close_proc (struct ipc_process *p)
 {
-    // struct msg m_ack_dis;
-    // memset (&m_ack_dis, 0, sizeof (struct msg));
+    // struct ipc_message m_ack_dis;
+    // memset (&m_ack_dis, 0, sizeof (struct ipc_message));
     // m_ack_dis.type = MSG_TYPE_CLOSE;
 
     // if (ipc_message_write (p->proc_fd, &m_ack_dis) < 0) {
@@ -78,12 +78,12 @@ int ipc_server_close_proc (struct process *p)
     return usock_close (p->proc_fd);
 }
 
-int ipc_server_read (const struct process *p, struct msg *m)
+int ipc_server_read (const struct ipc_process *p, struct ipc_message *m)
 {
     return ipc_message_read (p->proc_fd, m);
 }
 
-int ipc_server_write (const struct process *p, const struct msg *m)
+int ipc_server_write (const struct ipc_process *p, const struct ipc_message *m)
 {
     return ipc_message_write (p->proc_fd, m);
 }
@@ -109,8 +109,8 @@ int ipc_application_connection (int argc, char **argv, char **env
     usock_connect (&srv->service_fd, srv->spath);
 
     // send connection string and receive acknowledgement
-    struct msg m_con;
-    memset (&m_con, 0, sizeof (struct msg));
+    struct ipc_message m_con;
+    memset (&m_con, 0, sizeof (struct ipc_message));
 
     // format the connection msg
     if (ipc_message_format_con (&m_con, connectionstr, msize) < 0) {
@@ -123,8 +123,8 @@ int ipc_application_connection (int argc, char **argv, char **env
     ipc_message_free (&m_con);
 
     // receive ack msg
-    struct msg m_ack;
-    memset (&m_ack, 0, sizeof (struct msg));
+    struct ipc_message m_ack;
+    memset (&m_ack, 0, sizeof (struct ipc_message));
     ipc_application_read (srv, &m_ack);
 
     assert (m_ack.type == MSG_TYPE_ACK);
@@ -137,8 +137,8 @@ int ipc_application_connection (int argc, char **argv, char **env
 // send a CLOSE message then close the socket
 int ipc_application_close (struct service *srv)
 {
-    struct msg m;
-    memset (&m, 0, sizeof (struct msg));
+    struct ipc_message m;
+    memset (&m, 0, sizeof (struct ipc_message));
     m.type = MSG_TYPE_CLOSE;
     if (ipc_message_write (srv->service_fd, &m) < 0) {
         handle_err ("application_close", "ipc_message_write < 0");
@@ -147,19 +147,19 @@ int ipc_application_close (struct service *srv)
     return usock_close (srv->service_fd);
 }
 
-int ipc_application_read (struct service *srv, struct msg *m)
+int ipc_application_read (struct service *srv, struct ipc_message *m)
 {   
     return ipc_message_read (srv->service_fd, m);
 }
 
-int ipc_application_write (struct service *srv, const struct msg *m)
+int ipc_application_write (struct service *srv, const struct ipc_message *m)
 {
     return ipc_message_write (srv->service_fd, m);
 }
 
 
 /*calculer le max filedescriptor*/
-int getMaxFd(struct array_proc *ap)
+int getMaxFd(struct ipc_process_array *ap)
 {
 
     int i;
@@ -187,14 +187,14 @@ int getMaxFd(struct array_proc *ap)
  *  * les deux à la fois                                    (CON_APP)
  */
 
-int ipc_server_select (struct array_proc *ap, struct service *srv
-        , struct array_proc *proc)
+int ipc_server_select (struct ipc_process_array *ap, struct service *srv
+        , struct ipc_process_array *proc)
 {
     assert (ap != NULL);
     assert (proc != NULL);
 
     // delete previous read process array
-    array_proc_free (proc);
+    ipc_process_array_free (proc);
 
     int i, j;
     /* master file descriptor list */
@@ -239,7 +239,7 @@ int ipc_server_select (struct array_proc *ap, struct service *srv
                     for(j = 0; j < ap->size; j++) {
                         // printf ("loop ipc_server_select inner inner loop\n");
                         if(i == ap->tab_proc[j]->proc_fd ) {
-                            add_proc (proc, ap->tab_proc[j]);
+                            ipc_process_add (proc, ap->tab_proc[j]);
                         }
                     }
                 }

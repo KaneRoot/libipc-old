@@ -10,10 +10,10 @@
 
 int cpt = 0;
 
-void handle_new_connection (struct service *srv, struct array_proc *ap)
+void handle_new_connection (struct service *srv, struct ipc_process_array *ap)
 {
-    struct process *p = malloc(sizeof(struct process));
-    memset(p, 0, sizeof(struct process));
+    struct ipc_process *p = malloc(sizeof(struct ipc_process));
+    memset(p, 0, sizeof(struct ipc_process));
 
     if (ipc_server_accept (srv, p) < 0) {
         handle_error("server_accept < 0");
@@ -21,18 +21,18 @@ void handle_new_connection (struct service *srv, struct array_proc *ap)
         printf("new connection\n");
     }
 
-    if (add_proc (ap, p) < 0) {
-        handle_error("add_proc < 0");
+    if (ipc_process_add (ap, p) < 0) {
+        handle_error("ipc_process_add < 0");
     }
 
     cpt++;
     printf ("%d client(s)\n", cpt);
 }
 
-void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
+void handle_new_msg (struct ipc_process_array *ap, struct ipc_process_array *proc_to_read)
 {
-    struct msg m;
-    memset (&m, 0, sizeof (struct msg));
+    struct ipc_message m;
+    memset (&m, 0, sizeof (struct ipc_message));
     int i;
     for (i = 0; i < proc_to_read->size; i++) {
         // printf ("loop handle_new_msg\n");
@@ -47,10 +47,10 @@ void handle_new_msg (struct array_proc *ap, struct array_proc *proc_to_read)
 
             if (ipc_server_close_proc (proc_to_read->tab_proc[i]) < 0)
                 handle_err( "handle_new_msg", "server_close_proc < 0");
-            if (del_proc (ap, proc_to_read->tab_proc[i]) < 0)
-                handle_err( "handle_new_msg", "del_proc < 0");
-            if (del_proc (proc_to_read, proc_to_read->tab_proc[i]) < 0)
-                handle_err( "handle_new_msg", "del_proc < 0");
+            if (ipc_process_del (ap, proc_to_read->tab_proc[i]) < 0)
+                handle_err( "handle_new_msg", "ipc_process_del < 0");
+            if (ipc_process_del (proc_to_read, proc_to_read->tab_proc[i]) < 0)
+                handle_err( "handle_new_msg", "ipc_process_del < 0");
             i--;
             continue;
         }
@@ -74,16 +74,16 @@ void main_loop (struct service *srv)
 {
     int i, ret = 0; 
 
-    struct array_proc ap;
-    memset(&ap, 0, sizeof(struct array_proc));
+    struct ipc_process_array ap;
+    memset(&ap, 0, sizeof(struct ipc_process_array));
 
-    struct array_proc proc_to_read;
-    memset(&proc_to_read, 0, sizeof(struct array_proc));
+    struct ipc_process_array proc_to_read;
+    memset(&proc_to_read, 0, sizeof(struct ipc_process_array));
 
     while(1) {
         ret = ipc_server_select (&ap, srv, &proc_to_read);
         // printf ("on peut lire ces process:\n");
-        // array_proc_print (&proc_to_read);
+        // ipc_process_array_print (&proc_to_read);
         // printf ("-- \n\n");
 
         if (ret == CONNECTION) {
@@ -94,7 +94,7 @@ void main_loop (struct service *srv)
             handle_new_connection (srv, &ap);
             handle_new_msg (&ap, &proc_to_read);
         }
-        array_proc_free (&proc_to_read);
+        ipc_process_array_free (&proc_to_read);
     }
 
     for (i = 0; i < ap.size; i++) {

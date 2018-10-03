@@ -29,8 +29,8 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
     ipc_server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Writing on %s.\n", srv.spath);
 
-    struct process p;
-    memset (&p, 0, sizeof (struct process));
+    struct ipc_process p;
+    memset (&p, 0, sizeof (struct ipc_process));
 
     printf ("app creation\n");
     if (application_create (&p, pid, index, version)) // called by the application
@@ -85,8 +85,8 @@ void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index,
     ipc_server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Disconnecting from %s.\n", srv.spath);
 
-    struct process p;
-    memset (&p, 0, sizeof (struct process));
+    struct ipc_process p;
+    memset (&p, 0, sizeof (struct ipc_process));
 
     // create the fake process
     ipc_server_process_gen (&p, pid, index, version);

@@ -66,7 +66,7 @@ void log_debug (const char* message, ...) {
 static
 int recvsockfd (int socket)  // receive fd from socket
 {
-    struct msghdr msg = {0};
+    struct ipc_messagehdr msg = {0};
 
     /* On Mac OS X, the struct iovec is needed, even if it points to minimal data */
     char m_buffer[1];
