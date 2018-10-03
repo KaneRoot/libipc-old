@@ -64,7 +64,7 @@ void handle_new_connection (struct service *srv, struct ipc_process_array *ap)
     struct ipc_process *p = malloc(sizeof(struct ipc_process));
     memset(p, 0, sizeof(struct ipc_process));
 
-    if (server_accept (srv, p) < 0) {
+    if (ipc_server_accept (srv, p) < 0) {
         handle_error("server_accept < 0");
     } else {
         printf("new connection\n");
@@ -83,7 +83,7 @@ void handle_new_msg (struct channels *chans
     int i;
     for (i = 0; i < proc_to_read->size; i++) {
         // printf ("loop handle_new_msg\n");
-        if (server_read (proc_to_read->tab_proc[i], &m) < 0) {
+        if (ipc_server_read (proc_to_read->tab_proc[i], &m) < 0) {
             handle_error("server_read < 0");
         }
 
@@ -99,7 +99,7 @@ void handle_new_msg (struct channels *chans
             pubsubd_channels_unsubscribe_everywhere (chans, p);
 
             // close the connection to the process
-            if (server_close_proc (p) < 0)
+            if (ipc_server_close_proc (p) < 0)
                 handle_error( "server_close_proc < 0");
 
 
@@ -190,7 +190,7 @@ void pubsubd_main_loop (struct service *srv, struct channels *chans)
     }
 
     for (i = 0; i < ap.size; i++) {
-        if (server_close_proc (ap.tab_proc[i]) < 0) {
+        if (ipc_server_close_proc (ap.tab_proc[i]) < 0) {
             handle_error( "server_close_proc < 0");
         }
     }

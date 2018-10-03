@@ -61,7 +61,7 @@ int pubsub_message_send (struct service *srv, const struct pubsub_msg * m)
     memset (&m_data, 0, sizeof (struct ipc_message));
 
     // format the connection msg
-    if (msg_format_data (&m_data, buf, msize) < 0) {
+    if (ipc_message_format_data (&m_data, buf, msize) < 0) {
         handle_err ("pubsub_message_send", "msg_format_data");
         if (buf != NULL)
             free (buf);
