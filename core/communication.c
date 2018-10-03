@@ -16,7 +16,7 @@ void service_path (char *path, const char *sname, int index, int version)
 }
 
 int ipc_server_init (int argc, char **argv, char **env
-        , struct service *srv, const char *sname)
+        , struct ipc_service *srv, const char *sname)
 {
     if (srv == NULL)
         return ER_PARAMS;
@@ -37,7 +37,7 @@ int ipc_server_init (int argc, char **argv, char **env
     return usock_init (&srv->service_fd, srv->spath);
 }
 
-int ipc_server_accept (struct service *srv, struct ipc_process *p)
+int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p)
 {
     assert (srv != NULL);
     assert (p != NULL);
@@ -59,13 +59,13 @@ int ipc_server_accept (struct service *srv, struct ipc_process *p)
     return 0;
 }
 
-int ipc_server_close (struct service *srv)
+int ipc_server_close (struct ipc_service *srv)
 {
     usock_close (srv->service_fd);
     return usock_remove (srv->spath);
 }
 
-int ipc_server_close_proc (struct ipc_process *p)
+int ipc_server_close_proc (struct ipc_client *p)
 {
     // struct ipc_message m_ack_dis;
     // memset (&m_ack_dis, 0, sizeof (struct ipc_message));
@@ -78,18 +78,18 @@ int ipc_server_close_proc (struct ipc_process *p)
     return usock_close (p->proc_fd);
 }
 
-int ipc_server_read (const struct ipc_process *p, struct ipc_message *m)
+int ipc_server_read (const struct ipc_client *p, struct ipc_message *m)
 {
     return ipc_message_read (p->proc_fd, m);
 }
 
-int ipc_server_write (const struct ipc_process *p, const struct ipc_message *m)
+int ipc_server_write (const struct ipc_client *p, const struct ipc_message *m)
 {
     return ipc_message_write (p->proc_fd, m);
 }
 
 int ipc_application_connection (int argc, char **argv, char **env
-        , struct service *srv, const char *sname
+        , struct ipc_service *srv, const char *sname
         , const char *connectionstr, size_t msize)
 {
     argc = argc;
@@ -135,7 +135,7 @@ int ipc_application_connection (int argc, char **argv, char **env
 }
 
 // send a CLOSE message then close the socket
-int ipc_application_close (struct service *srv)
+int ipc_application_close (struct ipc_service *srv)
 {
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
@@ -147,12 +147,12 @@ int ipc_application_close (struct service *srv)
     return usock_close (srv->service_fd);
 }
 
-int ipc_application_read (struct service *srv, struct ipc_message *m)
+int ipc_application_read (struct ipc_service *srv, struct ipc_message *m)
 {   
     return ipc_message_read (srv->service_fd, m);
 }
 
-int ipc_application_write (struct service *srv, const struct ipc_message *m)
+int ipc_application_write (struct ipc_service *srv, const struct ipc_message *m)
 {
     return ipc_message_write (srv->service_fd, m);
 }
@@ -187,7 +187,7 @@ int getMaxFd(struct ipc_process_array *ap)
  *  * les deux à la fois                                    (CON_APP)
  */
 
-int ipc_server_select (struct ipc_process_array *ap, struct service *srv
+int ipc_server_select (struct ipc_process_array *ap, struct ipc_service *srv
         , struct ipc_process_array *proc)
 {
     assert (ap != NULL);

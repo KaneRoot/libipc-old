@@ -42,7 +42,7 @@ void pubsubd_send (const struct ipc_process_array *ap, const struct pubsub_msg *
     }
 }
 
-// void pubsubd_recv (struct ipc_process *p, struct pubsub_msg *m)
+// void pubsubd_recv (struct ipc_client *p, struct pubsub_msg *m)
 // {
 //     struct ipc_message m_data;
 //     memset (&m_data, 0, sizeof (struct ipc_message));
@@ -59,10 +59,10 @@ void pubsubd_send (const struct ipc_process_array *ap, const struct pubsub_msg *
  * new connection, once accepted the process is added to the array_proc
  * structure to be checked periodically for new messages
  */
-void handle_new_connection (struct service *srv, struct ipc_process_array *ap)
+void handle_new_connection (struct ipc_service *srv, struct ipc_process_array *ap)
 {
-    struct ipc_process *p = malloc(sizeof(struct ipc_process));
-    memset(p, 0, sizeof(struct ipc_process));
+    struct ipc_client *p = malloc(sizeof(struct ipc_client));
+    memset(p, 0, sizeof(struct ipc_client));
 
     if (ipc_server_accept (srv, p) < 0) {
         handle_error("server_accept < 0");
@@ -91,7 +91,7 @@ void handle_new_msg (struct channels *chans
 
         // close the process then delete it from the process array
         if (m.type == MSG_TYPE_CLOSE) {
-            struct ipc_process *p = proc_to_read->tab_proc[i];
+            struct ipc_client *p = proc_to_read->tab_proc[i];
 
             printf ("proc %d disconnecting\n", p->proc_fd);
 
@@ -165,7 +165,7 @@ void handle_new_msg (struct channels *chans
  * close a connection if MSG_TYPE_CLOSE received
  */
 
-void pubsubd_main_loop (struct service *srv, struct channels *chans)
+void pubsubd_main_loop (struct ipc_service *srv, struct channels *chans)
 {
     int i, ret = 0; 
 

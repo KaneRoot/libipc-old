@@ -10,8 +10,8 @@ ohshit(int rvalue, const char* str) {
 
 int main(int argc, char * argv[], char *env[])
 {
-    struct service srv;
-    memset (&srv, 0, sizeof (struct service));
+    struct ipc_service srv;
+    memset (&srv, 0, sizeof (struct ipc_service));
     ipc_server_init (argc, argv, env, &srv, SERVICE, NULL);
     printf ("Listening on %s.\n", srv.spath);
 
@@ -23,8 +23,8 @@ int main(int argc, char * argv[], char *env[])
      *  PROCESS
      */
 
-    struct ipc_process p;
-    memset (&p, 0, sizeof (struct ipc_process));
+    struct ipc_client p;
+    memset (&p, 0, sizeof (struct ipc_client));
 
     int index = 0; // first time we communication with the service
     int version = 1;

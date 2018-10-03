@@ -122,8 +122,8 @@ void * service_thread(void * c_data) {
     }
     makePivMessage(&piv, getpid(), cda->index, version);
 
-    struct service srv;
-    memset (&srv, 0, sizeof (struct service));
+    struct ipc_service srv;
+    memset (&srv, 0, sizeof (struct ipc_service));
     srv->index = 0;
     srv->version = 0;
     ipc_server_init (0, NULL, NULL, &srv, service, NULL);
@@ -132,7 +132,7 @@ void * service_thread(void * c_data) {
     }
     free(piv);
 
-    /*struct ipc_process p;
+    /*struct ipc_client p;
     ipc_application_create(&p, getpid(), cda->index, version);
     ipc_server_process_print(&p);*/
     //sleep(1);
@@ -568,7 +568,7 @@ void request_print (const info_request *req) {
  * listen : lancer un serveur, ecouter sur un port ie "listen 127.0.0.1 6000" 
  * connect : connecter à une adresse, port ie "connect 127.0.0.1 6000 ${pid} 1 1"
  */
-void main_loop (struct service *srv) {
+void main_loop (struct ipc_service *srv) {
     //request
     info_request tab_req[NBCLIENT];
     int ret;
@@ -663,7 +663,7 @@ void main_loop (struct service *srv) {
 				break;
 			    }
 
-			    tab_req[nbclient].p = malloc(sizeof(struct ipc_process));
+			    tab_req[nbclient].p = malloc(sizeof(struct ipc_client));
 			    // -1 : error, 0 = no new process, 1 = new process
 			    ret = ipc_server_get_new_request (buf, &tab_req[nbclient]);
 			    tab_req[nbclient].p->proc_fd = newfd;
@@ -714,7 +714,7 @@ void main_loop (struct service *srv) {
                             break;
                         }
 
-                        tab_req[nbclient].p = malloc(sizeof(struct ipc_process));
+                        tab_req[nbclient].p = malloc(sizeof(struct ipc_client));
                         // -1 : error, 0 = no new process, 1 = new process
                         ret = ipc_server_get_new_request (buf, &tab_req[nbclient]);
                         tab_req[nbclient].p->proc_fd = i;
@@ -774,7 +774,7 @@ void main_loop (struct service *srv) {
 }
 
 int main(int argc, char * argv[], char **env) {
-    struct service srv;
+    struct ipc_service srv;
     ipc_server_init (argc, argv, env, &srv, SERVICE_TCP, NULL);
     printf ("Listening on %s.\n", srv.spath);
 

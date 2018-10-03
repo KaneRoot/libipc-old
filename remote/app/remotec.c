@@ -35,8 +35,8 @@ void * listener (void *params)
         handle_err ("listener", "pthread_setcancelstate != 0");
     }
 
-    struct service *srv = NULL;
-    srv = (struct service *) params;
+    struct ipc_service *srv = NULL;
+    srv = (struct ipc_service *) params;
     if (srv == NULL) {
         handle_err ("listener", "no service passed");
         return NULL;
@@ -68,8 +68,8 @@ void main_loop (int argc, char **argv, char **env
     (void) argv;
     (void) env;
 
-    struct service srv;
-    memset (&srv, 0, sizeof (struct service));
+    struct ipc_service srv;
+    memset (&srv, 0, sizeof (struct ipc_service));
 
     remotec_connection (argc, argv, env, &srv);
     log_debug ("remotec connected, entering main loop");

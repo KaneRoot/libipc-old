@@ -10,10 +10,10 @@
 
 int cpt = 0;
 
-void handle_new_connection (struct service *srv, struct ipc_process_array *ap)
+void handle_new_connection (struct ipc_service *srv, struct ipc_process_array *ap)
 {
-    struct ipc_process *p = malloc(sizeof(struct ipc_process));
-    memset(p, 0, sizeof(struct ipc_process));
+    struct ipc_client *p = malloc(sizeof(struct ipc_client));
+    memset(p, 0, sizeof(struct ipc_client));
 
     if (ipc_server_accept (srv, p) < 0) {
         handle_error("server_accept < 0");
@@ -70,7 +70,7 @@ void handle_new_msg (struct ipc_process_array *ap, struct ipc_process_array *pro
  * close a connection if MSG_TYPE_CLOSE received
  */
 
-void main_loop (struct service *srv)
+void main_loop (struct ipc_service *srv)
 {
     int i, ret = 0; 
 
@@ -117,8 +117,8 @@ void main_loop (struct service *srv)
 
 int main(int argc, char * argv[], char **env)
 {
-    struct service srv;
-    memset (&srv, 0, sizeof (struct service));
+    struct ipc_service srv;
+    memset (&srv, 0, sizeof (struct ipc_service));
     srv.index = 0;
     srv.version = 0;
 

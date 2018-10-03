@@ -26,8 +26,8 @@ void * listener (void *params)
         handle_err ("listener", "pthread_setcancelstate != 0");
     }
 
-    struct service *srv = NULL;
-    srv = (struct service *) params;
+    struct ipc_service *srv = NULL;
+    srv = (struct ipc_service *) params;
     if (srv == NULL) {
         handle_err ("listener", "no service passed");
         return NULL;
@@ -48,7 +48,7 @@ void * listener (void *params)
     pthread_exit (NULL);
 }
 
-void chan_sub (struct service *srv, char *chan)
+void chan_sub (struct ipc_service *srv, char *chan)
 {
     struct pubsub_msg msg;
     memset (&msg, 0, sizeof (struct pubsub_msg));
@@ -75,8 +75,8 @@ void main_loop (int argc, char **argv, char **env
             "cmd %s chan %s\n"
           , index, version, cmd, chan );
 
-    struct service srv;
-    memset (&srv, 0, sizeof (struct service));
+    struct ipc_service srv;
+    memset (&srv, 0, sizeof (struct ipc_service));
     pubsub_connection (argc, argv, env, &srv);
     printf ("connected\n");
 

@@ -8,8 +8,8 @@ int main()
     struct ipc_process_array tab_proc;
     memset(&tab_proc, 0, sizeof(struct ipc_process_array));
 
-    struct ipc_process process_tab[5];
-    memset(&process_tab, 0, sizeof(struct ipc_process) * 5);
+    struct ipc_client process_tab[5];
+    memset(&process_tab, 0, sizeof(struct ipc_client) * 5);
 
     int i;
     for (i = 0; i < 5; i++) {

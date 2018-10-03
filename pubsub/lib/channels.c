@@ -152,18 +152,18 @@ int pubsubd_channel_eq (const struct channel *c1, const struct channel *c2)
         strncmp (c1->chan, c2->chan, c1->chanlen) == 0;
 }
 
-void pubsubd_channel_subscribe (const struct channel *c, struct ipc_process *p)
+void pubsubd_channel_subscribe (const struct channel *c, struct ipc_client *p)
 {
     ipc_process_add (c->subs, p);
 }
 
-void pubsubd_channel_unsubscribe (const struct channel *c, struct ipc_process *p)
+void pubsubd_channel_unsubscribe (const struct channel *c, struct ipc_client *p)
 {
     ipc_process_del (c->subs, p);
 }
 
 void pubsubd_channels_subscribe (struct channels *chans
-        , char *chname, struct ipc_process *p)
+        , char *chname, struct ipc_client *p)
 {
     struct channel *chan = pubsubd_channel_search (chans, chname);
     if (chan == NULL) {
@@ -175,7 +175,7 @@ void pubsubd_channels_subscribe (struct channels *chans
 }
 
 void pubsubd_channels_unsubscribe (struct channels *chans
-        , char *chname, struct ipc_process *p)
+        , char *chname, struct ipc_client *p)
 {
     struct channel *chan = pubsubd_channel_search (chans, chname);
     if (chan == NULL) {
@@ -186,7 +186,7 @@ void pubsubd_channels_unsubscribe (struct channels *chans
 }
 
 void pubsubd_channels_unsubscribe_everywhere (struct channels *chans
-        , struct ipc_process *p)
+        , struct ipc_client *p)
 {
     struct channel * chan = NULL;
     LIST_FOREACH(chan, chans, entries) {

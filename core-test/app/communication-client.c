@@ -14,8 +14,8 @@ int main (int argc, char *argv[], char *env[])
 
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
-    struct service srv;
-    memset (&srv, 0, sizeof (struct service));
+    struct ipc_service srv;
+    memset (&srv, 0, sizeof (struct ipc_service));
 
     // index and version should be filled
     srv.index = 0;

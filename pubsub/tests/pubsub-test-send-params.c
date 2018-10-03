@@ -24,13 +24,13 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
             "cmd %s chan %s\n"
           , pid, index, version, cmd, chan );
 
-    struct service srv;
-    memset (&srv, 0, sizeof (struct service));
+    struct ipc_service srv;
+    memset (&srv, 0, sizeof (struct ipc_service));
     ipc_server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Writing on %s.\n", srv.spath);
 
-    struct ipc_process p;
-    memset (&p, 0, sizeof (struct ipc_process));
+    struct ipc_client p;
+    memset (&p, 0, sizeof (struct ipc_client));
 
     printf ("app creation\n");
     if (application_create (&p, pid, index, version)) // called by the application
@@ -80,13 +80,13 @@ void sim_connection (int argc, char **argv, char **env, pid_t pid, int index, in
 
 void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index, int version)
 {
-    struct service srv;
-    memset (&srv, 0, sizeof (struct service));
+    struct ipc_service srv;
+    memset (&srv, 0, sizeof (struct ipc_service));
     ipc_server_init (argc, argv, env, &srv, PUBSUB_SERVICE_NAME, NULL);
     printf ("Disconnecting from %s.\n", srv.spath);
 
-    struct ipc_process p;
-    memset (&p, 0, sizeof (struct ipc_process));
+    struct ipc_client p;
+    memset (&p, 0, sizeof (struct ipc_client));
 
     // create the fake process
     ipc_server_process_gen (&p, pid, index, version);

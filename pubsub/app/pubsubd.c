@@ -10,7 +10,7 @@
 #include <signal.h>
 
 // to quit them properly if a signal occurs
-struct service srv;
+struct ipc_service srv;
 struct channels chans;
 
 void handle_signal (int signalnumber)
@@ -29,7 +29,7 @@ void handle_signal (int signalnumber)
 int
 main(int argc, char **argv, char **env)
 {
-    memset (&srv, 0, sizeof (struct service));
+    memset (&srv, 0, sizeof (struct ipc_service));
     srv.index = 0;
     srv.version = 0;
 

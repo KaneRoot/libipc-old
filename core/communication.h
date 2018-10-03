@@ -22,7 +22,7 @@
 #define APPLICATION 1
 #define CON_APP     2
 
-struct service {
+struct ipc_service {
     unsigned int version;
     unsigned int index;
     char spath[PATH_MAX];
@@ -35,15 +35,15 @@ struct service {
 // srv->version and srv->index must be already set
 // init unix socket + fill srv->spath
 int ipc_server_init (int argc, char **argv, char **env
-		, struct service *srv, const char *sname);
-int ipc_server_close (struct service *srv);
-int ipc_server_close_proc (struct ipc_process *p);
-int ipc_server_accept (struct service *srv, struct ipc_process *p);
+		, struct ipc_service *srv, const char *sname);
+int ipc_server_close (struct ipc_service *srv);
+int ipc_server_close_proc (struct ipc_client *p);
+int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p);
 
-int ipc_server_read (const struct ipc_process *, struct ipc_message *m);
-int ipc_server_write (const struct ipc_process *, const struct ipc_message *m);
+int ipc_server_read (const struct ipc_client *, struct ipc_message *m);
+int ipc_server_write (const struct ipc_client *, const struct ipc_message *m);
 
-int ipc_server_select (struct ipc_process_array *, struct service *, struct ipc_process_array *);
+int ipc_server_select (struct ipc_process_array *, struct ipc_service *, struct ipc_process_array *);
 
 // APPLICATION
 
@@ -51,11 +51,11 @@ int ipc_server_select (struct ipc_process_array *, struct service *, struct ipc_
 // send the connection string to $TMP/<service>
 // fill srv->spath && srv->service_fd
 int ipc_application_connection (int argc, char **argv, char **env
-		, struct service *, const char *, const char *, size_t);
-int ipc_application_close (struct service *);
+		, struct ipc_service *, const char *, const char *, size_t);
+int ipc_application_close (struct ipc_service *);
 
-int ipc_application_read (struct service *srv, struct ipc_message *m);
-int ipc_application_write (struct service *, const struct ipc_message *m);
+int ipc_application_read (struct ipc_service *srv, struct ipc_message *m);
+int ipc_application_write (struct ipc_service *, const struct ipc_message *m);
 
 
 

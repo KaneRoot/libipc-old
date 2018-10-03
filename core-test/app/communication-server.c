@@ -13,15 +13,15 @@ int main (int argc, char *argv[], char *env[])
 
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
-    struct service srv;
-    memset(&srv, 0, sizeof (struct service));
+    struct ipc_service srv;
+    memset(&srv, 0, sizeof (struct ipc_service));
 
     // index and version should be filled
     srv.index = 0;
     srv.version = 0;
 
-    struct ipc_process p;
-    memset (&p, 0, sizeof (struct ipc_process));
+    struct ipc_client p;
+    memset (&p, 0, sizeof (struct ipc_client));
 
     // init service
     if (server_init (argc, argv, env, &srv, SERVICE_NAME) < 0) {

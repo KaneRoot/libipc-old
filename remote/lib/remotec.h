@@ -7,10 +7,10 @@
 
 /* TODO */
 
-int remotec_connection (int argc, char **argv, char **env, struct service *srv);
-int remotec_disconnection (struct service *srv);
+int remotec_connection (int argc, char **argv, char **env, struct ipc_service *srv);
+int remotec_disconnection (struct ipc_service *srv);
 
-int remotec_message_send (struct service *srv, const struct remoted_msg *msg);
-int remotec_message_recv (struct service *srv, struct remoted_msg *msg);
+int remotec_message_send (struct ipc_service *srv, const struct remoted_msg *msg);
+int remotec_message_recv (struct ipc_service *srv, struct remoted_msg *msg);
 
 #endif

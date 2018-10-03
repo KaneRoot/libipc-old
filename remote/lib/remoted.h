@@ -12,7 +12,7 @@ struct remoted_ctx {
     /* TODO: authorizations */
 };
 
-void remoted_main_loop (struct service *srv, struct remoted_ctx *ctx);
+void remoted_main_loop (struct ipc_service *srv, struct remoted_ctx *ctx);
 void remoted_free_ctx (struct remoted_ctx *ctx);
 
 #endif

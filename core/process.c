@@ -5,37 +5,37 @@
 
 #include <string.h>
 
-struct ipc_process * ipc_server_process_copy (const struct ipc_process *p)
+struct ipc_client * ipc_server_process_copy (const struct ipc_client *p)
 {
     if (p == NULL)
         return NULL;
 
-    struct ipc_process * copy = malloc (sizeof(struct ipc_process));
-    memcpy (copy, p, sizeof (struct ipc_process));
+    struct ipc_client * copy = malloc (sizeof(struct ipc_client));
+    memcpy (copy, p, sizeof (struct ipc_client));
 
     return copy;
 }
 
-int ipc_server_process_eq (const struct ipc_process *p1, const struct ipc_process *p2)
+int ipc_server_process_eq (const struct ipc_client *p1, const struct ipc_client *p2)
 {
     return (p1->version == p2->version && p1->index == p2->index
             && p1->proc_fd == p2->proc_fd);
 }
 
-void ipc_server_process_gen (struct ipc_process *p
+void ipc_server_process_gen (struct ipc_client *p
         , unsigned int index, unsigned int version)
 {
     p->version = version;
     p->index = index;
 }
 
-int ipc_process_add (struct ipc_process_array *aproc, struct ipc_process *p)
+int ipc_process_add (struct ipc_process_array *aproc, struct ipc_client *p)
 {
     assert(aproc != NULL);
     assert(p != NULL);
     aproc->size++;
     aproc->tab_proc = realloc(aproc->tab_proc
-            , sizeof(struct ipc_process) * aproc->size);
+            , sizeof(struct ipc_client) * aproc->size);
 
     if (aproc->tab_proc == NULL) {
         return -1;
@@ -45,7 +45,7 @@ int ipc_process_add (struct ipc_process_array *aproc, struct ipc_process *p)
     return 0;
 }
 
-int ipc_process_del (struct ipc_process_array *aproc, struct ipc_process *p)
+int ipc_process_del (struct ipc_process_array *aproc, struct ipc_client *p)
 {
     assert(aproc != NULL);
     assert(p != NULL);
@@ -65,7 +65,7 @@ int ipc_process_del (struct ipc_process_array *aproc, struct ipc_process *p)
             }
             else {
                 aproc->tab_proc = realloc(aproc->tab_proc
-                        , sizeof(struct ipc_process) * aproc->size);
+                        , sizeof(struct ipc_client) * aproc->size);
 
                 if (aproc->tab_proc == NULL) {
                     return -2;
@@ -79,7 +79,7 @@ int ipc_process_del (struct ipc_process_array *aproc, struct ipc_process *p)
     return -3;
 }
 
-void process_print (struct ipc_process *p)
+void process_print (struct ipc_client *p)
 {
     if (p != NULL)
         printf ("process %d : index %d, version %d\n"

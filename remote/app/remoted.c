@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 // to quit them properly if a signal occurs
-struct service srv;
+struct ipc_service srv;
 
 void handle_signal (int signalnumber)
 {
@@ -77,7 +77,7 @@ int main(int argc, char **argv, char **env)
     struct remoted_ctx ctx;
     memset (&ctx, 0, sizeof (struct remoted_ctx));
 
-    memset (&srv, 0, sizeof (struct service));
+    memset (&srv, 0, sizeof (struct ipc_service));
     srv.index = 0;
     srv.version = 0;
 

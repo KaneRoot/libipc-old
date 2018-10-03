@@ -24,7 +24,7 @@ char * pubsub_action_to_str (enum subscriber_action action)
 
 #if 0
 // tell the service to stop
-void pubsub_quit (struct service *srv)
+void pubsub_quit (struct ipc_service *srv)
 {
     // line fmt : 0 0 0 quit
     char line[BUFSIZ];
@@ -34,7 +34,7 @@ void pubsub_quit (struct service *srv)
 #endif
 
 int pubsub_connection (int argc, char **argv, char **env
-        , struct service *srv)
+        , struct ipc_service *srv)
 {
     int ret = ipc_application_connection (argc, argv, env
             , srv, PUBSUBD_SERVICE_NAME, NULL, 0);
@@ -46,12 +46,12 @@ int pubsub_connection (int argc, char **argv, char **env
     return ret;
 }
 
-int pubsub_disconnect (struct service *srv)
+int pubsub_disconnect (struct ipc_service *srv)
 {
     return ipc_application_close (srv);
 }
 
-int pubsub_message_send (struct service *srv, const struct pubsub_msg * m)
+int pubsub_message_send (struct ipc_service *srv, const struct pubsub_msg * m)
 {
     size_t msize = 0;
     char * buf = NULL;
@@ -77,7 +77,7 @@ int pubsub_message_send (struct service *srv, const struct pubsub_msg * m)
     return 0;
 }
 
-int pubsub_message_recv (struct service *srv, struct pubsub_msg *m)
+int pubsub_message_recv (struct ipc_service *srv, struct pubsub_msg *m)
 {
     if (srv == NULL) {
         handle_err ("pubsub_message_recv", "srv == NULL");
