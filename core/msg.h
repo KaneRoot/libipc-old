@@ -13,8 +13,8 @@
 
 struct ipc_message {
     char type;
-    unsigned short valsize;
-    char *val;
+    unsigned short length;
+    char *payload;
 };
 
 // used to create msg structure from buffer
@@ -27,9 +27,9 @@ int ipc_message_read (int fd, struct ipc_message *m);
 // write a structure msg to fd
 int ipc_message_write (int fd, const struct ipc_message *m);
 
-int ipc_message_format_con (struct ipc_message *m, const char *val, size_t valsize);
-int ipc_message_format_data (struct ipc_message *m, const char *val, size_t valsize);
-int ipc_message_format_ack (struct ipc_message *m, const char *val, size_t valsize);
+int ipc_message_format_con (struct ipc_message *m, const char *payload, size_t length);
+int ipc_message_format_data (struct ipc_message *m, const char *payload, size_t length);
+int ipc_message_format_ack (struct ipc_message *m, const char *payload, size_t length);
 
 int ipc_message_free (struct ipc_message *m);
 void ipc_message_print (const struct ipc_message *m);

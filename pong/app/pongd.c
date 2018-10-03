@@ -36,7 +36,7 @@ void handle_new_msg (struct ipc_client_array *ap, struct ipc_client_array *proc_
     int i;
     for (i = 0; i < proc_to_read->size; i++) {
         // printf ("loop handle_new_msg\n");
-        if (ipc_server_read (proc_to_read->tab_proc[i], &m) < 0) {
+        if (ipc_server_read (proc_to_read->clients[i], &m) < 0) {
             handle_error("server_read < 0");
         }
 
@@ -45,18 +45,18 @@ void handle_new_msg (struct ipc_client_array *ap, struct ipc_client_array *proc_
             cpt--;
             printf ("disconnection => %d client(s) remaining\n", cpt);
 
-            if (ipc_server_close_proc (proc_to_read->tab_proc[i]) < 0)
-                handle_err( "handle_new_msg", "server_close_proc < 0");
-            if (ipc_client_del (ap, proc_to_read->tab_proc[i]) < 0)
+            if (ipc_server_close_client (proc_to_read->clients[i]) < 0)
+                handle_err( "handle_new_msg", "server_close_client < 0");
+            if (ipc_client_del (ap, proc_to_read->clients[i]) < 0)
                 handle_err( "handle_new_msg", "ipc_client_del < 0");
-            if (ipc_client_del (proc_to_read, proc_to_read->tab_proc[i]) < 0)
+            if (ipc_client_del (proc_to_read, proc_to_read->clients[i]) < 0)
                 handle_err( "handle_new_msg", "ipc_client_del < 0");
             i--;
             continue;
         }
 
-        printf ("new message : %s", m.val);
-        if (ipc_server_write (proc_to_read->tab_proc[i], &m) < 0) {
+        printf ("new message : %s", m.payload);
+        if (ipc_server_write (proc_to_read->clients[i], &m) < 0) {
             handle_err( "handle_new_msg", "server_write < 0");
         }
     }
@@ -98,8 +98,8 @@ void main_loop (struct ipc_service *srv)
     }
 
     for (i = 0; i < ap.size; i++) {
-        if (ipc_server_close_proc (ap.tab_proc[i]) < 0) {
-            handle_error( "server_close_proc < 0");
+        if (ipc_server_close_client (ap.clients[i]) < 0) {
+            handle_error( "server_close_client < 0");
         }
     }
 }

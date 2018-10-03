@@ -42,7 +42,7 @@ void non_interactive (int argc, char *argv[], char *env[])
         exit (EXIT_FAILURE);
     }
 
-    printf ("msg recv: %s\n", m.val);
+    printf ("msg recv: %s\n", m.payload);
     ipc_message_free (&m);
 
     if (ipc_application_close (&srv) < 0) {
@@ -96,7 +96,7 @@ void interactive (int argc, char *argv[], char *env[])
             exit (EXIT_FAILURE);
         }
 
-        printf ("msg recv: %s", m.val);
+        printf ("msg recv: %s", m.payload);
         ipc_message_free (&m);
     }
 

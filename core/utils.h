@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void print_hexa (const char *prefix, unsigned char *val, size_t size);
+void print_hexa (const char *prefix, unsigned char *payload, size_t size);
 void mprint_hexa (char *prefix, unsigned char *buf, size_t length);
 
 #endif

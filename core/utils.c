@@ -1,8 +1,8 @@
 #include "utils.h"
 
-void print_hexa (const char *prefix, unsigned char *val, size_t size)
+void print_hexa (const char *prefix, unsigned char *payload, size_t size)
 {
-    if (! val)
+    if (! payload)
         return ;
 
     size_t i;
@@ -10,7 +10,7 @@ void print_hexa (const char *prefix, unsigned char *val, size_t size)
     {
         if(! (i % 4))
             printf("\n%s (%ld) ", prefix, size);
-        printf("%2x ", val[i]);
+        printf("%2x ", payload[i]);
     }
     printf("\n");
 }

@@ -13,7 +13,7 @@ communication.h \- all functions explained
 .BI "int ipc_server_write (const struct ipc_client *" p ", const struct ipc_message *" message );
 .sp
 .BI "int ipc_server_close (struct ipc_service *" srv );
-.BI "int ipc_server_close_proc (struct ipc_client *" p );
+.BI "int ipc_server_close_client (struct ipc_client *" p );
 .BI "int ipc_server_select (struct ipc_client_array *" fds ", struct ipc_service *" srv ", struct ipc_client_array *" readfds );
 
 .BI "int ipc_application_connection (int " argc ", char **" argv ", char **" env ", struct ipc_service *" srv
@@ -55,7 +55,7 @@ and
 functions take respectively a message to read from, and a message to write to a client.
 .PP
 The
-.BR ipc_server_close_proc ()
+.BR ipc_server_close_client ()
 and
 .BR ipc_server_close ()
 functions terminate respectively a client (closing its unix socket) and the service (closing and removing its named unix socket).

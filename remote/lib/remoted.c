@@ -37,21 +37,21 @@ void handle_new_msg (struct ipc_client_array *ap, struct ipc_client_array *proc_
     memset (&m, 0, sizeof (struct ipc_message));
     int i;
     for (i = 0; i < proc_to_read->size; i++) {
-        if (ipc_server_read (proc_to_read->tab_proc[i], &m) < 0) {
+        if (ipc_server_read (proc_to_read->clients[i], &m) < 0) {
             handle_error("ipc_server_read < 0");
         }
 
-        mprint_hexa ("msg received: ", (unsigned char *) m.val, m.valsize);
+        mprint_hexa ("msg received: ", (unsigned char *) m.payload, m.length);
 
         // close the client then delete it from the client array
         if (m.type == MSG_TYPE_CLOSE) {
-            struct ipc_client *p = proc_to_read->tab_proc[i];
+            struct ipc_client *p = proc_to_read->clients[i];
 
-            log_debug ("remoted, proc %d disconnecting", p->proc_fd);
+            log_debug ("remoted, client %d disconnecting", p->proc_fd);
 
             // close the connection to the client
-            if (ipc_server_close_proc (p) < 0)
-                handle_error( "ipc_server_close_proc < 0");
+            if (ipc_server_close_client (p) < 0)
+                handle_error( "ipc_server_close_client < 0");
 
             // remove the client from the clientes list
             if (ipc_client_del (ap, p) < 0)
@@ -72,27 +72,27 @@ void handle_new_msg (struct ipc_client_array *ap, struct ipc_client_array *proc_
         struct pubsub_msg m_data;
         memset (&m_data, 0, sizeof (struct pubsub_msg));
 
-        pubsub_message_unserialize (&m_data, m.val, m.valsize);
+        pubsub_message_unserialize (&m_data, m.payload, m.length);
 
         if (m_data.type == PUBSUB_MSG_TYPE_SUB) {
-            printf ("proc %d subscribing to %s\n"
-                    , proc_to_read->tab_proc[i]->proc_fd
+            printf ("client %d subscribing to %s\n"
+                    , proc_to_read->clients[i]->proc_fd
                     , m_data.chan);
             pubsubd_channels_subscribe (chans
-                    , m_data.chan, proc_to_read->tab_proc[i]);
+                    , m_data.chan, proc_to_read->clients[i]);
         }
 
         if (m_data.type == PUBSUB_MSG_TYPE_UNSUB) {
-            printf ("proc %d unsubscribing to %s\n"
-                    , proc_to_read->tab_proc[i]->proc_fd
+            printf ("client %d unsubscribing to %s\n"
+                    , proc_to_read->clients[i]->proc_fd
                     , m_data.chan);
             pubsubd_channels_unsubscribe (chans
-                    , m_data.chan, proc_to_read->tab_proc[i]);
+                    , m_data.chan, proc_to_read->clients[i]);
         }
 
         if (m_data.type == PUBSUB_MSG_TYPE_PUB) {
-            printf ("proc %d publishing to %s\n"
-                    , proc_to_read->tab_proc[i]->proc_fd
+            printf ("client %d publishing to %s\n"
+                    , proc_to_read->clients[i]->proc_fd
                     , m_data.chan);
             struct channel *chan = pubsubd_channel_search (chans, m_data.chan);
             if (chan == NULL) {
@@ -136,8 +136,8 @@ void remoted_main_loop (struct ipc_service *srv, struct remoted_ctx *ctx)
     }
 
     for (i = 0; i < ap.size; i++) {
-        if (ipc_server_close_proc (ap.tab_proc[i]) < 0) {
-            handle_error( "ipc_server_close_proc < 0");
+        if (ipc_server_close_client (ap.clients[i]) < 0) {
+            handle_error( "ipc_server_close_client < 0");
         }
     }
 }

@@ -66,7 +66,7 @@ int remotec_message_recv (struct ipc_service *srv, struct remoted_msg *m)
     memset (&m_recv, 0, sizeof (struct ipc_message));
 
     ipc_application_read (srv, &m_recv);
-    remote_message_unserialize (m, m_recv.val, m_recv.valsize);
+    remote_message_unserialize (m, m_recv.payload, m_recv.length);
 
     ipc_message_free (&m_recv);
 

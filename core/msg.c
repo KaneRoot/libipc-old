@@ -7,7 +7,7 @@
 void ipc_message_print (const struct ipc_message *m)
 {
     assert (m != NULL);
-    printf ("msg: type %d len %d\n", m->type, m->valsize);
+    printf ("msg: type %d len %d\n", m->type, m->length);
 }
 
 int ipc_message_format_read (struct ipc_message *m, const char *buf, size_t msize)
@@ -20,18 +20,18 @@ int ipc_message_format_read (struct ipc_message *m, const char *buf, size_t msiz
         return -1;
 
     m->type = buf[0];
-    memcpy (&m->valsize, buf+1, 2);
+    memcpy (&m->length, buf+1, 2);
 
-    assert (m->valsize <= BUFSIZ -3);
-    // printf ("type %d : msize = %ld, valsize = %d\n", m->type, msize, m->valsize);
-    assert (m->valsize == msize - 3);
+    assert (m->length <= BUFSIZ -3);
+    // printf ("type %d : msize = %ld, length = %d\n", m->type, msize, m->length);
+    assert (m->length == msize - 3);
 
-    if (m->val != NULL)
-        free (m->val), m->val = NULL;
+    if (m->payload != NULL)
+        free (m->payload), m->payload = NULL;
 
-    if (m->val == NULL && m->valsize > 0) {
-        m->val = malloc (m->valsize);
-        memcpy (m->val, buf+3, m->valsize);
+    if (m->payload == NULL && m->length > 0) {
+        m->payload = malloc (m->length);
+        memcpy (m->payload, buf+3, m->length);
     }
 
     return 0;
@@ -42,7 +42,7 @@ int ipc_message_format_write (const struct ipc_message *m, char **buf, size_t *m
     assert (m != NULL);
     assert (buf != NULL);
     assert (msize != NULL);
-    assert (m->valsize <= BUFSIZ -3);
+    assert (m->length <= BUFSIZ -3);
 
     if (m == NULL)
         return -1;
@@ -54,16 +54,16 @@ int ipc_message_format_write (const struct ipc_message *m, char **buf, size_t *m
         return -3;
 
     if (*buf == NULL) {
-        *buf = malloc (3 + m->valsize);
+        *buf = malloc (3 + m->length);
     }
 
     char *buffer = *buf;
 
     buffer[0] = m->type;
-    memcpy (buffer + 1, &m->valsize, 2);
-    memcpy (buffer + 3, m->val, m->valsize);
+    memcpy (buffer + 1, &m->length, 2);
+    memcpy (buffer + 3, m->payload, m->length);
 
-    *msize = 3 + m->valsize;
+    *msize = 3 + m->length;
 
     return 0;
 }
@@ -111,40 +111,40 @@ int ipc_message_write (int fd, const struct ipc_message *m)
 
 // MSG FORMAT
 
-int ipc_message_format (struct ipc_message *m, char type, const char *val, size_t valsize)
+int ipc_message_format (struct ipc_message *m, char type, const char *payload, size_t length)
 {
     assert (m != NULL);
-    assert (valsize + 3 <= BUFSIZ);
-    assert ((valsize == 0 && val == NULL) || (valsize > 0 && val != NULL));
+    assert (length + 3 <= BUFSIZ);
+    assert ((length == 0 && payload == NULL) || (length > 0 && payload != NULL));
 
-    if (valsize + 3 > BUFSIZ) {
+    if (length + 3 > BUFSIZ) {
         handle_err ("msg_format_con", "msgsize > BUFSIZ");
         return -1;
     }
 
     m->type = type;
-    m->valsize = (short) valsize;
+    m->length = (short) length;
 
-    if (m->val == NULL)
-        m->val = malloc (valsize);
+    if (m->payload == NULL)
+        m->payload = malloc (length);
 
-    memcpy (m->val, val, valsize);
+    memcpy (m->payload, payload, length);
     return 0;
 }
 
-int ipc_message_format_con (struct ipc_message *m, const char *val, size_t valsize)
+int ipc_message_format_con (struct ipc_message *m, const char *payload, size_t length)
 {
-    return ipc_message_format (m, MSG_TYPE_CON, val, valsize);
+    return ipc_message_format (m, MSG_TYPE_CON, payload, length);
 }
 
-int ipc_message_format_data (struct ipc_message *m, const char *val, size_t valsize)
+int ipc_message_format_data (struct ipc_message *m, const char *payload, size_t length)
 {
-    return ipc_message_format (m, MSG_TYPE_DATA, val, valsize);
+    return ipc_message_format (m, MSG_TYPE_DATA, payload, length);
 }
 
-int ipc_message_format_ack (struct ipc_message *m, const char *val, size_t valsize)
+int ipc_message_format_ack (struct ipc_message *m, const char *payload, size_t length)
 {
-    return ipc_message_format (m, MSG_TYPE_ACK, val, valsize);
+    return ipc_message_format (m, MSG_TYPE_ACK, payload, length);
 }
 
 int ipc_message_free (struct ipc_message *m)
@@ -154,10 +154,10 @@ int ipc_message_free (struct ipc_message *m)
     if (m == NULL)
         return -1;
 
-    if (m->val != NULL)
-        free (m->val), m->val = NULL;
+    if (m->payload != NULL)
+        free (m->payload), m->payload = NULL;
 
-    m->valsize = 0;
+    m->length = 0;
 
     return 0;
 }

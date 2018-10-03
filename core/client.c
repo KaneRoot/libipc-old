@@ -29,45 +29,45 @@ void ipc_server_client_gen (struct ipc_client *p
     p->index = index;
 }
 
-int ipc_client_add (struct ipc_client_array *aproc, struct ipc_client *p)
+int ipc_client_add (struct ipc_client_array *clients, struct ipc_client *p)
 {
-    assert(aproc != NULL);
+    assert(clients != NULL);
     assert(p != NULL);
-    aproc->size++;
-    aproc->tab_proc = realloc(aproc->tab_proc
-            , sizeof(struct ipc_client) * aproc->size);
+    clients->size++;
+    clients->clients = realloc(clients->clients
+            , sizeof(struct ipc_client) * clients->size);
 
-    if (aproc->tab_proc == NULL) {
+    if (clients->clients == NULL) {
         return -1;
     }
 
-    aproc->tab_proc[aproc->size - 1] = p;
+    clients->clients[clients->size - 1] = p;
     return 0;
 }
 
-int ipc_client_del (struct ipc_client_array *aproc, struct ipc_client *p)
+int ipc_client_del (struct ipc_client_array *clients, struct ipc_client *p)
 {
-    assert(aproc != NULL);
+    assert(clients != NULL);
     assert(p != NULL);
 
-    if (aproc->tab_proc == NULL) {
+    if (clients->clients == NULL) {
         return -1;
     }
 
     int i;
-    for (i = 0; i < aproc->size; i++) {
-        if (aproc->tab_proc[i] == p) {
+    for (i = 0; i < clients->size; i++) {
+        if (clients->clients[i] == p) {
 
-            aproc->tab_proc[i] = aproc->tab_proc[aproc->size-1];
-            aproc->size--;
-            if (aproc->size == 0) {
-                ipc_client_array_free (aproc);
+            clients->clients[i] = clients->clients[clients->size-1];
+            clients->size--;
+            if (clients->size == 0) {
+                ipc_client_array_free (clients);
             }
             else {
-                aproc->tab_proc = realloc(aproc->tab_proc
-                        , sizeof(struct ipc_client) * aproc->size);
+                clients->clients = realloc(clients->clients
+                        , sizeof(struct ipc_client) * clients->size);
 
-                if (aproc->tab_proc == NULL) {
+                if (clients->clients == NULL) {
                     return -2;
                 }
             }
@@ -91,15 +91,15 @@ void ipc_client_array_print (struct ipc_client_array *ap)
     int i;
     for (i = 0; i < ap->size; i++) {
         printf("%d : ", i);
-        client_print(ap->tab_proc[i]);
+        client_print(ap->clients[i]);
     }
 }
 
 void ipc_client_array_free (struct ipc_client_array *ap)
 {
-    if (ap->tab_proc != NULL) {
-        free (ap->tab_proc);
-        ap->tab_proc = NULL;
+    if (ap->clients != NULL) {
+        free (ap->clients);
+        ap->clients = NULL;
     }
     ap->size = 0;
 }

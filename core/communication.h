@@ -37,7 +37,7 @@ struct ipc_service {
 int ipc_server_init (int argc, char **argv, char **env
 		, struct ipc_service *srv, const char *sname);
 int ipc_server_close (struct ipc_service *srv);
-int ipc_server_close_proc (struct ipc_client *p);
+int ipc_server_close_client (struct ipc_client *p);
 int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p);
 
 int ipc_server_read (const struct ipc_client *, struct ipc_message *m);

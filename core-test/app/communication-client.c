@@ -42,7 +42,7 @@ int main (int argc, char *argv[], char *env[])
         return EXIT_FAILURE;
     }
 
-    printf ("msg recv: %s\n", m.val);
+    printf ("msg recv: %s\n", m.payload);
     ipc_message_free (&m);
 
     if (application_close (&srv) < 0) {

@@ -39,7 +39,7 @@ int main (int argc, char *argv[], char *env[])
         return EXIT_FAILURE;
     }
 
-    printf ("msg recv: %s\n", m.val);
+    printf ("msg recv: %s\n", m.payload);
 
     if (server_write (&p, &m) < 0) {
         handle_err("main", "server_write < 0");
@@ -60,8 +60,8 @@ int main (int argc, char *argv[], char *env[])
     }
     ipc_message_free (&m);
 
-    if (server_close_proc (&p) < 0) {
-        handle_err("main", "server_close_proc < 0");
+    if (server_close_client (&p) < 0) {
+        handle_err("main", "server_close_client < 0");
         return EXIT_FAILURE;
     }
 

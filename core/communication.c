@@ -65,14 +65,14 @@ int ipc_server_close (struct ipc_service *srv)
     return usock_remove (srv->spath);
 }
 
-int ipc_server_close_proc (struct ipc_client *p)
+int ipc_server_close_client (struct ipc_client *p)
 {
     // struct ipc_message m_ack_dis;
     // memset (&m_ack_dis, 0, sizeof (struct ipc_message));
     // m_ack_dis.type = MSG_TYPE_CLOSE;
 
     // if (ipc_message_write (p->proc_fd, &m_ack_dis) < 0) {
-    //     handle_err ("server_close_proc", "ipc_message_write < 0");
+    //     handle_err ("server_close_client", "ipc_message_write < 0");
     // }
 
     return usock_close (p->proc_fd);
@@ -128,7 +128,7 @@ int ipc_application_connection (int argc, char **argv, char **env
     ipc_application_read (srv, &m_ack);
 
     assert (m_ack.type == MSG_TYPE_ACK);
-    assert (m_ack.valsize == 0);
+    assert (m_ack.length == 0);
     ipc_message_free (&m_ack);
 
     return 0;
@@ -166,8 +166,8 @@ static int getMaxFd(struct ipc_client_array *ap)
     int max = 0;
 
     for (i = 0; i < ap->size; i++ ) {
-        if (ap->tab_proc[i]->proc_fd > max) {
-            max = ap->tab_proc[i]->proc_fd;
+        if (ap->clients[i]->proc_fd > max) {
+            max = ap->clients[i]->proc_fd;
         } 
     }
 
@@ -188,13 +188,13 @@ static int getMaxFd(struct ipc_client_array *ap)
  */
 
 int ipc_server_select (struct ipc_client_array *ap, struct ipc_service *srv
-        , struct ipc_client_array *proc)
+        , struct ipc_client_array *client)
 {
     assert (ap != NULL);
-    assert (proc != NULL);
+    assert (client != NULL);
 
     // delete previous read client array
-    ipc_client_array_free (proc);
+    ipc_client_array_free (client);
 
     int i, j;
     /* master file descriptor list */
@@ -213,7 +213,7 @@ int ipc_server_select (struct ipc_client_array *ap, struct ipc_service *srv
     FD_SET(listener, &master);
 
     for (i=0; i < ap->size; i++) {
-        FD_SET(ap->tab_proc[i]->proc_fd, &master);
+        FD_SET(ap->clients[i]->proc_fd, &master);
     }
 
     /* keep track of the biggest file descriptor */
@@ -238,8 +238,8 @@ int ipc_server_select (struct ipc_client_array *ap, struct ipc_service *srv
                 } else {
                     for(j = 0; j < ap->size; j++) {
                         // printf ("loop ipc_server_select inner inner loop\n");
-                        if(i == ap->tab_proc[j]->proc_fd ) {
-                            ipc_client_add (proc, ap->tab_proc[j]);
+                        if(i == ap->clients[j]->proc_fd ) {
+                            ipc_client_add (client, ap->clients[j]);
                         }
                     }
                 }
@@ -247,9 +247,9 @@ int ipc_server_select (struct ipc_client_array *ap, struct ipc_service *srv
         }
     } while (0);
 
-    if (proc->size > 0 && is_listener)
+    if (client->size > 0 && is_listener)
         return CON_APP;
-    if (proc->size > 0)
+    if (client->size > 0)
         return APPLICATION;
     return CONNECTION;
 } 
