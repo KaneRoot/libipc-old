@@ -1,7 +1,7 @@
 #ifndef __REMOTED_H__
 #define __REMOTED_H__
 
-#include "../../core/process.h"
+#include "../../core/client.h"
 #include "../../core/msg.h"
 #include "msg.h"
 

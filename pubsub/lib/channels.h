@@ -2,7 +2,7 @@
 #define __CHANNELS_H__
 
 #include "../../core/queue.h"
-#include "../../core/process.h"
+#include "../../core/client.h"
 
 // head of the list
 LIST_HEAD(channels, channel);
@@ -12,7 +12,7 @@ LIST_HEAD(channels, channel);
 struct channel {
     char *chan;
     size_t chanlen;
-    struct ipc_process_array *subs;
+    struct ipc_client_array *subs;
     LIST_ENTRY(channel) entries;
 };
 

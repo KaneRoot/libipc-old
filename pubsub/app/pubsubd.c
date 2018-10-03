@@ -1,5 +1,5 @@
 #include "../../core/communication.h"
-#include "../../core/process.h"
+#include "../../core/client.h"
 #include "../../core/error.h"
 #include "../lib/pubsubd.h"
 #include <stdlib.h>

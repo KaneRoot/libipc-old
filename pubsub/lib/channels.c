@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "../../core/error.h"
-#include "../../core/process.h"
+#include "../../core/client.h"
 
 #include "channels.h"
 
@@ -19,7 +19,7 @@ void pubsubd_channel_print (const struct channel *chan)
         handle_err ("pubsubd_channel_print", "chan->subs == NULL");
     }
     else {
-        ipc_process_array_print (chan->subs);
+        ipc_client_array_print (chan->subs);
     }
 }
 
@@ -98,8 +98,8 @@ int pubsubd_channel_new (struct channel *c, const char * name)
     memcpy (c->chan, name, nlen);
     c->chanlen = nlen;
 
-    c->subs = malloc (sizeof (struct ipc_process_array));
-    memset (c->subs, 0, sizeof (struct ipc_process_array));
+    c->subs = malloc (sizeof (struct ipc_client_array));
+    memset (c->subs, 0, sizeof (struct ipc_client_array));
 
     return 0;
 }
@@ -115,7 +115,7 @@ void pubsubd_channel_free (struct channel * c)
     }
 
     if (c->subs != NULL) {
-        ipc_process_array_free (c->subs);
+        ipc_client_array_free (c->subs);
         free (c->subs);
     }
 }
@@ -154,12 +154,12 @@ int pubsubd_channel_eq (const struct channel *c1, const struct channel *c2)
 
 void pubsubd_channel_subscribe (const struct channel *c, struct ipc_client *p)
 {
-    ipc_process_add (c->subs, p);
+    ipc_client_add (c->subs, p);
 }
 
 void pubsubd_channel_unsubscribe (const struct channel *c, struct ipc_client *p)
 {
-    ipc_process_del (c->subs, p);
+    ipc_client_del (c->subs, p);
 }
 
 void pubsubd_channels_subscribe (struct channels *chans

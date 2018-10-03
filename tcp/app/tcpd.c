@@ -134,7 +134,7 @@ void * service_thread(void * c_data) {
 
     /*struct ipc_client p;
     ipc_application_create(&p, getpid(), cda->index, version);
-    ipc_server_process_print(&p);*/
+    ipc_server_client_print(&p);*/
     //sleep(1);
     //printf("%s\n",p.path_proc );
     /*if (proc_connection(&p) == -1){
@@ -303,7 +303,7 @@ void * ipc_server_thread(void * reqq) {
         /* something from standard input : i.e keyboard */
         if(FD_ISSET(STDIN_FILENO, &rdfs))
         {
-            /* stop process when type on keyboard */
+            /* stop client when type on keyboard */
             for (i = 0; i < actual; i++) {
                 if (pthread_cancel(tab_service_threads[i]) != 0) {
                     printf("Aucun thread correspond \n");
@@ -401,7 +401,7 @@ int ipc_server_get_new_request(char *buf, info_request *req) {
     req->addr.sin_family = AF_INET;
 
     if (strcmp("connect", req->request) == 0) {
-        ipc_server_process_gen (req->p, pid, index, version);
+        ipc_server_client_gen (req->p, pid, index, version);
     }
 
     return 1;
@@ -664,7 +664,7 @@ void main_loop (struct ipc_service *srv) {
 			    }
 
 			    tab_req[nbclient].p = malloc(sizeof(struct ipc_client));
-			    // -1 : error, 0 = no new process, 1 = new process
+			    // -1 : error, 0 = no new client, 1 = new client
 			    ret = ipc_server_get_new_request (buf, &tab_req[nbclient]);
 			    tab_req[nbclient].p->proc_fd = newfd;
 			    if (ret == -1) {
@@ -715,7 +715,7 @@ void main_loop (struct ipc_service *srv) {
                         }
 
                         tab_req[nbclient].p = malloc(sizeof(struct ipc_client));
-                        // -1 : error, 0 = no new process, 1 = new process
+                        // -1 : error, 0 = no new client, 1 = new client
                         ret = ipc_server_get_new_request (buf, &tab_req[nbclient]);
                         tab_req[nbclient].p->proc_fd = i;
                         if (ret == -1) {

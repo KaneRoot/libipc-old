@@ -1,6 +1,6 @@
 #include "../../core/communication.h"
 #include "../../core/msg.h"
-#include "../../core/process.h"
+#include "../../core/client.h"
 #include "../../core/utils.h"
 #include "../../core/error.h"
 #include "../../core/logger.h"
@@ -12,56 +12,56 @@
 #include <unistd.h>
 
 /**
- * new connection, once accepted the process is added to the array_proc
+ * new connection, once accepted the client is added to the array_proc
  * structure to be checked periodically for new messages
  */
-void handle_new_connection (struct ipc_service *srv, struct ipc_process_array *ap)
+void handle_new_connection (struct ipc_service *srv, struct ipc_client_array *ap)
 {
     struct ipc_client *p = malloc(sizeof(struct ipc_client));
     memset(p, 0, sizeof(struct ipc_client));
 
-    if (server_accept (srv, p) < 0) {
-        handle_error("server_accept < 0");
+    if (ipc_server_accept (srv, p) < 0) {
+        handle_error("ipc_server_accept < 0");
     } else {
         log_debug ("remoted, new connection", p->proc_fd);
     }
 
-    if (ipc_process_add (ap, p) < 0) {
-        handle_error("ipc_process_add < 0");
+    if (ipc_client_add (ap, p) < 0) {
+        handle_error("ipc_client_add < 0");
     }
 }
 
-void handle_new_msg (struct ipc_process_array *ap, struct ipc_process_array *proc_to_read)
+void handle_new_msg (struct ipc_client_array *ap, struct ipc_client_array *proc_to_read)
 {
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
     int i;
     for (i = 0; i < proc_to_read->size; i++) {
-        if (server_read (proc_to_read->tab_proc[i], &m) < 0) {
-            handle_error("server_read < 0");
+        if (ipc_server_read (proc_to_read->tab_proc[i], &m) < 0) {
+            handle_error("ipc_server_read < 0");
         }
 
         mprint_hexa ("msg received: ", (unsigned char *) m.val, m.valsize);
 
-        // close the process then delete it from the process array
+        // close the client then delete it from the client array
         if (m.type == MSG_TYPE_CLOSE) {
             struct ipc_client *p = proc_to_read->tab_proc[i];
 
             log_debug ("remoted, proc %d disconnecting", p->proc_fd);
 
-            // close the connection to the process
-            if (server_close_proc (p) < 0)
-                handle_error( "server_close_proc < 0");
+            // close the connection to the client
+            if (ipc_server_close_proc (p) < 0)
+                handle_error( "ipc_server_close_proc < 0");
 
-            // remove the process from the processes list
-            if (ipc_process_del (ap, p) < 0)
-                handle_error( "ipc_process_del < 0");
-            if (ipc_process_del (proc_to_read, p) < 0)
-                handle_err( "handle_new_msg", "ipc_process_del < 0");
+            // remove the client from the clientes list
+            if (ipc_client_del (ap, p) < 0)
+                handle_error( "ipc_client_del < 0");
+            if (ipc_client_del (proc_to_read, p) < 0)
+                handle_err( "handle_new_msg", "ipc_client_del < 0");
 
             ipc_message_free (&m);
 
-            // free process
+            // free client
             free (p);
 
             i--;
@@ -114,11 +114,11 @@ void remoted_main_loop (struct ipc_service *srv, struct remoted_ctx *ctx)
     log_debug ("remoted entering main loop");
     int i, ret = 0; 
 
-    struct ipc_process_array ap;
-    memset(&ap, 0, sizeof(struct ipc_process_array));
+    struct ipc_client_array ap;
+    memset(&ap, 0, sizeof(struct ipc_client_array));
 
-    struct ipc_process_array proc_to_read;
-    memset(&proc_to_read, 0, sizeof(struct ipc_process_array));
+    struct ipc_client_array proc_to_read;
+    memset(&proc_to_read, 0, sizeof(struct ipc_client_array));
 
     while(1) {
         /* TODO: authorizations */
@@ -132,12 +132,12 @@ void remoted_main_loop (struct ipc_service *srv, struct remoted_ctx *ctx)
             handle_new_connection (srv, &ap);
             handle_new_msg (&ap, &proc_to_read);
         }
-        ipc_process_array_free (&proc_to_read);
+        ipc_client_array_free (&proc_to_read);
     }
 
     for (i = 0; i < ap.size; i++) {
-        if (server_close_proc (ap.tab_proc[i]) < 0) {
-            handle_error( "server_close_proc < 0");
+        if (ipc_server_close_proc (ap.tab_proc[i]) < 0) {
+            handle_error( "ipc_server_close_proc < 0");
         }
     }
 }

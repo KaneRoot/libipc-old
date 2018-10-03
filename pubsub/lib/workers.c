@@ -105,7 +105,7 @@ int pubsubd_worker_eq (const struct worker *w1, const struct worker *w2)
     return w1 == w2; // if it's the same pointer
 }
 
-// a thread for each connected process
+// a thread for each connected client
 void * pubsubd_worker_thread (void *params)
 {
     int s = 0;
@@ -132,7 +132,7 @@ void * pubsubd_worker_thread (void *params)
         pubsub_message_recv (ale->p, &m);
 
         if (m.type == PUBSUB_TYPE_DISCONNECT) {
-            // printf ("process %d disconnecting...\n", ale->p->pid);
+            // printf ("client %d disconnecting...\n", ale->p->pid);
             if ( 0 != pubsubd_subscriber_del (chan->alh, ale)) {
                 fprintf (stderr, "err : subscriber not registered\n");
             }

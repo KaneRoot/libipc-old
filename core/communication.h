@@ -7,7 +7,7 @@
 #include <errno.h> // error numbers
 #include "msg.h"
 
-#include "process.h"
+#include "client.h"
 
 #define COMMUNICATION_VERSION 1
 
@@ -43,7 +43,7 @@ int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p);
 int ipc_server_read (const struct ipc_client *, struct ipc_message *m);
 int ipc_server_write (const struct ipc_client *, const struct ipc_message *m);
 
-int ipc_server_select (struct ipc_process_array *, struct ipc_service *, struct ipc_process_array *);
+int ipc_server_select (struct ipc_client_array *, struct ipc_service *, struct ipc_client_array *);
 
 // APPLICATION
 

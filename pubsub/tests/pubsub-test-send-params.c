@@ -88,8 +88,8 @@ void sim_disconnection (int argc, char **argv, char **env, pid_t pid, int index,
     struct ipc_client p;
     memset (&p, 0, sizeof (struct ipc_client));
 
-    // create the fake process
-    ipc_server_process_gen (&p, pid, index, version);
+    // create the fake client
+    ipc_server_client_gen (&p, pid, index, version);
 
     // send a message to disconnect
     // line : pid index version action chan

@@ -19,7 +19,7 @@ int main(int argc, char * argv[])
         exit (1);
     }
 
-    // read the message from the process
+    // read the message from the client
     size_t mlen = 0;
     unsigned char buf[BUFSIZ];
     mlen = read (0, buf, BUFSIZ);

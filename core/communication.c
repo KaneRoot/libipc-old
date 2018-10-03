@@ -159,7 +159,7 @@ int ipc_application_write (struct ipc_service *srv, const struct ipc_message *m)
 
 
 /*calculer le max filedescriptor*/
-int getMaxFd(struct ipc_process_array *ap)
+static int getMaxFd(struct ipc_client_array *ap)
 {
 
     int i;
@@ -176,25 +176,25 @@ int getMaxFd(struct ipc_process_array *ap)
 
 /*
  * ipc_server_select prend en parametre
- *  * un tableau de process qu'on écoute
+ *  * un tableau de client qu'on écoute
  *  * le service qui attend de nouvelles connexions
- *  * un tableau de process qui souhaitent parler
+ *  * un tableau de client qui souhaitent parler
  *
- * la fonction trouve le processus/service actif et renvoie 
+ * la fonction trouve le clientus/service actif et renvoie 
  * un entier correspondant à quel descripteur de fichier il faut lire
  *  * celui du serveur = nouvelle connexion entrante        (CONNECTION)
- *  * celui d'un ou plusieurs processus = ils nous parlent  (APPLICATION)
+ *  * celui d'un ou plusieurs clientus = ils nous parlent  (APPLICATION)
  *  * les deux à la fois                                    (CON_APP)
  */
 
-int ipc_server_select (struct ipc_process_array *ap, struct ipc_service *srv
-        , struct ipc_process_array *proc)
+int ipc_server_select (struct ipc_client_array *ap, struct ipc_service *srv
+        , struct ipc_client_array *proc)
 {
     assert (ap != NULL);
     assert (proc != NULL);
 
-    // delete previous read process array
-    ipc_process_array_free (proc);
+    // delete previous read client array
+    ipc_client_array_free (proc);
 
     int i, j;
     /* master file descriptor list */
@@ -239,7 +239,7 @@ int ipc_server_select (struct ipc_process_array *ap, struct ipc_service *srv
                     for(j = 0; j < ap->size; j++) {
                         // printf ("loop ipc_server_select inner inner loop\n");
                         if(i == ap->tab_proc[j]->proc_fd ) {
-                            ipc_process_add (proc, ap->tab_proc[j]);
+                            ipc_client_add (proc, ap->tab_proc[j]);
                         }
                     }
                 }

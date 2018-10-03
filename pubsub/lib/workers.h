@@ -8,7 +8,7 @@
 LIST_HEAD(workers, worker);
 
 // element of the list
-// worker : process to handle (threaded)
+// worker : client to handle (threaded)
 struct worker {
     pthread_t *thr;
     struct workers *my_workers;

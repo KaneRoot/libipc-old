@@ -2,7 +2,7 @@
 #define __PUBSUB_H__
 
 #include "../../core/communication.h"
-#include "../../core/process.h"
+#include "../../core/client.h"
 #include "../../core/queue.h"
 
 #include "msg.h"

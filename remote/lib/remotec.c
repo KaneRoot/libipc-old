@@ -34,8 +34,8 @@ int remotec_message_send (struct ipc_service *srv, const struct remoted_msg * m)
     memset (&m_data, 0, sizeof (struct ipc_message));
 
     // format the connection msg
-    if (msg_format_data (&m_data, buf, msize) < 0) {
-        handle_err ("remotec_message_send", "msg_format_data");
+    if (ipc_message_format_data (&m_data, buf, msize) < 0) {
+        handle_err ("remotec_message_send", "ipc_message_format_data");
         if (buf != NULL)
             free (buf);
         return -1;

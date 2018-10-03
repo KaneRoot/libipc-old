@@ -14,7 +14,7 @@ communication.h \- all functions explained
 .sp
 .BI "int ipc_server_close (struct ipc_service *" srv );
 .BI "int ipc_server_close_proc (struct ipc_client *" p );
-.BI "int ipc_server_select (struct ipc_process_array *" fds ", struct ipc_service *" srv ", struct ipc_process_array *" readfds );
+.BI "int ipc_server_select (struct ipc_client_array *" fds ", struct ipc_service *" srv ", struct ipc_client_array *" readfds );
 
 .BI "int ipc_application_connection (int " argc ", char **" argv ", char **" env ", struct ipc_service *" srv
 .BI "       , const char *" service_name "
@@ -46,29 +46,29 @@ The
 .BR ipc_server_accept ()
 function accepts new connections.
 .IR p
-parameter is the client process that will be provided after the connection.
+parameter is the client client that will be provided after the connection.
 .PP
 The
 .BR ipc_server_read ()
 and
 .BR ipc_server_write ()
-functions take respectively a message to read from, and a message to write to a process.
+functions take respectively a message to read from, and a message to write to a client.
 .PP
 The
 .BR ipc_server_close_proc ()
 and
 .BR ipc_server_close ()
-functions terminate respectively a process (closing its unix socket) and the service (closing and removing its named unix socket).
+functions terminate respectively a client (closing its unix socket) and the service (closing and removing its named unix socket).
 .PP
 The
 .BR ipc_server_select ()
 takes three arguments,
 .IR *ap
-an array of processes you want to listen on,
+an array of clientes you want to listen on,
 .IR *srv
 the service which receives new connections and
 .IR *ap_read
-an array of processes which have sent a message we need to read.
+an array of clientes which have sent a message we need to read.
 .PP
 The
 .BR ipc_application_connection ()
@@ -108,4 +108,4 @@ Most of the functions return an integer less than zero if there is an error.
 .PP
 For
 .BR ipc_server_select()
-if there is a new connection, the function will return \fBCONNECTION\fR, if there is one or more processes talking the function will return \fBAPPLICATION\fR and finally if there are both a new connection and a process talking the function will return \fBCON_APP\fR.
+if there is a new connection, the function will return \fBCONNECTION\fR, if there is one or more clientes talking the function will return \fBAPPLICATION\fR and finally if there are both a new connection and a client talking the function will return \fBCON_APP\fR.
