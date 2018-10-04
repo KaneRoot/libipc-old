@@ -14,7 +14,7 @@ communication.h \- all functions explained
 .sp
 .BI "int ipc_server_close (struct ipc_service *" srv );
 .BI "int ipc_server_close_client (struct ipc_client *" p );
-.BI "int ipc_server_select (struct ipc_client_array *" fds ", struct ipc_service *" srv ", struct ipc_client_array *" readfds );
+.BI "int ipc_server_select (struct ipc_clients *" fds ", struct ipc_service *" srv ", struct ipc_clients *" readfds );
 
 .BI "int ipc_application_connection (int " argc ", char **" argv ", char **" env ", struct ipc_service *" srv
 .BI "       , const char *" service_name "

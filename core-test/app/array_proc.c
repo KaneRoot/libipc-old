@@ -5,8 +5,8 @@
 int main()
 {
     int ret;
-    struct ipc_client_array clients;
-    memset(&clients, 0, sizeof(struct ipc_client_array));
+    struct ipc_clients clients;
+    memset(&clients, 0, sizeof(struct ipc_clients));
 
     struct ipc_client client_tab[5];
     memset(&client_tab, 0, sizeof(struct ipc_client) * 5);

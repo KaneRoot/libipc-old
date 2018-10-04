@@ -12,7 +12,7 @@ LIST_HEAD(channels, channel);
 struct channel {
     char *chan;
     size_t chanlen;
-    struct ipc_client_array *subs;
+    struct ipc_clients *subs;
     LIST_ENTRY(channel) entries;
 };
 

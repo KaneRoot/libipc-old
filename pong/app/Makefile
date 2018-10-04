@@ -14,13 +14,13 @@ test:
 	./pongd.bin
 
 $(EXEC): $(OBJECTS) $(CFILES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) $@.c -lcbor -o $@.bin
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) $@.c -o $@.bin
 
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
 
 $(TESTS):
-	valgrind --show-leak-kinds=all --leak-check=full -v --track-origins=yes ./$(basename $@).bin
+	valgrind --show-leak-kinds=all --leak-check=full -v --track-origins=yes ./$(basename $@).bin $(PARAMS)
 
 clean:
 	@-rm $(OBJECTS)

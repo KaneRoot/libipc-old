@@ -11,7 +11,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-void pubsubd_send (const struct ipc_client_array *ap, const struct pubsub_msg * m)
+void pubsubd_send (const struct ipc_clients *ap, const struct pubsub_msg * m)
 {
     if (ap == NULL) {
         fprintf (stderr, "pubsubd_send: ap == NULL");
@@ -59,7 +59,7 @@ void pubsubd_send (const struct ipc_client_array *ap, const struct pubsub_msg * 
  * new connection, once accepted the client is added to the array_proc
  * structure to be checked periodically for new messages
  */
-void handle_new_connection (struct ipc_service *srv, struct ipc_client_array *ap)
+void handle_new_connection (struct ipc_service *srv, struct ipc_clients *ap)
 {
     struct ipc_client *p = malloc(sizeof(struct ipc_client));
     memset(p, 0, sizeof(struct ipc_client));
@@ -76,7 +76,7 @@ void handle_new_connection (struct ipc_service *srv, struct ipc_client_array *ap
 }
 
 void handle_new_msg (struct channels *chans
-        , struct ipc_client_array *ap, struct ipc_client_array *proc_to_read)
+        , struct ipc_clients *ap, struct ipc_clients *proc_to_read)
 {
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
@@ -169,11 +169,11 @@ void pubsubd_main_loop (struct ipc_service *srv, struct channels *chans)
 {
     int i, ret = 0; 
 
-    struct ipc_client_array ap;
-    memset(&ap, 0, sizeof(struct ipc_client_array));
+    struct ipc_clients ap;
+    memset(&ap, 0, sizeof(struct ipc_clients));
 
-    struct ipc_client_array proc_to_read;
-    memset(&proc_to_read, 0, sizeof(struct ipc_client_array));
+    struct ipc_clients proc_to_read;
+    memset(&proc_to_read, 0, sizeof(struct ipc_clients));
 
     while(1) {
         ret = ipc_server_select (&ap, srv, &proc_to_read);
