@@ -16,7 +16,7 @@
 
 #define TMPDIR "/run/ipc/"
 
-#define PATH_MAX BUFSIZ
+#define PATH_MAX 4096
 
 #define IPC_MESSAGE_CONNECTION              0
 #define IPC_MESSAGE_DATA                    1
