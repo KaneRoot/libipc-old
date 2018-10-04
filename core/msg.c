@@ -22,9 +22,9 @@ int ipc_message_format_read (struct ipc_message *m, const char *buf, size_t msiz
     m->type = buf[0];
     memcpy (&m->length, buf+1, 2);
 
-    assert (m->length <= BUFSIZ -3);
-    // printf ("type %d : msize = %ld, length = %d\n", m->type, msize, m->length);
-    assert (m->length == msize - 3);
+    assert (m->length <= BUFSIZ - 3);
+    printf ("type %d : msize = %ld, length = %d\n", m->type, msize, m->length);
+    assert (m->length == msize - 3 || m->length == 0);
 
     if (m->payload != NULL)
         free (m->payload), m->payload = NULL;
@@ -55,15 +55,20 @@ int ipc_message_format_write (const struct ipc_message *m, char **buf, size_t *m
 
     if (*buf == NULL) {
         *buf = malloc (3 + m->length);
+		memset (*buf, 0, 3 + m->length);
     }
 
     char *buffer = *buf;
 
     buffer[0] = m->type;
     memcpy (buffer + 1, &m->length, 2);
-    memcpy (buffer + 3, m->payload, m->length);
+	if (m->payload != NULL) {
+		memcpy (buffer + 3, m->payload, m->length);
+	}
 
     *msize = 3 + m->length;
+
+	printf ("sending msg: type %u, size %d, msize %ld\n", m->type, m->length, *msize);
 
     return 0;
 }
@@ -125,10 +130,18 @@ int ipc_message_format (struct ipc_message *m, char type, const char *payload, s
     m->type = type;
     m->length = (short) length;
 
-    if (m->payload == NULL)
+    if (payload != NULL) {
+		if (m->payload != NULL) {
+			free (m->payload);
+		}
+		// FIXME: test malloc
         m->payload = malloc (length);
+		memset (m->payload, 0, length);
+	}
 
-    memcpy (m->payload, payload, length);
+	if (payload != NULL) {
+		memcpy (m->payload, payload, length);
+	}
     return 0;
 }
 
@@ -145,6 +158,11 @@ int ipc_message_format_data (struct ipc_message *m, const char *payload, size_t 
 int ipc_message_format_ack (struct ipc_message *m, const char *payload, size_t length)
 {
     return ipc_message_format (m, MSG_TYPE_ACK, payload, length);
+}
+
+int ipc_message_format_server_close (struct ipc_message *m)
+{
+    return ipc_message_format (m, MSG_TYPE_SERVER_CLOSE, NULL, 0);
 }
 
 int ipc_message_free (struct ipc_message *m)

@@ -10,6 +10,6 @@
 #define PUBSUBD_SERVICE_NAME "pubsubd"
 
 void pubsubd_main_loop (struct ipc_service *srv, struct channels * chans);
-void pubsubd_message_send (const struct ipc_client_array *ap, const struct pubsub_msg * m);
+void pubsubd_message_send (const struct ipc_clients *ap, const struct pubsub_msg * m);
 
 #endif

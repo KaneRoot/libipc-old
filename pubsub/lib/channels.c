@@ -98,8 +98,8 @@ int pubsubd_channel_new (struct channel *c, const char * name)
     memcpy (c->chan, name, nlen);
     c->chanlen = nlen;
 
-    c->subs = malloc (sizeof (struct ipc_client_array));
-    memset (c->subs, 0, sizeof (struct ipc_client_array));
+    c->subs = malloc (sizeof (struct ipc_clients));
+    memset (c->subs, 0, sizeof (struct ipc_clients));
 
     return 0;
 }

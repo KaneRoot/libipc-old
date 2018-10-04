@@ -15,7 +15,7 @@
  * new connection, once accepted the client is added to the array_proc
  * structure to be checked periodically for new messages
  */
-void handle_new_connection (struct ipc_service *srv, struct ipc_client_array *ap)
+void handle_new_connection (struct ipc_service *srv, struct ipc_clients *ap)
 {
     struct ipc_client *p = malloc(sizeof(struct ipc_client));
     memset(p, 0, sizeof(struct ipc_client));
@@ -31,7 +31,7 @@ void handle_new_connection (struct ipc_service *srv, struct ipc_client_array *ap
     }
 }
 
-void handle_new_msg (struct ipc_client_array *ap, struct ipc_client_array *proc_to_read)
+void handle_new_msg (struct ipc_clients *ap, struct ipc_clients *proc_to_read)
 {
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
@@ -114,11 +114,11 @@ void remoted_main_loop (struct ipc_service *srv, struct remoted_ctx *ctx)
     log_debug ("remoted entering main loop");
     int i, ret = 0; 
 
-    struct ipc_client_array ap;
-    memset(&ap, 0, sizeof(struct ipc_client_array));
+    struct ipc_clients ap;
+    memset(&ap, 0, sizeof(struct ipc_clients));
 
-    struct ipc_client_array proc_to_read;
-    memset(&proc_to_read, 0, sizeof(struct ipc_client_array));
+    struct ipc_clients proc_to_read;
+    memset(&proc_to_read, 0, sizeof(struct ipc_clients));
 
     while(1) {
         /* TODO: authorizations */

@@ -62,6 +62,8 @@ void interactive (int argc, char *argv[], char *env[])
     memset (buf, 0, BUFSIZ);
     int n;
 
+	int ask_server_to_quit = 0;
+
     // index and version should be filled
     srv.index = 0;
     srv.version = 0;
@@ -79,6 +81,11 @@ void interactive (int argc, char *argv[], char *env[])
 
         if (n == 0 || strncmp (buf, "exit", 4) == 0)
             break;
+
+		if (strncmp(buf, "close server", 12) == 0) {
+			ask_server_to_quit = 1;
+			break;
+		}
 
         ipc_message_format_data (&m, buf, strlen(buf) +1);
         memset (buf, 0, BUFSIZ);
@@ -100,7 +107,15 @@ void interactive (int argc, char *argv[], char *env[])
         ipc_message_free (&m);
     }
 
-    if (ipc_application_close (&srv) < 0) {
+	if (ask_server_to_quit) {
+        ipc_message_format_server_close (&m);
+
+        if (ipc_application_write (&srv, &m) < 0) {
+            handle_err("main", "application_write < 0");
+            exit (EXIT_FAILURE);
+        }
+        ipc_message_free (&m);
+	} else if (ipc_application_close (&srv) < 0) {
         handle_err("main", "application_close < 0");
         exit (EXIT_FAILURE);
     }

@@ -11,6 +11,7 @@ struct ipc_client * ipc_server_client_copy (const struct ipc_client *p)
         return NULL;
 
     struct ipc_client * copy = malloc (sizeof(struct ipc_client));
+    memset (copy, 0, sizeof (struct ipc_client));
     memcpy (copy, p, sizeof (struct ipc_client));
 
     return copy;
@@ -29,7 +30,7 @@ void ipc_server_client_gen (struct ipc_client *p
     p->index = index;
 }
 
-int ipc_client_add (struct ipc_client_array *clients, struct ipc_client *p)
+int ipc_client_add (struct ipc_clients *clients, struct ipc_client *p)
 {
     assert(clients != NULL);
     assert(p != NULL);
@@ -45,7 +46,7 @@ int ipc_client_add (struct ipc_client_array *clients, struct ipc_client *p)
     return 0;
 }
 
-int ipc_client_del (struct ipc_client_array *clients, struct ipc_client *p)
+int ipc_client_del (struct ipc_clients *clients, struct ipc_client *p)
 {
     assert(clients != NULL);
     assert(p != NULL);
@@ -86,7 +87,7 @@ void client_print (struct ipc_client *p)
                 , p->proc_fd, p->index, p->version);
 }
 
-void ipc_client_array_print (struct ipc_client_array *ap)
+void ipc_client_array_print (struct ipc_clients *ap)
 {
     int i;
     for (i = 0; i < ap->size; i++) {
@@ -95,7 +96,7 @@ void ipc_client_array_print (struct ipc_client_array *ap)
     }
 }
 
-void ipc_client_array_free (struct ipc_client_array *ap)
+void ipc_client_array_free (struct ipc_clients *ap)
 {
     if (ap->clients != NULL) {
         free (ap->clients);

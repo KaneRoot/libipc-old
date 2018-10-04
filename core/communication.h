@@ -18,9 +18,10 @@
 
 #define PATH_MAX 4096
 
-#define CONNECTION  0
-#define APPLICATION 1
-#define CON_APP     2
+#define IPC_MESSAGE_CONNECTION              0
+#define IPC_MESSAGE_DATA                    1
+#define IPC_MESSAGE_DATA_AND_CONNECTION     2
+#define IPC_MESSAGE_SERVICE_STOP            3
 
 struct ipc_service {
     unsigned int version;
@@ -43,7 +44,8 @@ int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p);
 int ipc_server_read (const struct ipc_client *, struct ipc_message *m);
 int ipc_server_write (const struct ipc_client *, const struct ipc_message *m);
 
-int ipc_server_select (struct ipc_client_array *, struct ipc_service *, struct ipc_client_array *);
+int ipc_server_select (struct ipc_clients * clients, struct ipc_service *srv
+        , struct ipc_clients *active_clients, int *new_connection);
 
 // APPLICATION
 

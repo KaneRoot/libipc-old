@@ -10,6 +10,7 @@
 #define MSG_TYPE_ERR                2
 #define MSG_TYPE_ACK                3
 #define MSG_TYPE_DATA               4
+#define MSG_TYPE_SERVER_CLOSE       5
 
 struct ipc_message {
     char type;
@@ -30,6 +31,7 @@ int ipc_message_write (int fd, const struct ipc_message *m);
 int ipc_message_format_con (struct ipc_message *m, const char *payload, size_t length);
 int ipc_message_format_data (struct ipc_message *m, const char *payload, size_t length);
 int ipc_message_format_ack (struct ipc_message *m, const char *payload, size_t length);
+int ipc_message_format_server_close (struct ipc_message *m);
 
 int ipc_message_free (struct ipc_message *m);
 void ipc_message_print (const struct ipc_message *m);

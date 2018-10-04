@@ -159,15 +159,15 @@ int ipc_application_write (struct ipc_service *srv, const struct ipc_message *m)
 
 
 /*calculer le max filedescriptor*/
-static int getMaxFd(struct ipc_client_array *ap)
+static int getMaxFd(struct ipc_clients *clients)
 {
 
     int i;
     int max = 0;
 
-    for (i = 0; i < ap->size; i++ ) {
-        if (ap->clients[i]->proc_fd > max) {
-            max = ap->clients[i]->proc_fd;
+    for (i = 0; i < clients->size; i++ ) {
+        if (clients->clients[i]->proc_fd > max) {
+            max = clients->clients[i]->proc_fd;
         } 
     }
 
@@ -180,21 +180,18 @@ static int getMaxFd(struct ipc_client_array *ap)
  *  * le service qui attend de nouvelles connexions
  *  * un tableau de client qui souhaitent parler
  *
- * la fonction trouve le clientus/service actif et renvoie 
- * un entier correspondant à quel descripteur de fichier il faut lire
- *  * celui du serveur = nouvelle connexion entrante        (CONNECTION)
- *  * celui d'un ou plusieurs clientus = ils nous parlent  (APPLICATION)
- *  * les deux à la fois                                    (CON_APP)
+ *  0 = OK
+ * -1 = error
  */
 
-int ipc_server_select (struct ipc_client_array *ap, struct ipc_service *srv
-        , struct ipc_client_array *client)
+int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
+        , struct ipc_clients *active_clients, int *new_connection)
 {
-    assert (ap != NULL);
-    assert (client != NULL);
+    assert (clients != NULL);
+    assert (active_clients != NULL);
 
-    // delete previous read client array
-    ipc_client_array_free (client);
+    // delete previous read active_clients array
+    ipc_client_array_free (active_clients);
 
     int i, j;
     /* master file descriptor list */
@@ -212,44 +209,36 @@ int ipc_server_select (struct ipc_client_array *ap, struct ipc_service *srv
     /* add the listener to the master set */
     FD_SET(listener, &master);
 
-    for (i=0; i < ap->size; i++) {
-        FD_SET(ap->clients[i]->proc_fd, &master);
+    for (i=0; i < clients->size; i++) {
+        FD_SET(clients->clients[i]->proc_fd, &master);
     }
 
     /* keep track of the biggest file descriptor */
-    fdmax = getMaxFd(ap) > srv->service_fd ? getMaxFd(ap) : srv->service_fd; 
+    fdmax = getMaxFd(clients) > srv->service_fd ? getMaxFd(clients) : srv->service_fd; 
 
-    int is_listener = 0;
+	// printf ("loop ipc_server_select main_loop\n");
+	readf = master;
+	if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1) {
+		perror("select");
+		return -1;
+	}
 
-    do {
-        // printf ("loop ipc_server_select main_loop\n");
-        readf = master;
-        if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1) {
-            perror("select");
-            return -1;
-        }
+	/*run through the existing connections looking for data to be read*/
+	for (i = 0; i <= fdmax; i++) {
+		// printf ("loop ipc_server_select inner loop\n");
+		if (FD_ISSET(i, &readf)) {
+			if (i == listener) {
+				*new_connection = 1;
+			} else {
+				for(j = 0; j < clients->size; j++) {
+					// printf ("loop ipc_server_select inner inner loop\n");
+					if(i == clients->clients[j]->proc_fd ) {
+						ipc_client_add (active_clients, clients->clients[j]);
+					}
+				}
+			}
+		}
+	}
 
-        /*run through the existing connections looking for data to be read*/
-        for (i = 0; i <= fdmax; i++) {
-            // printf ("loop ipc_server_select inner loop\n");
-            if (FD_ISSET(i, &readf)) {
-                if (i == listener) {
-                    is_listener = 1;
-                } else {
-                    for(j = 0; j < ap->size; j++) {
-                        // printf ("loop ipc_server_select inner inner loop\n");
-                        if(i == ap->clients[j]->proc_fd ) {
-                            ipc_client_add (client, ap->clients[j]);
-                        }
-                    }
-                }
-            }
-        }
-    } while (0);
-
-    if (client->size > 0 && is_listener)
-        return CON_APP;
-    if (client->size > 0)
-        return APPLICATION;
-    return CONNECTION;
+	return 0;
 } 
