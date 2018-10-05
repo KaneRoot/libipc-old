@@ -187,6 +187,7 @@ static int getMaxFd(struct ipc_clients *clients)
 int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
         , struct ipc_clients *active_clients, int *new_connection)
 {
+	*new_connection = 0;
     assert (clients != NULL);
     assert (active_clients != NULL);
 
@@ -241,4 +242,4 @@ int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
 	}
 
 	return 0;
-} 
+}
