@@ -25,6 +25,7 @@ int ipc_server_close (struct ipc_service *srv);
 int ipc_server_close_client (struct ipc_client *p);
 int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p);
 
+// 1 on a recipient socket close
 int ipc_server_read (const struct ipc_client *, struct ipc_message *m);
 int ipc_server_write (const struct ipc_client *, const struct ipc_message *m);
 
@@ -40,6 +41,7 @@ int ipc_application_connection (int argc, char **argv, char **env
 		, struct ipc_service *, const char *);
 int ipc_application_close (struct ipc_service *);
 
+// 1 on a recipient socket close
 int ipc_application_read (struct ipc_service *srv, struct ipc_message *m);
 int ipc_application_write (struct ipc_service *, const struct ipc_message *m);
 
