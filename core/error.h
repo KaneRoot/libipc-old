@@ -3,6 +3,9 @@
 
 #include "logger.h"
 
+#define IPC_ERROR_NOT_ENOUGH_MEMORY                 100
+#define IPC_ERROR_WRONG_PARAMETERS                  101
+
 #define handle_error(msg) \
     do { log_error (msg); exit(EXIT_FAILURE); } while (0)
 

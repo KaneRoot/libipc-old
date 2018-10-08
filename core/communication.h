@@ -11,26 +11,10 @@
 
 #define COMMUNICATION_VERSION 1
 
-#define ER_MEM_ALLOC                                100
-#define ER_PARAMS                                   101
-
-#define TMPDIR "/run/ipc/"
-
-#define PATH_MAX 4096
-
-#define IPC_MESSAGE_CONNECTION              0
-#define IPC_MESSAGE_DATA                    1
-#define IPC_MESSAGE_DATA_AND_CONNECTION     2
-#define IPC_MESSAGE_SERVICE_STOP            3
-
-struct ipc_service {
-    unsigned int version;
-    unsigned int index;
-    char spath[PATH_MAX];
-    int service_fd;
-};
-
-
+#define IPC_WITH_UNIX_SOCKETS
+#ifdef  IPC_WITH_UNIX_SOCKETS
+#include "usocket.h"
+#endif
 // SERVICE
 
 // srv->version and srv->index must be already set

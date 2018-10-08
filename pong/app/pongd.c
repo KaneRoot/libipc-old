@@ -33,17 +33,19 @@ void handle_new_connection (struct ipc_clients *clients)
 
 void handle_new_msg (struct ipc_clients *clients, struct ipc_clients *clients_talking)
 {
+	int ret = 0;
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
-    int i;
+    int i = 0;
     for (i = 0; i < clients_talking->size; i++) {
         // printf ("loop handle_new_msg\n");
-        if (ipc_server_read (clients_talking->clients[i], &m) < 0) {
+		ret = ipc_server_read (clients_talking->clients[i], &m);
+        if (ret < 0) {
             handle_error("server_read < 0");
         }
 
         // close the client then delete it from the client array
-        if (m.type == MSG_TYPE_CLOSE) {
+		if (ret == 1) {
             cpt--;
             printf ("disconnection => %d client(s) remaining\n", cpt);
 
@@ -117,11 +119,12 @@ void main_loop ()
 /*
  * service ping-pong
  *
- * 1. creates the named pipe /tmp/<service>, then listens
- * 2. opens the named pipes in & out
- * 3. talks with the (test) program
- * 4. closes the test program named pipes
- * 5. removes the named pipe /tmp/<service>
+ * 1. creates the unix socket /run/ipc/<service>.sock, then listens
+ * 2. listen for new clients
+ * 3. then accept a new client, and send back everything it sends
+ * 4. close any client that closes its socket
+ *
+ * and finally, stop the program once a client sends a SERVER CLOSE command
  */
 
 int main(int argc, char * argv[], char **env)

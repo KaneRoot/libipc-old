@@ -7,28 +7,42 @@
 
 #define LISTEN_BACKLOG 128
 
-// same as recv(2)
-int usock_send (int fd, const char *buf, const int m_size);
+#define TMPDIR "/run/ipc/"
+#define PATH_MAX 4096
 
-// same as send(2)
-// if msize == NULL => -1
-// if buf == NULL => -1
-// if *buf == NULL => allocation of *msize bytes
-int usock_recv (int fd, char **buf, size_t *msize);
+struct ipc_service {
+    unsigned int version;
+    unsigned int index;
+    char spath[PATH_MAX];
+    int service_fd;
+};
 
-// same as close(2)
+/**
+ * for all functions: 0 ok, < 0 not ok
+ */
+
+// input:  len   = max buf size
+// output: *sent = nb received bytes
+int usock_send (const int fd, const char *buf, ssize_t len, ssize_t *sent);
+
+// -1 on msize == NULL or buf == NULL
+// -1 on unsupported errors from read(2)
+// exit on most errors from read(2)
+//
+// allocation of *len bytes on *buf == NULL
+//
+// output: *len = nb sent bytes
+int usock_recv (int fd, char **buf, ssize_t *len);
+
+// -1 on close(2) < 0
 int usock_close (int fd);
 
 // same as connect(2)
-// if fd == NULL => -1
+// -1 on fd == NULL
 int usock_connect (int *fd, const char *path);
 
-// if not ok => -1
-// if ok => 0
 int usock_init (int *fd, const char *path);
 
-// if not ok => -1
-// if ok => 0
 int usock_accept (int fd, int *pfd);
 
 // same as unlink(2)

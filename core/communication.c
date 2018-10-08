@@ -1,5 +1,4 @@
 #include "communication.h"
-#include "usocket.h"
 #include "utils.h"
 #include "error.h"
 
@@ -19,7 +18,7 @@ int ipc_server_init (int argc, char **argv, char **env
         , struct ipc_service *srv, const char *sname)
 {
     if (srv == NULL)
-        return ER_PARAMS;
+        return IPC_ERROR_WRONG_PARAMETERS;
 
     // TODO
     //      use the argc, argv and env parameters
@@ -34,7 +33,13 @@ int ipc_server_init (int argc, char **argv, char **env
     // gets the service path
     service_path (srv->spath, sname, srv->index, srv->version);
 
-    return usock_init (&srv->service_fd, srv->spath);
+    int ret = usock_init (&srv->service_fd, srv->spath);
+	if (ret < 0) {
+		handle_err ("ipc_server_init", "usock_init ret < 0");
+		return -1;
+	}
+
+	return 0;
 }
 
 int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p)
@@ -42,8 +47,13 @@ int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p)
     assert (srv != NULL);
     assert (p != NULL);
 
-    usock_accept (srv->service_fd, &p->proc_fd);
+    int ret = usock_accept (srv->service_fd, &p->proc_fd);
+	if (ret < 0) {
+		handle_err ("ipc_server_accept", "usock_accept < 0");
+		return -1;
+	}
 
+#if 0
     struct ipc_message m_con;
     memset (&m_con, 0, sizeof (struct ipc_message));
     ipc_server_read (p, &m_con);
@@ -55,6 +65,7 @@ int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p)
     ipc_message_format_ack (&m_ack, NULL, 0);
     ipc_server_write (p, &m_ack);
     ipc_message_free (&m_ack);
+#endif
 
     return 0;
 }
@@ -106,8 +117,13 @@ int ipc_application_connection (int argc, char **argv, char **env
     // gets the service path
     service_path (srv->spath, sname, srv->index, srv->version);
 
-    usock_connect (&srv->service_fd, srv->spath);
+    int ret = usock_connect (&srv->service_fd, srv->spath);
+	if (ret < 0) {
+		handle_err ("ipc_application_connection", "usock_connect ret <= 0");
+		return -1;
+	}
 
+#if 0
     // send connection string and receive acknowledgement
     struct ipc_message m_con;
     memset (&m_con, 0, sizeof (struct ipc_message));
@@ -130,10 +146,12 @@ int ipc_application_connection (int argc, char **argv, char **env
     assert (m_ack.type == MSG_TYPE_ACK);
     assert (m_ack.length == 0);
     ipc_message_free (&m_ack);
+#endif
 
     return 0;
 }
 
+#if 0
 // send a CLOSE message then close the socket
 int ipc_application_close (struct ipc_service *srv)
 {
@@ -146,6 +164,7 @@ int ipc_application_close (struct ipc_service *srv)
 
     return usock_close (srv->service_fd);
 }
+#endif
 
 int ipc_application_read (struct ipc_service *srv, struct ipc_message *m)
 {   
