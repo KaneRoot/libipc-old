@@ -52,7 +52,7 @@ lib LibIPC
 
 	fun ipc_server_client_gen(Client*, LibC::UInt, LibC::UInt)
 
-	fun ipc_client_array_free(Clients*)
+	fun ipc_clients_free(Clients*)
 end
 
 class IPC::Exception < ::Exception
@@ -119,11 +119,13 @@ class IPC::Service
 			while i < active_clients.size
 				client_pointer = active_clients.clients[i]
 
-				if LibIPC.ipc_server_read(client_pointer, pointerof(message)) < 0
-					raise Exception.new "ipc_server_read < 0"
-				end
+				return_value = LibIPC.ipc_server_read(client_pointer, pointerof(message))
 
-				if false # FIXME: There should be some kind of disconnect detection here.
+				if return_value < 0
+					raise Exception.new "ipc_server_read < 0"
+				elsif return_value == 1
+					LibIPC.ipc_client_del pointerof(@clients), client_pointer
+
 					# FIXME: Should probably not be a new Client. Having unique
 					#        variables helps in using Clients as keys.
 					yield Event::Disconnection.new Client.new client_pointer.value
@@ -134,7 +136,7 @@ class IPC::Service
 				i += 1
 			end
 
-			LibIPC.ipc_client_array_free(pointerof(active_clients))
+			LibIPC.ipc_clients_free(pointerof(active_clients))
 		end
 
 		close
@@ -183,8 +185,6 @@ class IPC::Client
 	def send(type : UInt8, payload : String)
 		message = LibIPC::Message.new type: type, length: payload.size, payload: payload.to_unsafe
 
-		p "!! !! !! TRYING TO SEND MESSAGE"
-		pp! message.length, String.new(message.payload)
 		if LibIPC.ipc_server_write(pointerof(@client), pointerof(message)) < 0
 			raise Exception.new "ipc_server_write < 0"
 		end
@@ -221,7 +221,6 @@ class IPC::Event
 end
 
 IPC::Service.new("pongd").loop do |event|
-	puts "Event received! #{event.class.to_s}"
 	if event.is_a? IPC::Event::Connection
 		puts "Connection: #{event.client}"
 	elsif event.is_a? IPC::Event::Disconnection
