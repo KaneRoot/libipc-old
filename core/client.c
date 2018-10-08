@@ -34,6 +34,7 @@ int ipc_client_add (struct ipc_clients *clients, struct ipc_client *p)
 {
     assert(clients != NULL);
     assert(p != NULL);
+
     clients->size++;
     clients->clients = realloc(clients->clients
             , sizeof(struct ipc_client) * clients->size);
@@ -62,7 +63,7 @@ int ipc_client_del (struct ipc_clients *clients, struct ipc_client *p)
             clients->clients[i] = clients->clients[clients->size-1];
             clients->size--;
             if (clients->size == 0) {
-                ipc_client_array_free (clients);
+                ipc_clients_free (clients);
             }
             else {
                 clients->clients = realloc(clients->clients
@@ -87,7 +88,7 @@ void client_print (struct ipc_client *p)
                 , p->proc_fd, p->index, p->version);
 }
 
-void ipc_client_array_print (struct ipc_clients *ap)
+void ipc_clients_print (struct ipc_clients *ap)
 {
     int i;
     for (i = 0; i < ap->size; i++) {
@@ -96,7 +97,7 @@ void ipc_client_array_print (struct ipc_clients *ap)
     }
 }
 
-void ipc_client_array_free (struct ipc_clients *ap)
+void ipc_clients_free (struct ipc_clients *ap)
 {
     if (ap->clients != NULL) {
         free (ap->clients);

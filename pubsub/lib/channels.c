@@ -19,7 +19,7 @@ void pubsubd_channel_print (const struct channel *chan)
         handle_err ("pubsubd_channel_print", "chan->subs == NULL");
     }
     else {
-        ipc_client_array_print (chan->subs);
+        ipc_clients_print (chan->subs);
     }
 }
 
@@ -115,7 +115,7 @@ void pubsubd_channel_free (struct channel * c)
     }
 
     if (c->subs != NULL) {
-        ipc_client_array_free (c->subs);
+        ipc_clients_free (c->subs);
         free (c->subs);
     }
 }

@@ -22,7 +22,7 @@ void non_interactive (int argc, char *argv[], char *env[])
     srv.version = 0;
 
     // init service
-    if (ipc_application_connection (argc, argv, env, &srv, SERVICE_NAME, NULL, 0) < 0) {
+    if (ipc_application_connection (argc, argv, env, &srv, SERVICE_NAME) < 0) {
         handle_err("main", "server_init < 0");
         exit (EXIT_FAILURE);
     }
@@ -35,7 +35,7 @@ void non_interactive (int argc, char *argv[], char *env[])
         handle_err("main", "application_write < 0");
         exit (EXIT_FAILURE);
     }
-    ipc_message_free (&m);
+    ipc_message_empty (&m);
 
     if (ipc_application_read (&srv, &m) < 0) {
         handle_err("main", "application_read < 0");
@@ -43,7 +43,7 @@ void non_interactive (int argc, char *argv[], char *env[])
     }
 
     printf ("msg recv: %s\n", m.payload);
-    ipc_message_free (&m);
+    ipc_message_empty (&m);
 
     if (ipc_application_close (&srv) < 0) {
         handle_err("main", "application_close < 0");
@@ -69,7 +69,7 @@ void interactive (int argc, char *argv[], char *env[])
     srv.version = 0;
 
     // init service
-    if (ipc_application_connection (argc, argv, env, &srv, SERVICE_NAME, NULL, 0) < 0) {
+    if (ipc_application_connection (argc, argv, env, &srv, SERVICE_NAME) < 0) {
         handle_err ("main", "server_init < 0");
         exit (EXIT_FAILURE);
     }
@@ -96,7 +96,7 @@ void interactive (int argc, char *argv[], char *env[])
             handle_err("main", "application_write < 0");
             exit (EXIT_FAILURE);
         }
-        ipc_message_free (&m);
+        ipc_message_empty (&m);
 
         if (ipc_application_read (&srv, &m) < 0) {
             handle_err("main", "application_read < 0");
@@ -104,7 +104,7 @@ void interactive (int argc, char *argv[], char *env[])
         }
 
         printf ("msg recv: %s", m.payload);
-        ipc_message_free (&m);
+        ipc_message_empty (&m);
     }
 
 	if (ask_server_to_quit) {
@@ -114,7 +114,7 @@ void interactive (int argc, char *argv[], char *env[])
             handle_err("main", "application_write < 0");
             exit (EXIT_FAILURE);
         }
-        ipc_message_free (&m);
+        ipc_message_empty (&m);
 	} else if (ipc_application_close (&srv) < 0) {
         handle_err("main", "application_close < 0");
         exit (EXIT_FAILURE);

@@ -246,13 +246,6 @@ int usock_close (int fd)
 {
     int ret = 0;
 
-	ret = fsync (fd);
-    if (ret < 0) {
-        handle_err ("usock_close", "fsync ret < 0");
-        perror ("closing");
-		return -1;
-    }
-
 	ret = close (fd);
     if (ret < 0) {
         handle_err ("usock_close", "close ret < 0");

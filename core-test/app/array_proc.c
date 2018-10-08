@@ -20,15 +20,15 @@ int main()
         }
     }
 
-    ipc_client_array_print(&clients);
+    ipc_clients_print(&clients);
 
     ret = ipc_client_del(&clients, &client_tab[2]);
     if(ret < 0) {
         printf("erreur %d\n", ret );
     }
-    ipc_client_array_print(&clients);
+    ipc_clients_print(&clients);
 
-    ipc_client_array_free (&clients);
+    ipc_clients_free (&clients);
 
     return 0;
 }

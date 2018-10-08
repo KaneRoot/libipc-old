@@ -53,39 +53,20 @@ int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p)
 		return -1;
 	}
 
-#if 0
-    struct ipc_message m_con;
-    memset (&m_con, 0, sizeof (struct ipc_message));
-    ipc_server_read (p, &m_con);
-    // TODO: handle the parameters in the first message
-    ipc_message_free (&m_con);
-
-    struct ipc_message m_ack;
-    memset (&m_ack, 0, sizeof (struct ipc_message));
-    ipc_message_format_ack (&m_ack, NULL, 0);
-    ipc_server_write (p, &m_ack);
-    ipc_message_free (&m_ack);
-#endif
-
     return 0;
 }
 
+// empty the srv structure
 int ipc_server_close (struct ipc_service *srv)
 {
     usock_close (srv->service_fd);
-    return usock_remove (srv->spath);
+	int ret = usock_remove (srv->spath);
+	ipc_service_empty (srv);
+    return ret;
 }
 
 int ipc_server_close_client (struct ipc_client *p)
 {
-    // struct ipc_message m_ack_dis;
-    // memset (&m_ack_dis, 0, sizeof (struct ipc_message));
-    // m_ack_dis.type = MSG_TYPE_CLOSE;
-
-    // if (ipc_message_write (p->proc_fd, &m_ack_dis) < 0) {
-    //     handle_err ("server_close_client", "ipc_message_write < 0");
-    // }
-
     return usock_close (p->proc_fd);
 }
 
@@ -100,8 +81,7 @@ int ipc_server_write (const struct ipc_client *p, const struct ipc_message *m)
 }
 
 int ipc_application_connection (int argc, char **argv, char **env
-        , struct ipc_service *srv, const char *sname
-        , const char *connectionstr, size_t msize)
+        , struct ipc_service *srv, const char *sname)
 {
     argc = argc;
     argv = argv;
@@ -123,48 +103,14 @@ int ipc_application_connection (int argc, char **argv, char **env
 		return -1;
 	}
 
-#if 0
-    // send connection string and receive acknowledgement
-    struct ipc_message m_con;
-    memset (&m_con, 0, sizeof (struct ipc_message));
-
-    // format the connection msg
-    if (ipc_message_format_con (&m_con, connectionstr, msize) < 0) {
-        handle_err ("application_connection", "ipc_message_format_con");
-        return -1;
-    }
-
-    // send connection msg
-    ipc_application_write (srv, &m_con);
-    ipc_message_free (&m_con);
-
-    // receive ack msg
-    struct ipc_message m_ack;
-    memset (&m_ack, 0, sizeof (struct ipc_message));
-    ipc_application_read (srv, &m_ack);
-
-    assert (m_ack.type == MSG_TYPE_ACK);
-    assert (m_ack.length == 0);
-    ipc_message_free (&m_ack);
-#endif
-
     return 0;
 }
 
-#if 0
 // send a CLOSE message then close the socket
 int ipc_application_close (struct ipc_service *srv)
 {
-    struct ipc_message m;
-    memset (&m, 0, sizeof (struct ipc_message));
-    m.type = MSG_TYPE_CLOSE;
-    if (ipc_message_write (srv->service_fd, &m) < 0) {
-        handle_err ("application_close", "ipc_message_write < 0");
-    }
-
     return usock_close (srv->service_fd);
 }
-#endif
 
 int ipc_application_read (struct ipc_service *srv, struct ipc_message *m)
 {   
@@ -211,7 +157,7 @@ int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
     assert (active_clients != NULL);
 
     // delete previous read active_clients array
-    ipc_client_array_free (active_clients);
+    ipc_clients_free (active_clients);
 
     int i, j;
     /* master file descriptor list */

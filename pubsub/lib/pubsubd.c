@@ -186,7 +186,7 @@ void pubsubd_main_loop (struct ipc_service *srv, struct channels *chans)
             handle_new_connection (srv, &ap);
             handle_new_msg (chans, &ap, &proc_to_read);
         }
-        ipc_client_array_free (&proc_to_read);
+        ipc_clients_free (&proc_to_read);
     }
 
     for (i = 0; i < ap.size; i++) {

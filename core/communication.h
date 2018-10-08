@@ -37,7 +37,7 @@ int ipc_server_select (struct ipc_clients * clients, struct ipc_service *srv
 // send the connection string to $TMP/<service>
 // fill srv->spath && srv->service_fd
 int ipc_application_connection (int argc, char **argv, char **env
-		, struct ipc_service *, const char *, const char *, size_t);
+		, struct ipc_service *, const char *);
 int ipc_application_close (struct ipc_service *);
 
 int ipc_application_read (struct ipc_service *srv, struct ipc_message *m);

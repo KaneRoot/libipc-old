@@ -39,37 +39,63 @@ void handle_new_msg (struct ipc_clients *clients, struct ipc_clients *clients_ta
     int i = 0;
     for (i = 0; i < clients_talking->size; i++) {
         // printf ("loop handle_new_msg\n");
-		ret = ipc_server_read (clients_talking->clients[i], &m);
+
+		// current talking client
+		struct ipc_client *pc = clients_talking->clients[i];
+
+		ret = ipc_server_read (pc, &m);
         if (ret < 0) {
             handle_error("server_read < 0");
         }
 
-        // close the client then delete it from the client array
+        // close the client then delete it from clients
 		if (ret == 1) {
             cpt--;
             printf ("disconnection => %d client(s) remaining\n", cpt);
 
-            if (ipc_server_close_client (clients_talking->clients[i]) < 0)
+            if (ipc_server_close_client (pc) < 0)
                 handle_err( "handle_new_msg", "server_close_client < 0");
-            if (ipc_client_del (clients, clients_talking->clients[i]) < 0)
+            if (ipc_client_del (clients, pc) < 0)
                 handle_err( "handle_new_msg", "ipc_client_del < 0");
-            if (ipc_client_del (clients_talking, clients_talking->clients[i]) < 0)
+            if (ipc_client_del (clients_talking, pc) < 0)
                 handle_err( "handle_new_msg", "ipc_client_del < 0");
             i--;
+
+			// free the ipc_client structure
+			free (pc);
             continue;
 		}
 
 		if (m.type == MSG_TYPE_SERVER_CLOSE) {
+			// free remaining clients
+			for (int y = 0; y < clients->size ; y++) {
+				struct ipc_client *cli = clients->clients[y];
+				// TODO: replace with specific ipc_client_empty function
+				if (cli != NULL)
+					free (cli);
+				clients->clients[y] = NULL;
+			}
+
+			ipc_clients_free (clients);
+			ipc_clients_free (clients_talking);
+
 			if (ipc_server_close (srv) < 0) {
 				handle_error("server_close < 0");
 			}
+
+			ipc_message_empty (&m);
+			free (srv);
 			exit (0);
 		}
 
         printf ("new message : %s", m.payload);
-        if (ipc_server_write (clients_talking->clients[i], &m) < 0) {
+        if (ipc_server_write (pc, &m) < 0) {
             handle_err( "handle_new_msg", "server_write < 0");
         }
+
+		// empty the message structure
+		ipc_message_empty (&m);
+		memset (&m, 0, sizeof m);
     }
 }
 
@@ -83,7 +109,7 @@ void handle_new_msg (struct ipc_clients *clients, struct ipc_clients *clients_ta
 
 void main_loop ()
 {
-    int i, ret = 0; 
+    int ret = 0; 
 
     struct ipc_clients clients;
     memset(&clients, 0, sizeof(struct ipc_clients));
@@ -105,14 +131,10 @@ void main_loop ()
 		if (clients_talking.size > 0) {
             handle_new_msg (&clients, &clients_talking);
         }
-        ipc_client_array_free (&clients_talking);
+        ipc_clients_free (&clients_talking);
     }
-
-    for (i = 0; i < clients.size; i++) {
-        if (ipc_server_close_client (clients.clients[i]) < 0) {
-            handle_error( "server_close_client < 0");
-        }
-    }
+	// should never go there
+	exit (1);
 }
 
 

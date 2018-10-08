@@ -12,11 +12,12 @@ struct ipc_clients {
 	int size;
 };
 
+// store and remove only pointers on allocated structures
 int ipc_client_add (struct ipc_clients *, struct ipc_client *);
-int ipc_client_del (struct ipc_clients *clients, struct ipc_client *p);
+int ipc_client_del (struct ipc_clients *, struct ipc_client *);
 
-void ipc_client_array_print (struct ipc_clients *);
-void ipc_client_array_free (struct ipc_clients *);
+void ipc_clients_print (struct ipc_clients *);
+void ipc_clients_free  (struct ipc_clients *);
 
 struct ipc_client * ipc_server_client_copy (const struct ipc_client *p);
 int ipc_server_client_eq (const struct ipc_client *p1, const struct ipc_client *p2);

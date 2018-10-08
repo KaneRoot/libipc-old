@@ -10,7 +10,7 @@ void ipc_message_print (const struct ipc_message *m)
     printf ("msg: type %d len %d\n", m->type, m->length);
 }
 
-int ipc_message_format_read (struct ipc_message *m, const char *buf, size_t msize)
+int ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msize)
 {
     assert (m != NULL);
     assert (buf != NULL);
@@ -37,7 +37,7 @@ int ipc_message_format_read (struct ipc_message *m, const char *buf, size_t msiz
     return 0;
 }
 
-int ipc_message_format_write (const struct ipc_message *m, char **buf, size_t *msize)
+int ipc_message_format_write (const struct ipc_message *m, char **buf, ssize_t *msize)
 {
     assert (m != NULL);
     assert (buf != NULL);
@@ -79,7 +79,7 @@ int ipc_message_read (int fd, struct ipc_message *m)
     assert (m != NULL);
 
     char *buf = NULL;
-    size_t msize = BUFSIZ;
+    ssize_t msize = BUFSIZ;
 
     int ret = usock_recv (fd, &buf, &msize);
     if (ret < 0) {
@@ -134,7 +134,7 @@ int ipc_message_write (int fd, const struct ipc_message *m)
 
 // MSG FORMAT
 
-int ipc_message_format (struct ipc_message *m, char type, const char *payload, size_t length)
+int ipc_message_format (struct ipc_message *m, char type, const char *payload, ssize_t length)
 {
     assert (m != NULL);
     assert (length + 3 <= BUFSIZ);
@@ -166,22 +166,10 @@ int ipc_message_format (struct ipc_message *m, char type, const char *payload, s
     return 0;
 }
 
-int ipc_message_format_data (struct ipc_message *m, const char *payload, size_t length)
+int ipc_message_format_data (struct ipc_message *m, const char *payload, ssize_t length)
 {
     return ipc_message_format (m, MSG_TYPE_DATA, payload, length);
 }
-
-#if 0
-
-int ipc_message_format_con (struct ipc_message *m, const char *payload, size_t length)
-{
-    return ipc_message_format (m, MSG_TYPE_CON, payload, length);
-}
-int ipc_message_format_ack (struct ipc_message *m, const char *payload, size_t length)
-{
-    return ipc_message_format (m, MSG_TYPE_ACK, payload, length);
-}
-#endif
 
 int ipc_message_format_server_close (struct ipc_message *m)
 {

@@ -20,9 +20,9 @@ struct ipc_message {
 };
 
 // used to create msg structure from buffer
-int ipc_message_format_read (struct ipc_message *m, const char *buf, size_t msize);
+int ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msize);
 // used to create buffer from msg structure
-int ipc_message_format_write (const struct ipc_message *m, char **buf, size_t *msize);
+int ipc_message_format_write (const struct ipc_message *m, char **buf, ssize_t *msize);
 
 // read a structure msg from fd
 // 1 on a recipient socket close
@@ -30,9 +30,7 @@ int ipc_message_read (int fd, struct ipc_message *m);
 // write a structure msg to fd
 int ipc_message_write (int fd, const struct ipc_message *m);
 
-// int ipc_message_format_con (struct ipc_message *m, const char *payload, size_t length);
-int ipc_message_format_data (struct ipc_message *m, const char *payload, size_t length);
-// int ipc_message_format_ack (struct ipc_message *m, const char *payload, size_t length);
+int ipc_message_format_data (struct ipc_message *m, const char *payload, ssize_t length);
 int ipc_message_format_server_close (struct ipc_message *m);
 
 int ipc_message_empty (struct ipc_message *m);

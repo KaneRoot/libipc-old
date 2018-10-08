@@ -48,4 +48,6 @@ int usock_accept (int fd, int *pfd);
 // same as unlink(2)
 int usock_remove (const char *path);
 
+static inline int ipc_service_empty (struct ipc_service *srv) { srv = srv; return 0 ;};
+
 #endif
