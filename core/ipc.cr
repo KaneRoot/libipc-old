@@ -28,7 +28,7 @@ lib LibIPC
 	# FIXME: IPC.initialize:
 	#  - throw exceptions on error.
 	#  - Make most arguments optional.
-	fun ipc_server_init(argc : LibC::Int, argv : LibC::Char**, env : LibC::Char**, service : Service*, sname : LibC::Char*) : LibC::Int
+	fun ipc_server_init(env : LibC::Char**, service : Service*, sname : LibC::Char*) : LibC::Int
 	# FIXME: IPC.(destroy?)
 	fun ipc_server_close(Service*) : LibC::Int
 	fun ipc_server_close_client(Client*) : LibC::Int
@@ -39,7 +39,7 @@ lib LibIPC
 
 	fun ipc_server_select(Clients*, Service*, Clients*, LibC::Int*) : LibC::Int
 
-	fun ipc_application_connection(LibC::Int, LibC::Char**, LibC::Char**, Service*, LibC::Char*, LibC::Char*, LibC::UInt)
+	fun ipc_application_connection(LibC::Char**, Service*, LibC::Char*) : LibC::Int
 	fun ipc_application_close(Service*) : LibC::Int
 	fun ipc_application_read(Service*, Message*) : LibC::Int
 	fun ipc_application_write(Service*, Message*) : LibC::Int
@@ -66,7 +66,7 @@ class IPC::Service
 	getter service = LibIPC::Service.new
 
 	def initialize(name : String)
-		if LibIPC.ipc_server_init(ARGV.size, ARGV.map(&.to_unsafe).to_unsafe, LibC.environ, pointerof(@service), name) < 0
+		if LibIPC.ipc_server_init(LibC.environ, pointerof(@service), name) < 0
 			raise Exception.new "ipc_server_init < 0" # FIXME: Add proper descriptions here.
 		end
 
@@ -89,7 +89,7 @@ class IPC::Service
 	end
 
 	def accept
-		::IPC::Client.new pointerof(@service)
+		::IPC::Server::Client.new pointerof(@service)
 	end
 
 	def loop(&block)
@@ -112,7 +112,7 @@ class IPC::Service
 					raise Exception.new "ipc_client_add < 0"
 				end
 
-				yield ::IPC::Event::Connection.new ::IPC::Client.new client
+				yield ::IPC::Event::Connection.new ::IPC::Server::Client.new client
 			end
 
 			i = 0
@@ -126,11 +126,11 @@ class IPC::Service
 				elsif return_value == 1
 					LibIPC.ipc_client_del pointerof(@clients), client_pointer
 
-					# FIXME: Should probably not be a new Client. Having unique
-					#        variables helps in using Clients as keys.
-					yield Event::Disconnection.new Client.new client_pointer.value
+					# FIXME: Should probably not be a new Server::Client. Having unique
+					#        variables helps in using Server::Clients as keys.
+					yield Event::Disconnection.new Server::Client.new client_pointer.value
 				else
-					yield Event::Message.new(IPC::Message.new(message.type, message.length, message.payload), Client.new client_pointer.value)
+					yield Event::Message.new(IPC::Message.new(message.type, message.length, message.payload), Server::Client.new client_pointer.value)
 				end
 
 				i += 1
@@ -145,8 +145,10 @@ end
 
 class IPC::Message
 	enum Type
-		SERVER_CLOSE
-		ERROR
+		CLOSE
+		CONNECTION
+		SYN
+		ACK
 		DATA
 	end
 
@@ -159,7 +161,7 @@ class IPC::Message
 	end
 end
 
-class IPC::Client
+class IPC::Server::Client
 	@closed = false
 	getter client = LibIPC::Client.new
 
@@ -199,35 +201,62 @@ end
 
 class IPC::Event
 	class Connection
-		getter client : ::IPC::Client
+		getter client : ::IPC::Server::Client
 		def initialize(@client)
 		end
 	end
 
 	class Disconnection
-		getter client : ::IPC::Client
+		getter client : ::IPC::Server::Client
 		def initialize(@client)
 		end
 	end
 
 	class Message
 		getter message : ::IPC::Message
-		getter client : ::IPC::Client
+		getter client : ::IPC::Server::Client
 		def initialize(@message, @client)
 		end
 	end
 end
 
-IPC::Service.new("pongd").loop do |event|
-	if event.is_a? IPC::Event::Connection
-		puts "Connection: #{event.client}"
-	elsif event.is_a? IPC::Event::Disconnection
-		puts "Disconnection: #{event.client}"
-	elsif event.is_a? IPC::Event::Message
-		next if event.message.type == 0
+class IPC::Client
+	@service = LibIPC::Service.new
 
-		puts "Message: #{event.message.payload}"
-		event.client.send event.message.type, event.message.payload
+	def initialize(@service_name : String)
+		if LibIPC.ipc_application_connection(LibC.environ, pointerof(@service), @service_name) < 0
+			raise Exception.new "ipc_application_connection < 0"
+		end
+	end
+	def initialize(name, &block)
+		initialize(name)
+
+		yield self
+
+		close
+	end
+
+	def send(type, payload : String)
+		message = LibIPC::Message.new type: type, length: payload.size, payload: payload.to_unsafe
+
+		if LibIPC.ipc_application_write(pointerof(@service), pointerof(message)) < 0
+			raise Exception.new "ipc_application_write < 0"
+		end
+	end
+
+	def read
+		message = LibIPC::Message.new
+		if LibIPC.ipc_application_read(pointerof(@service), pointerof(message)) < 0
+			raise Exception.new "ipc_application_read < 0"
+		end
+
+		IPC::Message.new message.type, message.length, message.payload
+	end
+
+	def close
+		if LibIPC.ipc_application_close(pointerof(@service)) < 0
+			raise Exception.new "ipc_application_close < 0"
+		end
 	end
 end
 
