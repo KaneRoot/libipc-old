@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "msg.h"
+#include "message.h"
 #include "../../core/error.h"
 
 void remote_message_serialize (const struct remoted_msg *msg, char **data, size_t *len)

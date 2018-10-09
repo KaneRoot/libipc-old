@@ -2,7 +2,7 @@
 #include "../../core/error.h"
 #include "../lib/remoted.h"
 #include "../lib/remotec.h"
-#include "../lib/msg.h"
+#include "../lib/message.h"
 
 #include <stdlib.h>
 #include <pthread.h>

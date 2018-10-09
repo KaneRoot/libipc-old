@@ -3,8 +3,8 @@
 
 // #include "../../core/pubsub.h"
 #include "../../core/client.h"
-#include "../../core/msg.h"
-#include "msg.h"
+#include "../../core/message.h"
+#include "message.h"
 #include "channels.h"
 
 #define PUBSUBD_SERVICE_NAME "pubsubd"

@@ -1,5 +1,5 @@
 #include "../../core/communication.h"
-#include "../../core/msg.h"
+#include "../../core/message.h"
 #include "../../core/client.h"
 #include "../../core/utils.h"
 #include "../../core/error.h"

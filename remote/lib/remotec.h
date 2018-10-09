@@ -2,7 +2,7 @@
 #define __REMOTEC_H__
 
 #include "../../core/client.h"
-#include "../../core/msg.h"
+#include "../../core/message.h"
 #include "remoted.h"
 
 /* TODO */

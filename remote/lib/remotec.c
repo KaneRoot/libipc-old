@@ -1,6 +1,6 @@
 #include "../../core/communication.h"
 #include "../../core/error.h"
-#include "msg.h"
+#include "message.h"
 #include "remotec.h"
 #include "remoted.h"
 #include <stdio.h>

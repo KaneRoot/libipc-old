@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../core/msg.h"
+#include "../../core/message.h"
 #include "../../core/error.h"
 #include "../../core/communication.h"
 

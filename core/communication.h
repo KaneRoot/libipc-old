@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h> // error numbers
-#include "msg.h"
+#include "message.h"
 
 #include "client.h"
 

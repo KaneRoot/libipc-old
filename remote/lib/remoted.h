@@ -2,8 +2,8 @@
 #define __REMOTED_H__
 
 #include "../../core/client.h"
-#include "../../core/msg.h"
-#include "msg.h"
+#include "../../core/message.h"
+#include "message.h"
 
 #define REMOTED_SERVICE_NAME "remoted"
 

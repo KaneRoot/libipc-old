@@ -5,7 +5,7 @@
 #include "../../core/client.h"
 #include "../../core/queue.h"
 
-#include "msg.h"
+#include "message.h"
 
 enum subscriber_action {PUBSUB_QUIT = 1, PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BOTH};
 
