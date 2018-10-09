@@ -5,13 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-// FIXME, removed messages types: MSG_TYPE_CON, MSG_TYPE_CLOSE, MSG_TYPE_ACK
-// this implies an underlying communication that is always correctly handled by the system
+// the underlying communication must always correctly handled by the system
 // (currently: unix sockets)
 
-#define MSG_TYPE_SERVER_CLOSE       0
-#define MSG_TYPE_ERR                1
-#define MSG_TYPE_DATA               2
+enum msg_types {
+	MSG_TYPE_SERVER_CLOSE = 0
+	, MSG_TYPE_ERR
+	, MSG_TYPE_DATA
+} message_types;
 
 struct ipc_message {
     char type;

@@ -145,10 +145,8 @@ end
 
 class IPC::Message
 	enum Type
-		CLOSE
-		CONNECTION
-		SYN
-		ACK
+		SERVER_CLOSE
+		ERROR
 		DATA
 	end
 
