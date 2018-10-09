@@ -151,6 +151,9 @@ void main_loop ()
 
 int main(int argc, char * argv[], char **env)
 {
+	argc = argc; // warnings
+	argv = argv; // warnings
+
 	srv = malloc (sizeof (struct ipc_service));
 	if (srv == NULL) {
 		exit (1);
@@ -161,7 +164,7 @@ int main(int argc, char * argv[], char **env)
 
     // unlink("/tmp/ipc/pongd-0-0");
 
-    if (ipc_server_init (argc, argv, env, srv, PONGD_SERVICE_NAME) < 0) {
+    if (ipc_server_init (env, srv, PONGD_SERVICE_NAME) < 0) {
         handle_error("server_init < 0");
         return EXIT_FAILURE;
     }

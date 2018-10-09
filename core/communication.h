@@ -19,7 +19,7 @@
 
 // srv->version and srv->index must be already set
 // init unix socket + fill srv->spath
-int ipc_server_init (int argc, char **argv, char **env
+int ipc_server_init (char **env
 		, struct ipc_service *srv, const char *sname);
 int ipc_server_close (struct ipc_service *srv);
 int ipc_server_close_client (struct ipc_client *p);
@@ -37,7 +37,7 @@ int ipc_server_select (struct ipc_clients * clients, struct ipc_service *srv
 // Initialize connection with unix socket
 // send the connection string to $TMP/<service>
 // fill srv->spath && srv->service_fd
-int ipc_application_connection (int argc, char **argv, char **env
+int ipc_application_connection (char **env
 		, struct ipc_service *, const char *);
 int ipc_application_close (struct ipc_service *);
 

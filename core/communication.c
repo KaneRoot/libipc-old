@@ -14,20 +14,18 @@ void service_path (char *path, const char *sname, int index, int version)
     snprintf (path, PATH_MAX, "%s/%s-%d-%d", TMPDIR, sname, index, version);
 }
 
-int ipc_server_init (int argc, char **argv, char **env
+int ipc_server_init (char **env
         , struct ipc_service *srv, const char *sname)
 {
     if (srv == NULL)
         return IPC_ERROR_WRONG_PARAMETERS;
 
     // TODO
-    //      use the argc, argv and env parameters
+    //      use env parameters
     //      it will be useful to change some parameters transparently
     //      ex: to get resources from other machines, choosing the
     //          remote with environment variables
 
-    argc = argc;
-    argv = argv;
     env = env;
 
     // gets the service path
@@ -80,11 +78,15 @@ int ipc_server_write (const struct ipc_client *p, const struct ipc_message *m)
     return ipc_message_write (p->proc_fd, m);
 }
 
-int ipc_application_connection (int argc, char **argv, char **env
+int ipc_application_connection (char **env
         , struct ipc_service *srv, const char *sname)
 {
-    argc = argc;
-    argv = argv;
+    // TODO
+    //      use env parameters
+    //      it will be useful to change some parameters transparently
+    //      ex: to get resources from other machines, choosing the
+    //          remote with environment variables
+
     env = env;
 
     assert (srv != NULL);

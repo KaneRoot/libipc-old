@@ -10,7 +10,7 @@
 #define MSG "coucou"
 #define SERVICE_NAME "pongd"
 
-void non_interactive (int argc, char *argv[], char *env[])
+void non_interactive (char *env[])
 {
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
@@ -22,8 +22,8 @@ void non_interactive (int argc, char *argv[], char *env[])
     srv.version = 0;
 
     // init service
-    if (ipc_application_connection (argc, argv, env, &srv, SERVICE_NAME) < 0) {
-        handle_err("main", "server_init < 0");
+    if (ipc_application_connection (env, &srv, SERVICE_NAME) < 0) {
+        handle_err("main", "ipc_application_connection < 0");
         exit (EXIT_FAILURE);
     }
 
@@ -51,7 +51,7 @@ void non_interactive (int argc, char *argv[], char *env[])
     }
 }
 
-void interactive (int argc, char *argv[], char *env[])
+void interactive (char *env[])
 {
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
@@ -69,8 +69,8 @@ void interactive (int argc, char *argv[], char *env[])
     srv.version = 0;
 
     // init service
-    if (ipc_application_connection (argc, argv, env, &srv, SERVICE_NAME) < 0) {
-        handle_err ("main", "server_init < 0");
+    if (ipc_application_connection (env, &srv, SERVICE_NAME) < 0) {
+        handle_err ("main", "ipc_application_connection < 0");
         exit (EXIT_FAILURE);
     }
 
@@ -123,10 +123,13 @@ void interactive (int argc, char *argv[], char *env[])
 
 int main (int argc, char *argv[], char *env[])
 {
+	argc = argc; // warnings
+	argv = argv; // warnings
+
     if (argc == 1)
-        non_interactive (argc, argv, env);
+        non_interactive (env);
     else
-        interactive (argc, argv, env);
+        interactive (env);
 
     return EXIT_SUCCESS;
 }
