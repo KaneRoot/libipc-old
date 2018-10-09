@@ -27,9 +27,9 @@ libipc.clean: libipc.so.clean libipc.a.clean
 
 libipc.uninstall: libipc.so.uninstall libipc.a.uninstall
 
-libipc.so: communication.o logger.o msg.o process.o usocket.o utils.o 
+libipc.so: communication.o logger.o message.o process.o usocket.o utils.o 
 	@echo '[01;32m  LD >    [01;37mlibipc.so[00m'
-	$(Q)$(CC) -o libipc.so -shared $(LDFLAGS) communication.o logger.o msg.o process.o usocket.o utils.o 
+	$(Q)$(CC) -o libipc.so -shared $(LDFLAGS) communication.o logger.o message.o process.o usocket.o utils.o 
 
 libipc.so.install: libipc.so
 	@echo '[01;31m  IN >    [01;37m$(LIBDIR)/libipc.so.0.0.1[00m'
@@ -56,9 +56,9 @@ libipc.so.uninstall:
 	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so[00m'
 	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so'
 
-libipc.a: communication.o logger.o msg.o process.o usocket.o utils.o 
+libipc.a: communication.o logger.o message.o process.o usocket.o utils.o 
 	@echo '[01;32m  LD >    [01;37mlibipc.a[00m'
-	$(Q)$(AR) rc 'libipc.a' communication.o logger.o msg.o process.o usocket.o utils.o
+	$(Q)$(AR) rc 'libipc.a' communication.o logger.o message.o process.o usocket.o utils.o
 
 libipc.a.install: libipc.a
 	@echo '[01;31m  IN >    [01;37m$(LIBDIR)/libipc.a[00m'
@@ -97,17 +97,17 @@ logger.o.clean:
 
 logger.o.uninstall:
 
-msg.o: msg.c ./msg.h ./error.h ./usocket.h
+message.o: message.c ./message.h ./error.h ./usocket.h
 	@echo '[01;34m  CC >    [01;37mmsg.o[00m'
-	$(Q)$(CC) $(CFLAGS) -fPIC  -c msg.c  -fPIC  -o msg.o
+	$(Q)$(CC) $(CFLAGS) -fPIC  -c message.c  -fPIC  -o message.o
 
-msg.o.install:
+message.o.install:
 
-msg.o.clean:
+message.o.clean:
 	@echo '[01;37m  RM >    [01;37mmsg.o[00m'
-	$(Q)rm -f msg.o
+	$(Q)rm -f message.o
 
-msg.o.uninstall:
+message.o.uninstall:
 
 process.o: process.c ./process.h
 	@echo '[01;34m  CC >    [01;37mprocess.o[00m'
@@ -163,12 +163,12 @@ $(DESTDIR)$(INCLUDEDIR):
 $(DESTDIR)$(MANDIR):
 	@echo '[01;35m  DIR >   [01;37m$(MANDIR)[00m'
 	$(Q)mkdir -p $(DESTDIR)$(MANDIR)
-install: subdirs.install libipc.install libipc.so.install libipc.a.install communication.o.install logger.o.install msg.o.install process.o.install usocket.o.install utils.o.install communication.o.install logger.o.install msg.o.install process.o.install usocket.o.install utils.o.install
+install: subdirs.install libipc.install libipc.so.install libipc.a.install communication.o.install logger.o.install message.o.install process.o.install usocket.o.install utils.o.install communication.o.install logger.o.install message.o.install process.o.install usocket.o.install utils.o.install
 	@:
 
 subdirs.install:
 
-uninstall: subdirs.uninstall libipc.uninstall libipc.so.uninstall libipc.a.uninstall communication.o.uninstall logger.o.uninstall msg.o.uninstall process.o.uninstall usocket.o.uninstall utils.o.uninstall communication.o.uninstall logger.o.uninstall msg.o.uninstall process.o.uninstall usocket.o.uninstall utils.o.uninstall
+uninstall: subdirs.uninstall libipc.uninstall libipc.so.uninstall libipc.a.uninstall communication.o.uninstall logger.o.uninstall message.o.uninstall process.o.uninstall usocket.o.uninstall utils.o.uninstall communication.o.uninstall logger.o.uninstall message.o.uninstall process.o.uninstall usocket.o.uninstall utils.o.uninstall
 	@:
 
 subdirs.uninstall:
@@ -178,7 +178,7 @@ test: all subdirs subdirs.test
 
 subdirs.test:
 
-clean: libipc.clean libipc.so.clean libipc.a.clean communication.o.clean logger.o.clean msg.o.clean process.o.clean usocket.o.clean utils.o.clean communication.o.clean logger.o.clean msg.o.clean process.o.clean usocket.o.clean utils.o.clean
+clean: libipc.clean libipc.so.clean libipc.a.clean communication.o.clean logger.o.clean message.o.clean process.o.clean usocket.o.clean utils.o.clean communication.o.clean logger.o.clean message.o.clean process.o.clean usocket.o.clean utils.o.clean
 
 distclean: clean
 
@@ -198,13 +198,13 @@ $(PACKAGE)-$(VERSION).tar.gz: distdir
 		$(PACKAGE)-$(VERSION)/error.h \
 		$(PACKAGE)-$(VERSION)/communication.c \
 		$(PACKAGE)-$(VERSION)/logger.c \
-		$(PACKAGE)-$(VERSION)/msg.c \
+		$(PACKAGE)-$(VERSION)/message.c \
 		$(PACKAGE)-$(VERSION)/process.c \
 		$(PACKAGE)-$(VERSION)/usocket.c \
 		$(PACKAGE)-$(VERSION)/utils.c \
 		$(PACKAGE)-$(VERSION)/communication.h \
 		$(PACKAGE)-$(VERSION)/logger.h \
-		$(PACKAGE)-$(VERSION)/msg.h \
+		$(PACKAGE)-$(VERSION)/message.h \
 		$(PACKAGE)-$(VERSION)/process.h \
 		$(PACKAGE)-$(VERSION)/usocket.h \
 		$(PACKAGE)-$(VERSION)/utils.h
@@ -218,13 +218,13 @@ $(PACKAGE)-$(VERSION).tar.xz: distdir
 		$(PACKAGE)-$(VERSION)/error.h \
 		$(PACKAGE)-$(VERSION)/communication.c \
 		$(PACKAGE)-$(VERSION)/logger.c \
-		$(PACKAGE)-$(VERSION)/msg.c \
+		$(PACKAGE)-$(VERSION)/message.c \
 		$(PACKAGE)-$(VERSION)/process.c \
 		$(PACKAGE)-$(VERSION)/usocket.c \
 		$(PACKAGE)-$(VERSION)/utils.c \
 		$(PACKAGE)-$(VERSION)/communication.h \
 		$(PACKAGE)-$(VERSION)/logger.h \
-		$(PACKAGE)-$(VERSION)/msg.h \
+		$(PACKAGE)-$(VERSION)/message.h \
 		$(PACKAGE)-$(VERSION)/process.h \
 		$(PACKAGE)-$(VERSION)/usocket.h \
 		$(PACKAGE)-$(VERSION)/utils.h
@@ -238,13 +238,13 @@ $(PACKAGE)-$(VERSION).tar.bz2: distdir
 		$(PACKAGE)-$(VERSION)/error.h \
 		$(PACKAGE)-$(VERSION)/communication.c \
 		$(PACKAGE)-$(VERSION)/logger.c \
-		$(PACKAGE)-$(VERSION)/msg.c \
+		$(PACKAGE)-$(VERSION)/message.c \
 		$(PACKAGE)-$(VERSION)/process.c \
 		$(PACKAGE)-$(VERSION)/usocket.c \
 		$(PACKAGE)-$(VERSION)/utils.c \
 		$(PACKAGE)-$(VERSION)/communication.h \
 		$(PACKAGE)-$(VERSION)/logger.h \
-		$(PACKAGE)-$(VERSION)/msg.h \
+		$(PACKAGE)-$(VERSION)/message.h \
 		$(PACKAGE)-$(VERSION)/process.h \
 		$(PACKAGE)-$(VERSION)/usocket.h \
 		$(PACKAGE)-$(VERSION)/utils.h
