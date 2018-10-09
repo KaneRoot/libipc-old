@@ -12,7 +12,7 @@ int usock_send (const int fd, const char *buf, ssize_t len, ssize_t *sent)
 {
     ssize_t ret = 0;
     //printf ("%ld bytes to write\n", len);
-    ret = send (fd, buf, len, 0);
+    ret = send (fd, buf, len, MSG_NOSIGNAL);
     if (ret <= 0) {
         handle_err ("usock_send", "send ret <= 0");
 		return -1;
