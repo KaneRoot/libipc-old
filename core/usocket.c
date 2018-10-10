@@ -11,7 +11,6 @@
 int usock_send (const int fd, const char *buf, ssize_t len, ssize_t *sent)
 {
     ssize_t ret = 0;
-    //printf ("%ld bytes to write\n", len);
     ret = send (fd, buf, len, MSG_NOSIGNAL);
     if (ret <= 0) {
         handle_err ("usock_send", "send ret <= 0");
@@ -40,8 +39,9 @@ int usock_recv (const int fd, char **buf, ssize_t *len)
 
     if (*buf == NULL) {
         // do not allocate too much memory
-        if (*len > BUFSIZ)
+        if (*len > BUFSIZ) {
             handle_err ("usock_recv", "len > BUFSIZ");
+		}
         if (*len == 0)
             *len = BUFSIZ;
         *buf = malloc ((*len < BUFSIZ) ? *len : BUFSIZ);

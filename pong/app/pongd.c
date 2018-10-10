@@ -53,13 +53,16 @@ void handle_new_msg (struct ipc_clients *clients, struct ipc_clients *clients_ta
             cpt--;
             printf ("disconnection => %d client(s) remaining\n", cpt);
 
-            if (ipc_server_close_client (pc) < 0)
-                handle_err( "handle_new_msg", "server_close_client < 0");
-            if (ipc_client_del (clients, pc) < 0)
-                handle_err( "handle_new_msg", "ipc_client_del < 0");
-            if (ipc_client_del (clients_talking, pc) < 0)
-                handle_err( "handle_new_msg", "ipc_client_del < 0");
-            i--;
+			if (ipc_server_close_client (pc) < 0) {
+				handle_err( "handle_new_msg", "server_close_client < 0");
+			}
+			if (ipc_client_del (clients, pc) < 0) {
+				handle_err( "handle_new_msg", "ipc_client_del < 0");
+			}
+			if (ipc_client_del (clients_talking, pc) < 0) {
+				handle_err( "handle_new_msg", "ipc_client_del < 0");
+			}
+			i--;
 
 			// free the ipc_client structure
 			free (pc);

@@ -7,7 +7,9 @@
 void ipc_message_print (const struct ipc_message *m)
 {
     assert (m != NULL);
+#if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
     printf ("msg: type %d len %d\n", m->type, m->length);
+#endif
 }
 
 int ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msize)
@@ -23,7 +25,9 @@ int ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msi
     memcpy (&m->length, buf+1, 2);
 
     assert (m->length <= BUFSIZ - 3);
+#if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
     printf ("type %d : msize = %ld, length = %d\n", m->type, msize, m->length);
+#endif
     assert (m->length == msize - 3 || m->length == 0);
 
     if (m->payload != NULL)
@@ -68,7 +72,9 @@ int ipc_message_format_write (const struct ipc_message *m, char **buf, ssize_t *
 
     *msize = 3 + m->length;
 
+#if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
 	printf ("sending msg: type %u, size %d, msize %ld\n", m->type, m->length, *msize);
+#endif
 
     return 0;
 }
