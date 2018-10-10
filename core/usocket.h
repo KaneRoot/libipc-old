@@ -17,6 +17,11 @@ struct ipc_service {
     int service_fd;
 };
 
+struct ipc_services {
+	struct ipc_service ** services;
+	int size;
+};
+
 /**
  * for all functions: 0 ok, < 0 not ok
  */
@@ -49,5 +54,21 @@ int usock_accept (int fd, int *pfd);
 int usock_remove (const char *path);
 
 static inline int ipc_service_empty (struct ipc_service *srv) { srv = srv; return 0 ;};
+
+
+// store and remove only pointers on allocated structures
+int ipc_service_add (struct ipc_services *, struct ipc_service *);
+int ipc_service_del (struct ipc_services *, struct ipc_service *);
+
+void ipc_services_print (struct ipc_services *);
+void ipc_services_free  (struct ipc_services *);
+
+struct ipc_service * ipc_client_server_copy (const struct ipc_service *p);
+int ipc_service_eq (const struct ipc_service *p1, const struct ipc_service *p2);
+// create the client service structure
+void ipc_client_server_gen (struct ipc_service *p
+        , unsigned int index, unsigned int version);
+
+void service_print (struct ipc_service *);
 
 #endif

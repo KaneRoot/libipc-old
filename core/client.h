@@ -1,5 +1,5 @@
-#ifndef __IPC_PROCESS_H__
-#define __IPC_PROCESS_H__
+#ifndef __IPC_CLIENT_H__
+#define __IPC_CLIENT_H__
 
 struct ipc_client {
     unsigned int version;

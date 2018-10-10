@@ -45,6 +45,6 @@ int ipc_application_close (struct ipc_service *);
 int ipc_application_read (struct ipc_service *srv, struct ipc_message *m);
 int ipc_application_write (struct ipc_service *, const struct ipc_message *m);
 
-
+int ipc_application_select (struct ipc_services *services, struct ipc_services *active_services);
 
 #endif

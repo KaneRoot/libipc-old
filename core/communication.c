@@ -210,3 +210,78 @@ int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
 
 	return 0;
 }
+
+/*calculer le max filedescriptor*/
+static int getMaxFdServices(struct ipc_services *services)
+{
+    int i;
+    int max = 0;
+
+    for (i = 0; i < services->size; i++ ) {
+        if (services->services[i]->service_fd > max) {
+            max = services->services[i]->service_fd;
+        } 
+    }
+
+    return max;
+}
+
+/*
+ * ipc_application_select prend en parametre
+ *  * un tableau de server qu'on écoute
+ *  * le service qui attend de nouvelles connexions
+ *  * un tableau de client qui souhaitent parler
+ *
+ *  0 = OK
+ * -1 = error
+ */
+
+int ipc_application_select (struct ipc_services *services, struct ipc_services *active_services)
+{
+    assert (services != NULL);
+    assert (active_services != NULL);
+
+    // delete previous read active_services array
+    ipc_services_free (active_services);
+
+    int i, j;
+    /* master file descriptor list */
+    fd_set master;
+    fd_set readf;
+
+    /* maximum file descriptor number */
+    int fdmax;
+
+    /* clear the master and temp sets */
+    FD_ZERO(&master);
+    FD_ZERO(&readf);
+
+    for (i=0; i < services->size; i++) {
+        FD_SET(services->services[i]->service_fd, &master);
+    }
+
+    /* keep track of the biggest file descriptor */
+    fdmax = getMaxFdServices(services);
+
+	// printf ("loop ipc_server_select main_loop\n");
+	readf = master;
+	if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1) {
+		perror("select");
+		return -1;
+	}
+
+	/*run through the existing connections looking for data to be read*/
+	for (i = 0; i <= fdmax; i++) {
+		// printf ("loop ipc_server_select inner loop\n");
+		if (FD_ISSET(i, &readf)) {
+			for(j = 0; j < services->size; j++) {
+				// printf ("loop ipc_server_select inner inner loop\n");
+				if(i == services->services[j]->service_fd ) {
+					ipc_service_add (active_services, services->services[j]);
+				}
+			}
+		}
+	}
+
+	return 0;
+}
