@@ -31,6 +31,7 @@ int ipc_message_read (int fd, struct ipc_message *m);
 // write a structure msg to fd
 int ipc_message_write (int fd, const struct ipc_message *m);
 
+int ipc_message_format (struct ipc_message *m, char type, const char *payload, ssize_t length);
 int ipc_message_format_data (struct ipc_message *m, const char *payload, ssize_t length);
 int ipc_message_format_server_close (struct ipc_message *m);
 

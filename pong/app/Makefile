@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -g -Wextra
-LDFLAGS= -pthread
+LDFLAGS= -pthread -lreadline
 CFILES=$(wildcard *.c) # CFILES => recompiles everything on a C file change
 EXEC=$(basename $(wildcard *.c))
 SOURCES=$(wildcard ../lib/*.c ../../core/*.c)
@@ -14,7 +14,7 @@ test:
 	./pongd.bin
 
 $(EXEC): $(OBJECTS) $(CFILES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) $@.c -o $@.bin
+	$(CC) $(CFLAGS) $(OBJECTS) $@.c -o $@.bin $(LDFLAGS)
 
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
