@@ -74,6 +74,12 @@ class IPC::Service
 		at_exit { close }
 	end
 
+	def initialize(name : String, &block : Proc(IPC::Event::Connection | IPC::Event::Disconnection | IPC::Event::Message, Nil))
+		initialize name
+		loop &block
+		close
+	end
+
 	def close
 		return if @closed
 
