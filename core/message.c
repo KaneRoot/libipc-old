@@ -16,26 +16,26 @@ int ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msi
 {
     assert (m != NULL);
     assert (buf != NULL);
-    assert (msize <= BUFSIZ - 3);
+    assert (msize <= IPC_MAX_MESSAGE_SIZE);
 
     if (m == NULL)
         return -1;
 
     m->type = buf[0];
-    memcpy (&m->length, buf+1, 2);
+    memcpy (&m->length, buf+1, sizeof m->length);
 
-    assert (m->length <= BUFSIZ - 3);
+    assert (m->length <= IPC_MAX_MESSAGE_SIZE);
 #if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
-    printf ("type %d : msize = %ld, length = %d\n", m->type, msize, m->length);
+    printf ("type %d, paylen = %u, total = %lu\n", m->type, m->length, msize);
 #endif
-    assert (m->length == msize - 3 || m->length == 0);
+    assert (m->length == msize - IPC_HEADER_SIZE || m->length == 0);
 
     if (m->payload != NULL)
         free (m->payload), m->payload = NULL;
 
     if (m->payload == NULL && m->length > 0) {
         m->payload = malloc (m->length);
-        memcpy (m->payload, buf+3, m->length);
+        memcpy (m->payload, buf+IPC_HEADER_SIZE, m->length);
     }
 
     return 0;
@@ -46,7 +46,7 @@ int ipc_message_format_write (const struct ipc_message *m, char **buf, ssize_t *
     assert (m != NULL);
     assert (buf != NULL);
     assert (msize != NULL);
-    assert (m->length <= BUFSIZ -3);
+    assert (m->length <= IPC_MAX_MESSAGE_SIZE);
 
     if (m == NULL)
         return -1;
@@ -58,19 +58,19 @@ int ipc_message_format_write (const struct ipc_message *m, char **buf, ssize_t *
         return -3;
 
     if (*buf == NULL) {
-        *buf = malloc (3 + m->length);
-		memset (*buf, 0, 3 + m->length);
+        *buf = malloc (IPC_HEADER_SIZE + m->length);
+		memset (*buf, 0, IPC_HEADER_SIZE + m->length);
     }
 
     char *buffer = *buf;
 
     buffer[0] = m->type;
-    memcpy (buffer + 1, &m->length, 2);
+    memcpy (buffer + 1, &m->length, sizeof m->length);
 	if (m->payload != NULL) {
-		memcpy (buffer + 3, m->payload, m->length);
+		memcpy (buffer + IPC_HEADER_SIZE, m->payload, m->length);
 	}
 
-    *msize = 3 + m->length;
+    *msize = IPC_HEADER_SIZE + m->length;
 
 #if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
 	printf ("sending msg: type %u, size %d, msize %ld\n", m->type, m->length, *msize);
@@ -85,7 +85,7 @@ int ipc_message_read (int fd, struct ipc_message *m)
     assert (m != NULL);
 
     char *buf = NULL;
-    ssize_t msize = BUFSIZ;
+    ssize_t msize = IPC_MAX_MESSAGE_SIZE;
 
     int ret = usock_recv (fd, &buf, &msize);
     if (ret < 0) {
@@ -143,10 +143,10 @@ int ipc_message_write (int fd, const struct ipc_message *m)
 int ipc_message_format (struct ipc_message *m, char type, const char *payload, ssize_t length)
 {
     assert (m != NULL);
-    assert (length + 3 <= BUFSIZ);
+    assert (length <= IPC_MAX_MESSAGE_SIZE);
     assert ((length == 0 && payload == NULL) || (length > 0 && payload != NULL));
 
-    if (length + 3 > BUFSIZ) {
+    if (length > IPC_MAX_MESSAGE_SIZE) {
         handle_err ("msg_format_con", "msgsize > BUFSIZ");
         return -1;
     }

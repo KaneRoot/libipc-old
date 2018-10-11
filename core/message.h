@@ -16,7 +16,7 @@ enum msg_types {
 
 struct ipc_message {
     char type;
-    unsigned short length;
+    unsigned int length;
     char *payload;
 };
 

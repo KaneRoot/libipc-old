@@ -20,6 +20,7 @@ int usock_send (const int fd, const char *buf, ssize_t len, ssize_t *sent)
     return 0;
 }
 
+// *len is changed to the total message size read (header + payload)
 int usock_recv (const int fd, char **buf, ssize_t *len)
 {
     assert(buf != NULL);
@@ -39,75 +40,89 @@ int usock_recv (const int fd, char **buf, ssize_t *len)
 
     if (*buf == NULL) {
         // do not allocate too much memory
-        if (*len > BUFSIZ) {
-            handle_err ("usock_recv", "len > BUFSIZ");
+        if (*len > IPC_MAX_MESSAGE_SIZE) {
+            handle_err ("usock_recv", "len > IPC_MAX_MESSAGE_SIZE");
+            *len = IPC_MAX_MESSAGE_SIZE;
 		}
-        if (*len == 0)
-            *len = BUFSIZ;
-        *buf = malloc ((*len < BUFSIZ) ? *len : BUFSIZ);
+        *buf = malloc (*len + IPC_HEADER_SIZE);
     }
 
-    ret = recv (fd, *buf, *len, 0);
-    if (ret < 0) {
-		if (*buf != NULL)
-			free (*buf);
+	unsigned int msize = 0;
+	unsigned int msize_read = 0;
 
-        handle_err ("usock_recv", "recv ret < 0");
-		perror("recv");
-		*len = 0;
-
-		switch (ret) {
-
-			// The receive buffer pointer(s) point outside the process's address space.
-			case EFAULT:
-				handle_err ("usock_recv", "critical error: use of unallocated memory, quitting...");
-				exit (1);
-
-			// Invalid argument passed.
-			case EINVAL:
-				handle_err ("usock_recv", "critical error: invalid arguments to read(2), quitting...");
-				exit (1);
-
-			// Could not allocate memory for recvmsg().
-			case ENOMEM:
-				handle_err ("usock_recv", "critical error: cannot allocate memory, quitting...");
-				exit (1);
-
-			// The argument sockfd is an invalid descriptor.
-			case EBADF:
-				handle_err ("usock_recv", "critical error: invalid descriptor, quitting...");
-				exit (1);
-
-			// The file descriptor sockfd does not refer to a socket.
-			case ENOTSOCK:
-				handle_err ("usock_recv", "critical error: fd is not a socket, quitting...");
-				exit (1);
-
-			// The socket is associated with a connection-oriented protocol and has not
-			// been connected (see connect(2) and accept(2)).
-			case ENOTCONN:
-				handle_err ("usock_recv", "critical error: read(2) on a non connected socket, quitting...");
-				exit (1);
-
-			// EWOULDBLOCK
-			case EAGAIN:
-
-			// A remote host refused to allow the network connection
-			// (typically because it is not running the requested service).
-			case ECONNREFUSED:
-
-			// The receive was interrupted by delivery of a signal before
-			// any data were available; see signal(7).
-			case EINTR:
-
-			default:
-				handle_err ("usock_recv", "unsupported error");
-				;
+	do {
+		ret = recv (fd, *buf, *len, 0);
+		if (msize == 0) {
+			memcpy (&msize, *buf + 1, sizeof msize);
 		}
-        return -1;
-    }
+		assert (msize < IPC_MAX_MESSAGE_SIZE);
+		msize_read += ret - IPC_HEADER_SIZE;
 
-    *len = ret;
+		if (ret < 0) {
+			if (*buf != NULL)
+				free (*buf);
+
+			handle_err ("usock_recv", "recv ret < 0");
+			perror("recv");
+			*len = 0;
+
+			switch (ret) {
+
+				// The receive buffer pointer(s) point outside the process's address space.
+				case EFAULT:
+					handle_err ("usock_recv", "critical error: use of unallocated memory, quitting...");
+					exit (1);
+
+				// Invalid argument passed.
+				case EINVAL:
+					handle_err ("usock_recv", "critical error: invalid arguments to read(2), quitting...");
+					exit (1);
+
+				// Could not allocate memory for recvmsg().
+				case ENOMEM:
+					handle_err ("usock_recv", "critical error: cannot allocate memory, quitting...");
+					exit (1);
+
+				// The argument sockfd is an invalid descriptor.
+				case EBADF:
+					handle_err ("usock_recv", "critical error: invalid descriptor, quitting...");
+					exit (1);
+
+				// The file descriptor sockfd does not refer to a socket.
+				case ENOTSOCK:
+					handle_err ("usock_recv", "critical error: fd is not a socket, quitting...");
+					exit (1);
+
+				// The socket is associated with a connection-oriented protocol and has not
+				// been connected (see connect(2) and accept(2)).
+				case ENOTCONN:
+					handle_err ("usock_recv", "critical error: read(2) on a non connected socket, quitting...");
+					exit (1);
+
+				// EWOULDBLOCK
+				case EAGAIN:
+
+				// A remote host refused to allow the network connection
+				// (typically because it is not running the requested service).
+				case ECONNREFUSED:
+
+				// The receive was interrupted by delivery of a signal before
+				// any data were available; see signal(7).
+				case EINTR:
+
+				default:
+					handle_err ("usock_recv", "unsupported error");
+					;
+			}
+			return -1;
+		}
+
+#if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
+		printf ("fragmentation: message size read %u, should read %u\n", msize_read, msize);
+#endif
+	} while (msize > msize_read);
+
+	*len = msize + IPC_HEADER_SIZE;
 
 	// 1 on none byte received, indicates a closed recipient
 	if (ret == 0) {

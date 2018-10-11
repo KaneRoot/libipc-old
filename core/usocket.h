@@ -10,6 +10,9 @@
 #define TMPDIR "/run/ipc/"
 #define PATH_MAX 4096
 
+#define IPC_HEADER_SIZE  5
+#define IPC_MAX_MESSAGE_SIZE  8000000-IPC_HEADER_SIZE
+
 struct ipc_service {
     unsigned int version;
     unsigned int index;

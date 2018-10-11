@@ -6,7 +6,7 @@
 #define IPC_ERROR_NOT_ENOUGH_MEMORY                 100
 #define IPC_ERROR_WRONG_PARAMETERS                  101
 
-// #define IPC_WITH_ERRORS                               2
+// #define IPC_WITH_ERRORS                               3
 
 #ifdef IPC_WITH_ERRORS
 #define handle_error(msg) \
