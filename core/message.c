@@ -152,7 +152,7 @@ int ipc_message_format (struct ipc_message *m, char type, const char *payload, s
     }
 
     m->type = type;
-    m->length = (short) length;
+    m->length = (unsigned int) length;
 
     if (payload != NULL) {
 		if (m->payload != NULL) {

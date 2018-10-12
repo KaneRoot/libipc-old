@@ -27,10 +27,10 @@ void non_interactive (char *env[])
         exit (EXIT_FAILURE);
     }
 
-    printf ("msg to send: %s\n", MSG);
+    printf ("msg to send: %.*s\n", (int) strlen(MSG), MSG);
     ipc_message_format_data (&m, MSG, strlen(MSG) +1);
-    printf ("msg to send in the client: ");
-    ipc_message_print (&m);
+    // printf ("msg to send in the client: ");
+    // ipc_message_print (&m);
     if (ipc_application_write (&srv, &m) < 0) {
         handle_err("main", "application_write < 0");
         exit (EXIT_FAILURE);
@@ -45,6 +45,7 @@ void non_interactive (char *env[])
     printf ("msg recv: %s\n", m.payload);
     ipc_message_empty (&m);
 
+	sleep(10);
     if (ipc_application_close (&srv) < 0) {
         handle_err("main", "application_close < 0");
         exit (EXIT_FAILURE);
@@ -58,8 +59,8 @@ void interactive (char *env[])
     struct ipc_service srv;
     memset (&srv, 0, sizeof (struct ipc_service));
 
-    char buf[BUFSIZ];
-    memset (buf, 0, BUFSIZ);
+    char buf[IPC_MAX_MESSAGE_SIZE];
+    memset (buf, 0, IPC_MAX_MESSAGE_SIZE);
     int n;
 
 	int ask_server_to_quit = 0;
@@ -77,7 +78,7 @@ void interactive (char *env[])
     while (1) {
         printf ("msg to send: ");
         fflush (stdout);
-        n = read (0, buf, BUFSIZ);
+        n = read (0, buf, IPC_MAX_MESSAGE_SIZE);
 
         if (n == 0 || strncmp (buf, "exit", 4) == 0)
             break;
@@ -88,7 +89,7 @@ void interactive (char *env[])
 		}
 
         ipc_message_format_data (&m, buf, strlen(buf) +1);
-        memset (buf, 0, BUFSIZ);
+        memset (buf, 0, IPC_MAX_MESSAGE_SIZE);
 
         // print_msg (&m);
 

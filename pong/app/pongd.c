@@ -92,7 +92,7 @@ void handle_new_msg (struct ipc_clients *clients, struct ipc_clients *clients_ta
 		}
 
 		if (m.length > 0) {
-			printf ("new message : %.*s", m.length, m.payload);
+			printf ("new message : %.*s\n", m.length, m.payload);
 		}
         if (ipc_server_write (pc, &m) < 0) {
             handle_err( "handle_new_msg", "server_write < 0");
