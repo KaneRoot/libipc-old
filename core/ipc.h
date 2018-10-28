@@ -5,7 +5,6 @@
 #include "communication.h"
 #include "error.h"
 #include "event.h"
-#include "ipc.h"
 #include "logger.h"
 #include "message.h"
 #include "queue.h"
