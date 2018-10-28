@@ -2,6 +2,7 @@
 #include "utils.h"
 #include "error.h"
 #include "event.h"
+#include <unistd.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -109,7 +110,7 @@ int ipc_application_connection (char **env
     return 0;
 }
 
-// send a CLOSE message then close the socket
+// close the socket
 int ipc_application_close (struct ipc_service *srv)
 {
     return usock_close (srv->service_fd);
@@ -408,7 +409,120 @@ int ipc_service_loop (struct ipc_clients *clients, struct ipc_service *srv
 	return 0;
 }
 
-int ipc_application_loop (struct ipc_services *services)
+int ipc_application_loop_ (struct ipc_services *services, struct ipc_event *event, int interactive)
 {
+    assert (services != NULL);
+
+	IPC_EVENT_CLEAN(event);
+
+    int i, j;
+    /* master file descriptor list */
+    fd_set master;
+    fd_set readf;
+
+    /* maximum file descriptor number */
+    int fdmax;
+
+    /* clear the master and temp sets */
+    FD_ZERO(&master);
+    FD_ZERO(&readf);
+
+	if (interactive) {
+		FD_SET(0, &master);
+	}
+
+    for (i=0; i < services->size; i++) {
+        FD_SET(services->services[i]->service_fd, &master);
+    }
+
+    /* keep track of the biggest file descriptor */
+    fdmax = get_max_fd_from_ipc_services_ (services);
+
+	// printf ("loop ipc_server_select main_loop\n");
+	readf = master;
+	if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1) {
+		perror("select");
+		return -1;
+	}
+
+	/*run through the existing connections looking for data to be read*/
+	for (i = 0; i <= fdmax; i++) {
+		// printf ("loop ipc_server_select inner loop\n");
+		if (FD_ISSET(i, &readf)) {
+
+			// interactive: input on stdin
+			if (i == 0) {
+				// XXX: by default, message type is 0
+				struct ipc_message *m = malloc (sizeof (struct ipc_message));
+				if (m == NULL) {
+					return IPC_ERROR_NOT_ENOUGH_MEMORY;
+				}
+				memset (m, 0, sizeof (struct ipc_message));
+				m->payload = malloc (IPC_MAX_MESSAGE_SIZE);
+
+				m->length = read(0, m->payload , IPC_MAX_MESSAGE_SIZE);
+				IPC_EVENT_SET(event, IPC_EVENT_TYPE_STDIN, m, NULL);
+				return 0;
+			}
+
+			for(j = 0; j < services->size; j++) {
+				// printf ("loop ipc_server_select inner inner loop\n");
+				if(i == services->services[j]->service_fd ) {
+					// listen to what they have to say (disconnection or message)
+					// then add a client to `event`, the ipc_event structure
+					int ret = 0;
+					struct ipc_message *m = NULL;
+					m = malloc (sizeof(struct ipc_message));
+					if (m == NULL) {
+						return IPC_ERROR_NOT_ENOUGH_MEMORY;
+					}
+					memset (m, 0, sizeof (struct ipc_message));
+
+					// current talking client
+					struct ipc_service *ps = services->services[j];
+					ret = ipc_application_read (ps, m);
+					if (ret < 0) {
+						handle_err ("ipc_application_loop", "ipc_application_read < 0");
+						ipc_message_empty (m);
+						free (m);
+
+						IPC_EVENT_SET(event, IPC_EVENT_TYPE_ERROR, NULL, ps);
+						return IPC_ERROR_READ;
+					}
+
+					// disconnection: close the service
+					if (ret == 1) {
+						if (ipc_application_close (ps) < 0) {
+							handle_err( "ipc_application_loop", "ipc_application_close < 0");
+						}
+						if (ipc_service_del (services, ps) < 0) {
+							handle_err( "ipc_application_loop", "ipc_service_del < 0");
+						}
+						ipc_message_empty (m);
+						free (m);
+
+						IPC_EVENT_SET(event, IPC_EVENT_TYPE_DISCONNECTION, NULL, ps);
+
+						// warning: do not forget to free the ipc_client structure
+						return 0;
+					}
+
+					// we received a new message from a client
+					IPC_EVENT_SET (event, IPC_EVENT_TYPE_MESSAGE, m, ps);
+					return 0;
+
+				}
+			}
+		}
+	}
+
 	return 0;
+}
+
+int ipc_application_loop (struct ipc_services *services, struct ipc_event *event) {
+	return ipc_application_loop_ (services, event, 0);
+}
+
+int ipc_application_loop_interactive (struct ipc_services *services, struct ipc_event *event) {
+	return ipc_application_loop_ (services, event, 1);
 }

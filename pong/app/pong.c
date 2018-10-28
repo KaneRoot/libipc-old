@@ -3,9 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../../core/message.h"
-#include "../../core/error.h"
-#include "../../core/communication.h"
+#include "../../core/ipc.h"
 
 #define MSG "coucou"
 #define SERVICE_NAME "pongd"
@@ -53,16 +51,9 @@ void non_interactive (char *env[])
 
 void interactive (char *env[])
 {
-    struct ipc_message m;
-    memset (&m, 0, sizeof (struct ipc_message));
+	int ret = 0;
     struct ipc_service srv;
     memset (&srv, 0, sizeof (struct ipc_service));
-
-    char buf[IPC_MAX_MESSAGE_SIZE];
-    memset (buf, 0, IPC_MAX_MESSAGE_SIZE);
-    int n;
-
-	int ask_server_to_quit = 0;
 
     // index and version should be filled
     srv.index = 0;
@@ -74,50 +65,61 @@ void interactive (char *env[])
         exit (EXIT_FAILURE);
     }
 
+	struct ipc_event event;
+	memset (&event, 0, sizeof (struct ipc_event));
+
+	struct ipc_services services;
+	memset (&services, 0, sizeof (struct ipc_services));
+	ipc_service_add (&services, &srv);
+
     while (1) {
         printf ("msg to send: ");
         fflush (stdout);
-        n = read (0, buf, IPC_MAX_MESSAGE_SIZE);
+		ret = ipc_application_loop_interactive (&services, &event);
 
-        if (n == 0 || strncmp (buf, "exit", 4) == 0)
-            break;
-
-		if (strncmp(buf, "close server", 12) == 0) {
-			ask_server_to_quit = 1;
-			break;
+		if (ret != 0) {
+			handle_error("ipc_application_loop != 0");
+			exit (EXIT_FAILURE);
 		}
 
-        ipc_message_format_data (&m, buf, strlen(buf) +1);
-        memset (buf, 0, IPC_MAX_MESSAGE_SIZE);
+		switch (event.type) {
+			case IPC_EVENT_TYPE_STDIN:
+				{
+					struct ipc_message *m = event.m;
+					if ( m->length == 0 || strncmp (m->payload, "exit", 4) == 0) {
 
-        // print_msg (&m);
+						ipc_message_empty (m);
+						free (m);
 
-        if (ipc_application_write (&srv, &m) < 0) {
-            handle_err("main", "application_write < 0");
-            exit (EXIT_FAILURE);
-        }
-        ipc_message_empty (&m);
+						ipc_services_free (&services);
 
-        if (ipc_application_read (&srv, &m) < 0) {
-            handle_err("main", "application_read < 0");
-            exit (EXIT_FAILURE);
-        }
+						if (ipc_application_close (&srv) < 0) {
+							handle_err("main", "application_close < 0");
+							exit (EXIT_FAILURE);
+						}
 
-        printf ("msg recv: %s", m.payload);
-        ipc_message_empty (&m);
-    }
+						exit (EXIT_SUCCESS);
+					}
 
-	if (ask_server_to_quit) {
-        ipc_message_format_server_close (&m);
-
-        if (ipc_application_write (&srv, &m) < 0) {
-            handle_err("main", "application_write < 0");
-            exit (EXIT_FAILURE);
-        }
-        ipc_message_empty (&m);
-	} else if (ipc_application_close (&srv) < 0) {
-        handle_err("main", "application_close < 0");
-        exit (EXIT_FAILURE);
+					if (ipc_application_write (&srv, m) < 0) {
+						handle_err("main", "application_write < 0");
+						exit (EXIT_FAILURE);
+					}
+				}
+				break;
+			case IPC_EVENT_TYPE_MESSAGE:
+				{
+					struct ipc_message *m = event.m;
+					printf ("msg recv: %.*s", m->length, m->payload);
+				};
+				break;
+			case IPC_EVENT_TYPE_DISCONNECTION:
+			case IPC_EVENT_TYPE_NOT_SET:
+			case IPC_EVENT_TYPE_CONNECTION:
+			case IPC_EVENT_TYPE_ERROR:
+			default :
+				fprintf (stderr, "should not happen, event type %d\n", event.type);
+		}
     }
 }
 
