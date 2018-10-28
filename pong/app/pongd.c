@@ -113,7 +113,7 @@ void exit_program(int signal)
 
 /*
  * service ping-pong: send back everything sent by the clients
- * stop the program on SIGTERM, SIGALRM, SIGUSR{1,2}, SIGHUP signals
+ * stop the program on SIG{TERM,INT,ALRM,USR{1,2},HUP} signals
  */
 
 int main(int argc, char * argv[], char **env)
@@ -146,6 +146,7 @@ int main(int argc, char * argv[], char **env)
 	signal (SIGUSR1, exit_program);
 	signal (SIGUSR2, exit_program);
 	signal (SIGTERM, exit_program);
+	signal (SIGINT, exit_program);
 
     // the service will loop until the end of time, or a signal
     main_loop ();
