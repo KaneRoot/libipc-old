@@ -33,7 +33,7 @@ int ipc_server_write (const struct ipc_client *, const struct ipc_message *m);
 int ipc_server_select (struct ipc_clients * clients, struct ipc_service *srv
         , struct ipc_clients *active_clients, int *new_connection);
 
-int ipc_service_loop (struct ipc_clients *clients, struct ipc_service *srv
+int ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
         , struct ipc_event *event);
 
 // APPLICATION
@@ -51,7 +51,7 @@ int ipc_application_write (struct ipc_service *, const struct ipc_message *m);
 
 int ipc_application_select (struct ipc_services *services, struct ipc_services *active_services);
 
-int ipc_application_loop (struct ipc_services *services, struct ipc_event *event);
-int ipc_application_loop_interactive (struct ipc_services *services, struct ipc_event *event);
+int ipc_application_poll_event (struct ipc_services *services, struct ipc_event *event);
+int ipc_application_peek_event (struct ipc_services *services, struct ipc_event *event);
 
 #endif

@@ -75,10 +75,10 @@ void interactive (char *env[])
     while (1) {
         printf ("msg to send: ");
         fflush (stdout);
-		ret = ipc_application_loop_interactive (&services, &event);
+		ret = ipc_application_peek_event (&services, &event);
 
 		if (ret != 0) {
-			handle_error("ipc_application_loop != 0");
+			handle_error("ipc_application_peek_event != 0");
 			exit (EXIT_FAILURE);
 		}
 

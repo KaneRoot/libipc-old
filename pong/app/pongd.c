@@ -25,11 +25,11 @@ void main_loop ()
 	event.type = IPC_EVENT_TYPE_NOT_SET;
 
     while(1) {
-		// ipc_service_loop provides one event at a time
+		// ipc_service_poll_event provides one event at a time
 		// warning: event->m is free'ed if not NULL
-		ret = ipc_service_loop (clients, srv, &event);
+		ret = ipc_service_poll_event (clients, srv, &event);
 		if (ret != 0) {
-			handle_error("ipc_service_loop != 0");
+			handle_error("ipc_service_poll_event != 0");
 			// the application will shut down, and close the service
 			if (ipc_server_close (srv) < 0) {
 				handle_error("ipc_server_close < 0");
