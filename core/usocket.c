@@ -57,7 +57,6 @@ int usock_recv (const int fd, char **buf, ssize_t *len)
 				memcpy (&msize, *buf + 1, sizeof msize);
 			}
 		}
-		printf("msize = %u\n", msize);
 		assert (msize < IPC_MAX_MESSAGE_SIZE);
 		msize_read += ret - IPC_HEADER_SIZE;
 

@@ -1,6 +1,7 @@
 #include "communication.h"
 #include "utils.h"
 #include "error.h"
+#include "event.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -126,15 +127,28 @@ int ipc_application_write (struct ipc_service *srv, const struct ipc_message *m)
 
 
 /*calculer le max filedescriptor*/
-static int getMaxFd(struct ipc_clients *clients)
+static int get_max_fd_from_ipc_clients_ (struct ipc_clients *clients)
 {
-
     int i;
     int max = 0;
 
     for (i = 0; i < clients->size; i++ ) {
         if (clients->clients[i]->proc_fd > max) {
             max = clients->clients[i]->proc_fd;
+        } 
+    }
+
+    return max;
+}
+
+static int get_max_fd_from_ipc_services_ (struct ipc_services *services)
+{
+    int i;
+    int max = 0;
+
+    for (i = 0; i < services->size; i++ ) {
+        if (services->services[i]->service_fd > max) {
+            max = services->services[i]->service_fd;
         } 
     }
 
@@ -182,7 +196,7 @@ int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
     }
 
     /* keep track of the biggest file descriptor */
-    fdmax = getMaxFd(clients) > srv->service_fd ? getMaxFd(clients) : srv->service_fd; 
+    fdmax = get_max_fd_from_ipc_clients_ (clients) > srv->service_fd ? get_max_fd_from_ipc_clients_ (clients) : srv->service_fd; 
 
 	// printf ("loop ipc_server_select main_loop\n");
 	readf = master;
@@ -209,21 +223,6 @@ int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
 	}
 
 	return 0;
-}
-
-/*calculer le max filedescriptor*/
-static int getMaxFdServices(struct ipc_services *services)
-{
-    int i;
-    int max = 0;
-
-    for (i = 0; i < services->size; i++ ) {
-        if (services->services[i]->service_fd > max) {
-            max = services->services[i]->service_fd;
-        } 
-    }
-
-    return max;
 }
 
 /*
@@ -261,7 +260,7 @@ int ipc_application_select (struct ipc_services *services, struct ipc_services *
     }
 
     /* keep track of the biggest file descriptor */
-    fdmax = getMaxFdServices(services);
+    fdmax = get_max_fd_from_ipc_services_ (services);
 
 	// printf ("loop ipc_server_select main_loop\n");
 	readf = master;
@@ -283,5 +282,133 @@ int ipc_application_select (struct ipc_services *services, struct ipc_services *
 		}
 	}
 
+	return 0;
+}
+
+int handle_new_connection (struct ipc_service *srv
+		, struct ipc_clients *clients
+		, struct ipc_client **new_client)
+{
+    *new_client = malloc(sizeof(struct ipc_client));
+    memset(*new_client, 0, sizeof(struct ipc_client));
+
+    if (ipc_server_accept (srv, *new_client) < 0) {
+        handle_error("server_accept < 0");
+		return 1;
+    } else {
+        printf("new connection\n");
+    }
+
+    if (ipc_client_add (clients, *new_client) < 0) {
+        handle_error("ipc_client_add < 0");
+		return 1;
+    }
+
+	return 0;
+}
+
+int ipc_service_loop (struct ipc_clients *clients, struct ipc_service *srv
+        , struct ipc_event *event)
+{
+    assert (clients != NULL);
+
+	IPC_EVENT_CLEAN(event);
+
+    int i, j;
+    /* master file descriptor list */
+    fd_set master;
+    fd_set readf;
+
+    /* maximum file descriptor number */
+    int fdmax;
+    /* listening socket descriptor */
+    int listener = srv->service_fd;
+
+    /* clear the master and temp sets */
+    FD_ZERO(&master);
+    FD_ZERO(&readf);
+    /* add the listener to the master set */
+    FD_SET(listener, &master);
+
+    for (i=0; i < clients->size; i++) {
+        FD_SET(clients->clients[i]->proc_fd, &master);
+    }
+
+    /* keep track of the biggest file descriptor */
+    fdmax = get_max_fd_from_ipc_clients_ (clients) > srv->service_fd ? get_max_fd_from_ipc_clients_ (clients) : srv->service_fd; 
+
+	// printf ("loop ipc_server_select main_loop\n");
+	readf = master;
+	if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1) {
+		perror("select");
+		return -1;
+	}
+
+	/*run through the existing connections looking for data to be read*/
+	for (i = 0; i <= fdmax; i++) {
+		// printf ("loop ipc_server_select inner loop\n");
+		if (FD_ISSET(i, &readf)) {
+			if (i == listener) {
+				// connection
+				struct ipc_client *new_client = NULL;
+				handle_new_connection (srv, clients, &new_client);
+				IPC_EVENT_SET (event, IPC_EVENT_TYPE_CONNECTION, NULL, new_client);
+				return 0;
+			} else {
+				for(j = 0; j < clients->size; j++) {
+					if(i == clients->clients[j]->proc_fd ) {
+						// listen to what they have to say (disconnection or message)
+						// then add a client to `event`, the ipc_event structure
+						int ret = 0;
+						struct ipc_message *m = NULL;
+						m = malloc (sizeof(struct ipc_message));
+						if (m == NULL) {
+							return IPC_ERROR_NOT_ENOUGH_MEMORY;
+						}
+						memset (m, 0, sizeof (struct ipc_message));
+
+						// current talking client
+						struct ipc_client *pc = clients->clients[j];
+						ret = ipc_server_read (pc, m);
+						if (ret < 0) {
+							handle_err ("ipc_service_loop", "ipc_server_read < 0");
+							ipc_message_empty (m);
+							free (m);
+
+							IPC_EVENT_SET(event, IPC_EVENT_TYPE_ERROR, NULL, pc);
+							return IPC_ERROR_READ;
+						}
+
+						// disconnection: close the client then delete it from clients
+						if (ret == 1) {
+							if (ipc_server_close_client (pc) < 0) {
+								handle_err( "ipc_service_loop", "ipc_server_close_client < 0");
+							}
+							if (ipc_client_del (clients, pc) < 0) {
+								handle_err( "ipc_service_loop", "ipc_client_del < 0");
+							}
+							ipc_message_empty (m);
+							free (m);
+
+							IPC_EVENT_SET(event, IPC_EVENT_TYPE_DISCONNECTION, NULL, pc);
+
+							// warning: do not forget to free the ipc_client structure
+							return 0;
+						}
+
+						// we received a new message from a client
+						IPC_EVENT_SET (event, IPC_EVENT_TYPE_MESSAGE, m, pc);
+						return 0;
+					}
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+int ipc_application_loop (struct ipc_services *services)
+{
 	return 0;
 }

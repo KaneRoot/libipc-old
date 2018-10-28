@@ -1,6 +1,5 @@
-#include "../../core/communication.h"
-#include "../../core/client.h"
-#include "../../core/error.h"
+#include "../../core/ipc.h"
+#include <signal.h>
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -11,153 +10,118 @@
 int cpt = 0;
 
 struct ipc_service *srv = 0;
+struct ipc_clients *clients;
 
-void handle_new_connection (struct ipc_clients *clients)
-{
-    struct ipc_client *p = malloc(sizeof(struct ipc_client));
-    memset(p, 0, sizeof(struct ipc_client));
-
-    if (ipc_server_accept (srv, p) < 0) {
-        handle_error("server_accept < 0");
-    } else {
-        printf("new connection\n");
-    }
-
-    if (ipc_client_add (clients, p) < 0) {
-        handle_error("ipc_client_add < 0");
-    }
-
-    cpt++;
-    printf ("%d client(s)\n", cpt);
-}
-
-void handle_new_msg (struct ipc_clients *clients, struct ipc_clients *clients_talking)
-{
-	int ret = 0;
-    struct ipc_message m;
-    memset (&m, 0, sizeof (struct ipc_message));
-    int i = 0;
-    for (i = 0; i < clients_talking->size; i++) {
-        // printf ("loop handle_new_msg\n");
-
-		// current talking client
-		struct ipc_client *pc = clients_talking->clients[i];
-
-		ret = ipc_server_read (pc, &m);
-        if (ret < 0) {
-            handle_error("server_read < 0");
-        }
-
-        // close the client then delete it from clients
-		if (ret == 1) {
-            cpt--;
-            printf ("disconnection => %d client(s) remaining\n", cpt);
-
-			if (ipc_server_close_client (pc) < 0) {
-				handle_err( "handle_new_msg", "server_close_client < 0");
-			}
-			if (ipc_client_del (clients, pc) < 0) {
-				handle_err( "handle_new_msg", "ipc_client_del < 0");
-			}
-			if (ipc_client_del (clients_talking, pc) < 0) {
-				handle_err( "handle_new_msg", "ipc_client_del < 0");
-			}
-			i--;
-
-			// free the ipc_client structure
-			free (pc);
-            continue;
-		}
-
-		if (m.type == MSG_TYPE_SERVER_CLOSE) {
-			// free remaining clients
-			for (int y = 0; y < clients->size ; y++) {
-				struct ipc_client *cli = clients->clients[y];
-				// TODO: replace with specific ipc_client_empty function
-				if (cli != NULL)
-					free (cli);
-				clients->clients[y] = NULL;
-			}
-
-			ipc_clients_free (clients);
-			ipc_clients_free (clients_talking);
-
-			if (ipc_server_close (srv) < 0) {
-				handle_error("server_close < 0");
-			}
-
-			ipc_message_empty (&m);
-			free (srv);
-			exit (0);
-		}
-
-		if (m.length > 0) {
-			printf ("new message : %.*s\n", m.length, m.payload);
-		}
-        if (ipc_server_write (pc, &m) < 0) {
-            handle_err( "handle_new_msg", "server_write < 0");
-        }
-
-		// empty the message structure
-		ipc_message_empty (&m);
-		memset (&m, 0, sizeof m);
-    }
-}
-
-/*
- * main loop
- *
- * accept new application connections
- * read a message and send it back
- * close a connection if MSG_TYPE_CLOSE received
- */
 
 void main_loop ()
 {
     int ret = 0; 
 
-    struct ipc_clients clients;
-    memset(&clients, 0, sizeof(struct ipc_clients));
+	clients = malloc (sizeof (struct ipc_clients));
+	memset(clients, 0, sizeof(struct ipc_clients));
 
-    struct ipc_clients clients_talking;
-    memset(&clients_talking, 0, sizeof(struct ipc_clients));
+	struct ipc_event event;
+	memset(&event, 0, sizeof (struct ipc_event));
+	event.type = IPC_EVENT_TYPE_NOT_SET;
 
     while(1) {
-		int new_connection = 0;
-        ret = ipc_server_select (&clients, srv, &clients_talking, &new_connection);
-		if (ret < 0) {
-			handle_error("ipc_server_select < 0");
+		// ipc_service_loop provides one event at a time
+		// warning: event->m is free'ed if not NULL
+		ret = ipc_service_loop (clients, srv, &event);
+		if (ret != 0) {
+			handle_error("ipc_service_loop != 0");
+			// the application will shut down, and close the service
+			if (ipc_server_close (srv) < 0) {
+				handle_error("ipc_server_close < 0");
+			}
+			exit (EXIT_FAILURE);
 		}
 
-        if (new_connection) {
-            handle_new_connection (&clients);
-        }
+		switch (event.type) {
+			case IPC_EVENT_TYPE_CONNECTION:
+				{
+					cpt++;
+					printf ("connection: %d clients connected\n", cpt);
+					printf ("new client has the fd %d\n", ((struct ipc_client*) event.origin)->proc_fd);
+				};
+				break;
+			case IPC_EVENT_TYPE_DISCONNECTION:
+				{
+					cpt--;
+					printf ("disconnection: %d clients remaining\n", cpt);
 
-		if (clients_talking.size > 0) {
-            handle_new_msg (&clients, &clients_talking);
-        }
-        ipc_clients_free (&clients_talking);
+					// free the ipc_client structure
+					free (event.origin);
+				};
+				break;
+			case IPC_EVENT_TYPE_MESSAGE:
+			   	{
+					struct ipc_message *m = event.m;
+					if (m->length > 0) {
+						printf ("message received (type %d): %.*s\n", m->type, m->length, m->payload);
+					}
+					if (ipc_server_write (event.origin, m) < 0) {
+						handle_err( "handle_new_msg", "server_write < 0");
+					}
+				};
+				break;
+			case IPC_EVENT_TYPE_ERROR:
+			   	{
+					fprintf (stderr, "a problem happened with client %d\n"
+							, ((struct ipc_client*) event.origin)->proc_fd);
+				};
+				break;
+			default :
+				{
+					fprintf (stderr, "there must be a problem, event not set\n");
+				};
+		}
     }
+
 	// should never go there
 	exit (1);
 }
 
 
+void exit_program(int signal)
+{
+	printf("Quitting, signal: %d\n", signal);
+
+	// free remaining clients
+	for (int i = 0; i < clients->size ; i++) {
+		struct ipc_client *cli = clients->clients[i];
+		// TODO: replace with specific ipc_client_empty function
+		if (cli != NULL) {
+			// ipc_client_empty (cli);
+			free (cli);
+		}
+		clients->clients[i] = NULL;
+	}
+
+	ipc_clients_free (clients);
+	free (clients);
+
+
+    // the application will shut down, and close the service
+    if (ipc_server_close (srv) < 0) {
+        handle_error("ipc_server_close < 0");
+    }
+	free (srv);
+
+	exit(EXIT_SUCCESS);
+}
+
 /*
- * service ping-pong
- *
- * 1. creates the unix socket /run/ipc/<service>.sock, then listens
- * 2. listen for new clients
- * 3. then accept a new client, and send back everything it sends
- * 4. close any client that closes its socket
- *
- * and finally, stop the program once a client sends a SERVER CLOSE command
+ * service ping-pong: send back everything sent by the clients
+ * stop the program on SIGTERM, SIGALRM, SIGUSR{1,2}, SIGHUP signals
  */
 
 int main(int argc, char * argv[], char **env)
 {
 	argc = argc; // warnings
 	argv = argv; // warnings
+
+	printf ("pid = %d\n", getpid ());
 
 	srv = malloc (sizeof (struct ipc_service));
 	if (srv == NULL) {
@@ -170,20 +134,22 @@ int main(int argc, char * argv[], char **env)
     // unlink("/tmp/ipc/pongd-0-0");
 
     if (ipc_server_init (env, srv, PONGD_SERVICE_NAME) < 0) {
-        handle_error("server_init < 0");
+        handle_error("ipc_server_init < 0");
         return EXIT_FAILURE;
     }
     printf ("Listening on %s.\n", srv->spath);
 
     printf("MAIN: server created\n" );
 
-    // the service will loop until the end of time, a specific message, a signal
+	signal (SIGHUP, exit_program);
+	signal (SIGALRM, exit_program);
+	signal (SIGUSR1, exit_program);
+	signal (SIGUSR2, exit_program);
+	signal (SIGTERM, exit_program);
+
+    // the service will loop until the end of time, or a signal
     main_loop ();
 
-    // the application will shut down, and remove the service named pipe
-    if (ipc_server_close (srv) < 0) {
-        handle_error("server_close < 0");
-    }
-
-    return EXIT_SUCCESS;
+	// main_loop should not return
+    return EXIT_FAILURE;
 }

@@ -45,7 +45,6 @@ void non_interactive (char *env[])
     printf ("msg recv: %s\n", m.payload);
     ipc_message_empty (&m);
 
-	sleep(10);
     if (ipc_application_close (&srv) < 0) {
         handle_err("main", "application_close < 0");
         exit (EXIT_FAILURE);

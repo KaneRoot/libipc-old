@@ -8,6 +8,7 @@
 #include "message.h"
 
 #include "client.h"
+#include "event.h"
 
 #define COMMUNICATION_VERSION 1
 
@@ -31,6 +32,9 @@ int ipc_server_write (const struct ipc_client *, const struct ipc_message *m);
 
 int ipc_server_select (struct ipc_clients * clients, struct ipc_service *srv
         , struct ipc_clients *active_clients, int *new_connection);
+
+int ipc_service_loop (struct ipc_clients *clients, struct ipc_service *srv
+        , struct ipc_event *event);
 
 // APPLICATION
 

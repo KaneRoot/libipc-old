@@ -3,8 +3,11 @@
 
 #include "logger.h"
 
-#define IPC_ERROR_NOT_ENOUGH_MEMORY                 100
-#define IPC_ERROR_WRONG_PARAMETERS                  101
+enum ipc_errors {
+	IPC_ERROR_NOT_ENOUGH_MEMORY
+	, IPC_ERROR_WRONG_PARAMETERS
+	, IPC_ERROR_READ
+};
 
 // #define IPC_WITH_ERRORS                               3
 
