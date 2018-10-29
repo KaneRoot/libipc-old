@@ -13,7 +13,7 @@ void service_path (char *path, const char *sname, int index, int version)
     assert (path != NULL);
     assert (sname != NULL);
     memset (path, 0, PATH_MAX);
-    snprintf (path, PATH_MAX, "%s/%s-%d-%d", TMPDIR, sname, index, version);
+    snprintf (path, PATH_MAX, "%s/%s-%d-%d", RUNDIR, sname, index, version);
 }
 
 int ipc_server_init (char **env

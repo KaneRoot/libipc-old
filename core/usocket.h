@@ -7,7 +7,7 @@
 
 #define LISTEN_BACKLOG 128
 
-#define TMPDIR "/run/ipc/"
+#define RUNDIR "/run/ipc/"
 #define PATH_MAX 4096
 
 #define IPC_HEADER_SIZE  5
