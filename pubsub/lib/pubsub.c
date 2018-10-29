@@ -3,7 +3,6 @@
 
 #include "pubsub.h"
 #include "pubsubd.h"
-#include "../../core/error.h"
 
 #define PUBSUB_SUBSCRIBER_ACTION_STR_PUB    "pub"
 #define PUBSUB_SUBSCRIBER_ACTION_STR_SUB    "sub"
@@ -33,11 +32,9 @@ void pubsub_quit (struct ipc_service *srv)
 }
 #endif
 
-int pubsub_connection (int argc, char **argv, char **env
-        , struct ipc_service *srv)
+int pubsub_connection (char **env, struct ipc_service *srv)
 {
-    int ret = ipc_application_connection (argc, argv, env
-            , srv, PUBSUBD_SERVICE_NAME, NULL, 0);
+    int ret = ipc_application_connection (env, srv, PUBSUBD_SERVICE_NAME);
 
     if (ret != 0) {
         handle_err ("pubsub_connection", "application_connection != 0");
@@ -69,7 +66,7 @@ int pubsub_message_send (struct ipc_service *srv, const struct pubsub_msg * m)
     }
 
     ipc_application_write (srv, &m_data);
-    ipc_message_free (&m_data);
+    ipc_message_empty (&m_data);
 
     if (buf != NULL)
         free(buf);
@@ -95,7 +92,7 @@ int pubsub_message_recv (struct ipc_service *srv, struct pubsub_msg *m)
     ipc_application_read (srv, &m_recv);
     pubsub_message_unserialize (m, m_recv.payload, m_recv.length);
 
-    ipc_message_free (&m_recv);
+    ipc_message_empty (&m_recv);
 
     return 0;
 }

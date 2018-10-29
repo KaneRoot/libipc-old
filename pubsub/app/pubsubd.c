@@ -1,6 +1,4 @@
-#include "../../core/communication.h"
-#include "../../core/client.h"
-#include "../../core/error.h"
+#include "../../core/ipc.h"
 #include "../lib/pubsubd.h"
 #include <stdlib.h>
 
@@ -29,6 +27,10 @@ void handle_signal (int signalnumber)
 int
 main(int argc, char **argv, char **env)
 {
+
+	argc = argc;
+	argv = argv;
+
     memset (&srv, 0, sizeof (struct ipc_service));
     srv.index = 0;
     srv.version = 0;
@@ -40,7 +42,7 @@ main(int argc, char **argv, char **env)
     memset (&chans, 0, sizeof (struct channels));
     pubsubd_channels_init (&chans);
 
-    if (ipc_server_init (argc, argv, env, &srv, PUBSUBD_SERVICE_NAME) < 0) {
+    if (ipc_server_init (env, &srv, PUBSUBD_SERVICE_NAME) < 0) {
         handle_error("ipc_server_init < 0");
         return EXIT_FAILURE;
     }

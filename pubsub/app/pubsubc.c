@@ -2,7 +2,7 @@
 
 // TODO: select on service + input instead of threads
 
-#include "../../core/error.h"
+#include "../../core/ipc.h"
 #include "../lib/pubsub.h"
 #include "../lib/pubsubd.h"
 #include <stdlib.h>
@@ -67,8 +67,7 @@ void chan_sub (struct ipc_service *srv, char *chan)
     pubsub_message_free (&msg);
 }
 
-void main_loop (int argc, char **argv, char **env
-        , int index, int version
+void main_loop (char **env, int index, int version
         , char *cmd, char *chan)
 {
     printf ("connection to pubsubd: index %d version %d "
@@ -77,7 +76,7 @@ void main_loop (int argc, char **argv, char **env
 
     struct ipc_service srv;
     memset (&srv, 0, sizeof (struct ipc_service));
-    pubsub_connection (argc, argv, env, &srv);
+    pubsub_connection (env, &srv);
     printf ("connected\n");
 
     if (strncmp (cmd, "sub", 3) == 0) {
@@ -167,7 +166,7 @@ int main(int argc, char **argv, char **env)
     // don't care about the version
     int version = 0;
 
-    main_loop (argc, argv, env, index, version, cmd, chan);
+    main_loop (env, index, version, cmd, chan);
 
     return EXIT_SUCCESS;
 }
