@@ -30,10 +30,12 @@ int ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msi
 #endif
     assert (m->length == msize - IPC_HEADER_SIZE || m->length == 0);
 
-    if (m->payload != NULL)
-        free (m->payload), m->payload = NULL;
+    if (m->payload != NULL) {
+        free (m->payload);
+		m->payload = NULL;
+	}
 
-    if (m->payload == NULL && m->length > 0) {
+    if (m->length > 0) {
         m->payload = malloc (m->length);
         memcpy (m->payload, buf+IPC_HEADER_SIZE, m->length);
     }
@@ -118,22 +120,25 @@ int ipc_message_write (int fd, const struct ipc_message *m)
 	ssize_t nbytes_sent = 0;
     int ret = usock_send (fd, buf, msize, &nbytes_sent);
     if (ret < 0) {
-		if (buf != NULL)
+		if (buf != NULL) {
 			free (buf);
+		}
         handle_err ("msg_write", "usock_send ret < 0");
         return -1;
     }
 
 	// what was sent != what should have been sent
 	if (nbytes_sent != msize) {
-		if (buf != NULL)
+		if (buf != NULL) {
 			free (buf);
+		}
         handle_err ("msg_write", "usock_send did not send enough data");
         return -1;
 	}
 
-    if (buf != NULL)
+    if (buf != NULL) {
         free (buf);
+	}
 
     return 0;
 }
@@ -189,8 +194,10 @@ int ipc_message_empty (struct ipc_message *m)
     if (m == NULL)
         return -1;
 
-    if (m->payload != NULL)
-        free (m->payload), m->payload = NULL;
+    if (m->payload != NULL) {
+        free (m->payload);
+		m->payload = NULL;
+	}
 
     m->length = 0;
 

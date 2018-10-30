@@ -20,7 +20,7 @@ enum pubsub_message_types {
 };
 
 struct pubsub_msg {
-    unsigned char type; // message type : alert, notification, …
+    enum pubsub_message_types type; // message type : alert, notification, …
     char *chan;
     size_t chanlen;
     char *data;
@@ -33,8 +33,6 @@ void pubsub_message_to_message (const struct pubsub_msg *msg, struct ipc_message
 void pubsub_message_set_chan (struct pubsub_msg *pm, char *chan, size_t len);
 void pubsub_message_set_data (struct pubsub_msg *pm, char *data, size_t len);
 
-void pubsub_message_serialize (const struct pubsub_msg *msg, char **data, size_t *len);
-void pubsub_message_unserialize (struct pubsub_msg *msg, const char *data, size_t len);
 void pubsub_message_empty (struct pubsub_msg *msg);
 void pubsub_message_print (const struct pubsub_msg *msg);
 

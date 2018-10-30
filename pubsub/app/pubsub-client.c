@@ -4,6 +4,7 @@
 #include "../lib/channels.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -84,8 +85,6 @@ void main_loop (char **env, int index, int version
 				{
 					struct ipc_message *m = event.m;
 					if ( m->length == 0 || strncmp (m->payload, "exit", 4) == 0) {
-						// TODO: disconnection
-
 						ipc_message_empty (m);
 						free (m);
 
@@ -95,9 +94,9 @@ void main_loop (char **env, int index, int version
 
 					// get the curent payload, change it to be compatible with the application
 					// then send it
-					print_cmd ();
-
-					// TODO: remove \n
+					char *pointer_to_return = strchr (m->payload, '\n');
+					*pointer_to_return = '\0';
+					m->length--;
 					pubsub_message_set_chan (&msg, chan, strlen(chan));
 					pubsub_message_set_data (&msg, m->payload, m->length);
 
@@ -109,10 +108,10 @@ void main_loop (char **env, int index, int version
 			case IPC_EVENT_TYPE_MESSAGE:
 				{
 					struct ipc_message *m = event.m;
-					print_hexa ("received msg hexa", m->payload, m->length);
+					// print_hexa ("received msg hexa", (unsigned char *) m->payload, m->length);
 
 					pubsub_message_from_message (&msg, m);
-					printf ("\033[31m>\033[00m %.*s\n", (int) msg.datalen, msg.data);
+					printf ("\r\033[31m>\033[00m %.*s\n", (int) msg.datalen, msg.data);
 				};
 				break;
 			case IPC_EVENT_TYPE_DISCONNECTION:

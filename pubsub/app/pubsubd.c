@@ -24,23 +24,15 @@ void pubsubd_send (const struct ipc_clients *clients, const struct pubsub_msg * 
         return;
     }
 
-    char *buf = NULL;
-    size_t msize = 0;
-    pubsub_message_serialize (pubsub_msg, &buf, &msize);
-
     struct ipc_message m;
-    memset (&m, 0, sizeof (struct ipc_message));
-    ipc_message_format_data (&m, buf, msize);
+	memset (&m, 0, sizeof (struct ipc_message));
+    pubsub_message_to_message (pubsub_msg, &m);
 
     int i;
     for (i = 0; i < clients->size ; i++) {
         ipc_server_write (clients->clients[i], &m);
     }
     ipc_message_empty (&m);
-
-    if (buf != NULL) {
-        free (buf);
-    }
 }
 
 void pubsubd_main_loop (struct ipc_service *srv, struct channels *chans)
@@ -84,7 +76,6 @@ void pubsubd_main_loop (struct ipc_service *srv, struct channels *chans)
 					struct ipc_client *cli = event.origin;
 					printf ("disconnection of client %d: %d clients remaining\n", cli->proc_fd, cpt);
 
-					// TODO: to test, unsubscribe when closing
 					pubsubd_channels_unsubscribe_everywhere (chans, cli);
 
 					// free the ipc_client structure
@@ -93,9 +84,8 @@ void pubsubd_main_loop (struct ipc_service *srv, struct channels *chans)
 				break;
 			case IPC_EVENT_TYPE_MESSAGE:
 			   	{
-					// TODO: handle a message
 					struct ipc_message *m = event.m;
-					print_hexa ("received msg hexa", m->payload, m->length);
+					// print_hexa ("received msg hexa", (unsigned char *) m->payload, m->length);
 					struct ipc_client *cli = event.origin;
 
 					struct pubsub_msg pm;
@@ -155,7 +145,6 @@ void pubsubd_main_loop (struct ipc_service *srv, struct channels *chans)
     pubsubd_channels_del_all (chans);
 }
 
-
 void handle_signal (int signalnumber)
 {
     // the application will shut down, and remove the service named pipe
@@ -175,6 +164,7 @@ main(int argc, char **argv, char **env)
 	argc = argc;
 	argv = argv;
 
+	// set the service
     memset (&srv, 0, sizeof (struct ipc_service));
     srv.index = 0;
     srv.version = 0;
@@ -183,6 +173,7 @@ main(int argc, char **argv, char **env)
     signal(SIGINT, handle_signal);
     signal(SIGQUIT, handle_signal);
 
+	// set the channels
     memset (&chans, 0, sizeof (struct channels));
     pubsubd_channels_init (&chans);
 

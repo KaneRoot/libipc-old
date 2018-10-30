@@ -28,60 +28,6 @@ void pubsub_message_set_chan (struct pubsub_msg *pm, char *chan, size_t len)
     pm->chan[len] = '\0';
 }
 
-void pubsub_message_serialize (const struct pubsub_msg *msg, char **data, size_t *len)
-{
-    if (msg == NULL) {
-        handle_err ("pubsub_message_serialize", "msg == NULL");
-        return;
-    }
-
-    if (data == NULL) {
-        handle_err ("pubsub_message_serialize", "data == NULL");
-        return;
-    }
-
-    if (*data != NULL) {
-        handle_err ("pubsub_message_serialize", "*data != NULL");
-        return;
-    }
-
-    if (len == NULL) {
-        handle_err ("pubsub_message_serialize", "len == NULL");
-        return;
-    }
-
-    // buflen = pubsub msg type (1) + 2* size_t (16) + chan+data
-    size_t buflen = 1 + 2 * sizeof (size_t) + msg->chanlen + msg->datalen;
-
-    if (buflen > BUFSIZ) {
-        handle_err ("pubsub_message_serialize", "chanlen + datalen too high");
-        return;
-    }
-
-    char *buf = malloc (buflen);
-    memset (buf, 0, buflen);
-
-    size_t offset = 0;
-
-    // msg type
-    buf[offset++] = msg->type;
-
-    // chan
-    memcpy (buf + offset, &msg->chanlen, sizeof (size_t));
-    offset += sizeof (size_t);
-    memcpy (buf + offset, msg->chan, msg->chanlen);
-    offset += msg->chanlen;
-
-    // data
-    memcpy (buf + offset, &msg->datalen, sizeof (size_t));
-    offset += sizeof (size_t);
-    memcpy (buf + offset, msg->data, msg->datalen);
-    offset += msg->datalen;
-
-    *data = buf;
-    *len = buflen;
-}
-
 void pubsub_message_from_message (struct pubsub_msg *pm, struct ipc_message *m)
 {
     size_t offset = 0;
@@ -99,7 +45,7 @@ void pubsub_message_from_message (struct pubsub_msg *pm, struct ipc_message *m)
 	offset += sizeof (size_t);
 	if (pm->chanlen > 0) {
 		pubsub_message_set_chan (pm, m->payload + offset, pm->chanlen);
-		printf ("from ipc_message, chan: %s, chanlen = %lu\n", pm->chan, pm->chanlen);
+		offset += pm->chanlen;
 	}
 
 	// data
@@ -111,7 +57,7 @@ void pubsub_message_from_message (struct pubsub_msg *pm, struct ipc_message *m)
 	offset += sizeof (size_t);
 	if (pm->datalen > 0) {
 		pubsub_message_set_data (pm, m->payload + offset, pm->datalen);
-		printf ("from ipc_message, data: %s, datalen = %lu\n", pm->data, pm->datalen);
+		offset += pm->datalen;
 	}
 }
 
@@ -159,50 +105,6 @@ void pubsub_message_to_message (const struct pubsub_msg *msg, struct ipc_message
     m->length  = buflen;
 }
 
-void pubsub_message_unserialize (struct pubsub_msg *msg, const char *buf, size_t mlen)
-{
-    if (msg == NULL) {
-        handle_err ("pubsub_message_unserialize", "msg == NULL");
-        return;
-    }
-
-    pubsub_message_empty (msg);
-
-    if (mlen > BUFSIZ) {
-        handle_err ("pubsub_message_unserialize", "mlen > BUFSIZ");
-        return;
-    }
-
-    size_t offset = 0;
-
-    // msg type
-    msg->type = buf[offset++];
-
-    // chan
-    memcpy (&msg->chanlen, buf + offset, sizeof (size_t));
-    if (msg->chanlen > BUFSIZ) {
-        handle_err ("pubsub_message_unserialize", "chanlen > BUFSIZ");
-        return;
-    }
-    msg->chan = malloc (msg->chanlen);
-    memset (msg->chan, 0, msg->chanlen);
-    offset += sizeof (size_t);
-    memcpy (msg->chan, buf + offset, msg->chanlen);
-    offset += msg->chanlen;
-
-    // data
-    memcpy (&msg->datalen, buf + offset, sizeof (size_t));
-    if (msg->datalen > BUFSIZ) {
-        handle_err ("pubsub_message_unserialize", "datalen > BUFSIZ");
-        return;
-    }
-    msg->data = malloc (msg->datalen);
-    memset (msg->data, 0, msg->datalen);
-    offset += sizeof (size_t);
-    memcpy (msg->data, buf + offset, msg->datalen);
-    offset += msg->datalen;
-}
-
 void pubsub_message_empty (struct pubsub_msg *msg)
 {
     if (msg == NULL) {
@@ -214,6 +116,7 @@ void pubsub_message_empty (struct pubsub_msg *msg)
         free (msg->chan);
         msg->chan = NULL;
     }
+
     if (msg->data != NULL) {
         free (msg->data);
         msg->data = NULL;
