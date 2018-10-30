@@ -1,8 +1,7 @@
 #ifndef __CHANNELS_H__
 #define __CHANNELS_H__
 
-#include "../../core/queue.h"
-#include "../../core/client.h"
+#include "../../core/ipc.h"
 
 // head of the list
 LIST_HEAD(channels, channel);

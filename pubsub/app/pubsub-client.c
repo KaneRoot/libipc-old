@@ -3,12 +3,11 @@
 #include "../lib/message.h"
 #include "../lib/channels.h"
 
-#include "../lib/pubsub.h"
-#include "../lib/pubsubd.h"
-
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
+
+#define PUBSUBD_SERVICE_NAME "pubsubd"
 
 void usage (char **argv) {
     printf ( "usage: %s [chan [pub]]\n", argv[0]);
@@ -26,16 +25,12 @@ void chan_sub (struct ipc_service *srv, char *chan)
 
     // meta data on the message
     msg.type = PUBSUB_MSG_TYPE_SUB;
-    msg.chanlen = strlen (chan) + 1;
-    msg.chan = malloc (msg.chanlen);
-    memset (msg.chan, 0, msg.chanlen);
-    strncpy (msg.chan, chan, msg.chanlen);
-    msg.chan[strlen (chan)] = '\0';
+	pubsub_message_set_chan (&msg, chan, strlen(chan));
 
     pubsub_message_send (srv, &msg);
     printf ("subscribed to %s\n", chan);
 
-    pubsub_message_free (&msg);
+    pubsub_message_empty (&msg);
 }
 
 void main_loop (char **env, int index, int version
@@ -64,11 +59,7 @@ void main_loop (char **env, int index, int version
 
     // meta data on the message
     msg.type = PUBSUB_MSG_TYPE_PUB;
-    msg.chanlen = strlen (chan) + 1;
-    msg.chan = malloc (msg.chanlen);
-    memset (msg.chan, 0, msg.chanlen);
-    strncpy ((char *) msg.chan, chan, msg.chanlen);
-    msg.chan[strlen (chan)] = '\0';
+	pubsub_message_set_chan (&msg, chan, strlen(chan));
 
 	struct ipc_event event;
 	memset (&event, 0, sizeof (struct ipc_event));
@@ -107,23 +98,21 @@ void main_loop (char **env, int index, int version
 					print_cmd ();
 
 					// TODO: remove \n
-					msg.datalen = m->length + 1;
-					msg.data = malloc (msg.datalen);
-					memset (msg.data, 0, msg.datalen);
-					strncpy (msg.data, m->payload, msg.datalen);
-					msg.data[msg.datalen] = '\0';
+					pubsub_message_set_chan (&msg, chan, strlen(chan));
+					pubsub_message_set_data (&msg, m->payload, m->length);
 
 					pubsub_message_send (&srv, &msg);
-					free (msg.data);
-					msg.data = NULL;
-					msg.datalen = 0;
+
+					pubsub_message_empty (&msg);
 				}
 				break;
 			case IPC_EVENT_TYPE_MESSAGE:
 				{
 					struct ipc_message *m = event.m;
-					printf ("msg recv: %.*s", m->length, m->payload);
-					// TODO: correctly print the message
+					print_hexa ("received msg hexa", m->payload, m->length);
+
+					pubsub_message_from_message (&msg, m);
+					printf ("\033[31m>\033[00m %.*s\n", (int) msg.datalen, msg.data);
 				};
 				break;
 			case IPC_EVENT_TYPE_DISCONNECTION:
@@ -135,6 +124,7 @@ void main_loop (char **env, int index, int version
 
 					exit (EXIT_SUCCESS);
 				};
+				break;
 			case IPC_EVENT_TYPE_NOT_SET:
 			case IPC_EVENT_TYPE_CONNECTION:
 			case IPC_EVENT_TYPE_ERROR:
@@ -144,7 +134,7 @@ void main_loop (char **env, int index, int version
     }
 
     // free everything
-    pubsub_message_free (&msg);
+    pubsub_message_empty (&msg);
 
     printf ("disconnection...\n");
 	ipc_services_free (&services);
