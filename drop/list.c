@@ -7,11 +7,11 @@ LIST_HEAD(mlist, node);
 
 // elements structure of the list
 struct node {
-    int content;
+    int32_t content;
     LIST_ENTRY(node) entries;
 };
 
-int main(int argc, char * argv[])
+int32_t main(int32_t argc, char * argv[])
 {
     (void) argc;
     (void) argv;

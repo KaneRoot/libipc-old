@@ -5,6 +5,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#include <stdint.h>
+
 #include "../../core/communication.h"
 #include "../../core/error.h"
 

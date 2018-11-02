@@ -64,7 +64,7 @@ void log_debug (const char* message, ...) {
 }
 
 static
-int recvsockfd (int socket)  // receive fd from socket
+int32_t recvsockfd (int32_t socket)  // receive fd from socket
 {
     struct ipc_messagehdr msg = {0};
 
@@ -84,14 +84,14 @@ int recvsockfd (int socket)  // receive fd from socket
     struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
 
     printf ("About to extract fd\n");
-    int fd;
+    int32_t fd;
     memmove(&fd, CMSG_DATA(cmsg), sizeof(fd));
     printf ("Extracted fd %d\n", fd);
 
     return fd;
 }
 
-int usock_connect (int *fd, const char *path)
+int32_t usock_connect (int32_t *fd, const char *path)
 {
     assert (fd != NULL);
     assert (path != NULL);
@@ -106,7 +106,7 @@ int usock_connect (int *fd, const char *path)
         return -1;
     }
 
-    int sfd;
+    int32_t sfd;
     struct sockaddr_un my_addr;
     socklen_t peer_addr_size;
 
@@ -134,7 +134,7 @@ int usock_connect (int *fd, const char *path)
     return 0;
 }
 
-int usock_init (int *fd, const char *path)
+int32_t usock_init (int32_t *fd, const char *path)
 {
     assert (fd != NULL);
     assert (path != NULL);
@@ -149,7 +149,7 @@ int usock_init (int *fd, const char *path)
         return -1;
     }
 
-    int sfd;
+    int32_t sfd;
     struct sockaddr_un my_addr;
     socklen_t peer_addr_size;
 
@@ -187,7 +187,7 @@ int usock_init (int *fd, const char *path)
     return 0;
 }
 
-int usock_accept (int fd, int *pfd)
+int32_t usock_accept (int32_t fd, int32_t *pfd)
 {
     assert (pfd != NULL);
 
@@ -210,9 +210,9 @@ int usock_accept (int fd, int *pfd)
     return 0;
 }
 
-int usock_close (int fd)
+int32_t usock_close (int32_t fd)
 {
-    int ret;
+    int32_t ret;
     ret = close (fd);
     if (ret < 0) {
         handle_err ("usock_close", "close ret < 0");
@@ -221,15 +221,15 @@ int usock_close (int fd)
     return ret;
 }
 
-int usock_remove (const char *path)
+int32_t usock_remove (const char *path)
 {
     return unlink (path);
 }
 
-int main(int argc, char * argv[])
+int32_t main(int32_t argc, char * argv[])
 {
-    int tcpsockfd;
-    int usockfd;
+    int32_t tcpsockfd;
+    int32_t usockfd;
     // check the number of args on command line
     if(argc != 1)
     {
@@ -240,7 +240,7 @@ int main(int argc, char * argv[])
     printf("Connection to the unix socket\n");
 
     // 1. unix socket connection
-    int ret = usock_connect (&usockfd, USOCK);
+    int32_t ret = usock_connect (&usockfd, USOCK);
     if (ret != 0) {
         fprintf (stderr, "error: usock_connect\n");
         exit(EXIT_FAILURE);

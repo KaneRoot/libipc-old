@@ -11,7 +11,7 @@
 
 #define PORT 2020
 
-int main(int argc, char *argv[])
+int32_t main(int32_t argc, char *argv[])
 {
     /* master file descriptor list */
     fd_set master;
@@ -23,19 +23,19 @@ int main(int argc, char *argv[])
     struct sockaddr_in clientaddr;
 
     /* maximum file descriptor number */
-    int fdmax;
+    int32_t fdmax;
     /* listening socket descriptor */
-    int listener;
+    int32_t listener;
     /* newly accept()ed socket descriptor */
-    int newfd;
+    int32_t newfd;
     /* buffer for client data */
     char buf[1024];
-    int nbytes;
+    int32_t nbytes;
 
     /* for setsockopt() SO_REUSEADDR, below */
-    int yes = 1;
-    int addrlen;
-    int i, j;
+    int32_t yes = 1;
+    int32_t addrlen;
+    int32_t i, j;
 
     /* clear the master and temp sets */
     FD_ZERO(&master);
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
     printf("Server-socket() is OK...\n");
     /*"address already in use" error message */
-    if(setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
+    if(setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int32_t)) == -1)
     {
         perror("Server-setsockopt() error lol!");
         exit(1);

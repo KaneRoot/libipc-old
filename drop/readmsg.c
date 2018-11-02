@@ -12,7 +12,7 @@ void usage (char **argv) {
     printf ("usage: echo something | msg | %s\n", argv[0]);
 }
 
-int main(int argc, char * argv[])
+int32_t main(int32_t argc, char * argv[])
 {
     if (argc == 2 && strcmp ("-h", argv[1]) == 0) {
         usage (argv);
@@ -21,7 +21,7 @@ int main(int argc, char * argv[])
 
     // read the message from the client
     size_t mlen = 0;
-    unsigned char buf[BUFSIZ];
+    uint8_t buf[BUFSIZ];
     mlen = read (0, buf, BUFSIZ);
 
     /* Assuming `buffer` contains `info.st_size` bytes of input data */

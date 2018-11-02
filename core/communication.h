@@ -20,20 +20,20 @@
 
 // srv->version and srv->index must be already set
 // init unix socket + fill srv->spath
-int ipc_server_init (char **env
+int32_t ipc_server_init (char **env
 		, struct ipc_service *srv, const char *sname);
-int ipc_server_close (struct ipc_service *srv);
-int ipc_server_close_client (struct ipc_client *p);
-int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p);
+int32_t ipc_server_close (struct ipc_service *srv);
+int32_t ipc_server_close_client (struct ipc_client *p);
+int32_t ipc_server_accept (struct ipc_service *srv, struct ipc_client *p);
 
 // 1 on a recipient socket close
-int ipc_server_read (const struct ipc_client *, struct ipc_message *m);
-int ipc_server_write (const struct ipc_client *, const struct ipc_message *m);
+int32_t ipc_server_read (const struct ipc_client *, struct ipc_message *m);
+int32_t ipc_server_write (const struct ipc_client *, const struct ipc_message *m);
 
-int ipc_server_select (struct ipc_clients * clients, struct ipc_service *srv
-        , struct ipc_clients *active_clients, int *new_connection);
+int32_t ipc_server_select (struct ipc_clients * clients, struct ipc_service *srv
+        , struct ipc_clients *active_clients, int32_t *new_connection);
 
-int ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
+int32_t ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
         , struct ipc_event *event);
 
 // APPLICATION
@@ -41,17 +41,17 @@ int ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
 // Initialize connection with unix socket
 // send the connection string to $TMP/<service>
 // fill srv->spath && srv->service_fd
-int ipc_application_connection (char **env
+int32_t ipc_application_connection (char **env
 		, struct ipc_service *, const char *);
-int ipc_application_close (struct ipc_service *);
+int32_t ipc_application_close (struct ipc_service *);
 
 // 1 on a recipient socket close
-int ipc_application_read (struct ipc_service *srv, struct ipc_message *m);
-int ipc_application_write (struct ipc_service *, const struct ipc_message *m);
+int32_t ipc_application_read (struct ipc_service *srv, struct ipc_message *m);
+int32_t ipc_application_write (struct ipc_service *, const struct ipc_message *m);
 
-int ipc_application_select (struct ipc_services *services, struct ipc_services *active_services);
+int32_t ipc_application_select (struct ipc_services *services, struct ipc_services *active_services);
 
-int ipc_application_poll_event (struct ipc_services *services, struct ipc_event *event);
-int ipc_application_peek_event (struct ipc_services *services, struct ipc_event *event);
+int32_t ipc_application_poll_event (struct ipc_services *services, struct ipc_event *event);
+int32_t ipc_application_peek_event (struct ipc_services *services, struct ipc_event *event);
 
 #endif

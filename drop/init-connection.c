@@ -3,12 +3,12 @@
 #define SERVICE         "windowing"
 
 void
-ohshit(int rvalue, const char* str) {
+ohshit(int32_t rvalue, const char* str) {
     fprintf(stderr, "%s\n", str);
     exit(rvalue);
 }
 
-int main(int argc, char * argv[], char *env[])
+int32_t main(int32_t argc, char * argv[], char *env[])
 {
     struct ipc_service srv;
     memset (&srv, 0, sizeof (struct ipc_service));
@@ -26,8 +26,8 @@ int main(int argc, char * argv[], char *env[])
     struct ipc_client p;
     memset (&p, 0, sizeof (struct ipc_client));
 
-    int index = 0; // first time we communication with the service
-    int version = 1;
+    int32_t index = 0; // first time we communication with the service
+    int32_t version = 1;
 
     printf ("app creation\n");
     if (application_create (&p, index, version)) // called by the application

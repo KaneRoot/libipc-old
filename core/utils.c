@@ -1,6 +1,6 @@
 #include "utils.h"
 
-void print_hexa (const char *prefix, unsigned char *payload, size_t size)
+void print_hexa (const char *prefix, uint8_t *payload, size_t size)
 {
     if (! payload)
         return ;
@@ -16,7 +16,7 @@ void print_hexa (const char *prefix, unsigned char *payload, size_t size)
 }
 
 
-void mprint_hexa (char *prefix, unsigned char *buf, size_t length)
+void mprint_hexa (char *prefix, uint8_t *buf, size_t length)
 {
     print_hexa (prefix, buf, length);
 }

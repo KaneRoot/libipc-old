@@ -1,6 +1,8 @@
 #ifndef __IPC_H__
 #define __IPC_H__
 
+#include <stdint.h>
+
 #include "client.h"
 #include "communication.h"
 #include "error.h"

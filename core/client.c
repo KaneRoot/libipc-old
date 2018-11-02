@@ -17,20 +17,20 @@ struct ipc_client * ipc_server_client_copy (const struct ipc_client *p)
     return copy;
 }
 
-int ipc_server_client_eq (const struct ipc_client *p1, const struct ipc_client *p2)
+int32_t ipc_server_client_eq (const struct ipc_client *p1, const struct ipc_client *p2)
 {
     return (p1->version == p2->version && p1->index == p2->index
             && p1->proc_fd == p2->proc_fd);
 }
 
 void ipc_server_client_gen (struct ipc_client *p
-        , unsigned int index, unsigned int version)
+        , uint32_t index, uint32_t version)
 {
     p->version = version;
     p->index = index;
 }
 
-int ipc_client_add (struct ipc_clients *clients, struct ipc_client *p)
+int32_t ipc_client_add (struct ipc_clients *clients, struct ipc_client *p)
 {
     assert(clients != NULL);
     assert(p != NULL);
@@ -47,7 +47,7 @@ int ipc_client_add (struct ipc_clients *clients, struct ipc_client *p)
     return 0;
 }
 
-int ipc_client_del (struct ipc_clients *clients, struct ipc_client *p)
+int32_t ipc_client_del (struct ipc_clients *clients, struct ipc_client *p)
 {
     assert(clients != NULL);
     assert(p != NULL);
@@ -56,7 +56,7 @@ int ipc_client_del (struct ipc_clients *clients, struct ipc_client *p)
         return -1;
     }
 
-    int i;
+    int32_t i;
     for (i = 0; i < clients->size; i++) {
         if (clients->clients[i] == p) {
 
@@ -90,7 +90,7 @@ void client_print (struct ipc_client *p)
 
 void ipc_clients_print (struct ipc_clients *ap)
 {
-    int i;
+    int32_t i;
     for (i = 0; i < ap->size; i++) {
         printf("%d : ", i);
         client_print(ap->clients[i]);

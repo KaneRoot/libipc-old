@@ -12,7 +12,7 @@ void ipc_message_print (const struct ipc_message *m)
 #endif
 }
 
-int ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msize)
+int32_t ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msize)
 {
     assert (m != NULL);
     assert (buf != NULL);
@@ -43,7 +43,7 @@ int ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msi
     return 0;
 }
 
-int ipc_message_format_write (const struct ipc_message *m, char **buf, ssize_t *msize)
+int32_t ipc_message_format_write (const struct ipc_message *m, char **buf, ssize_t *msize)
 {
     assert (m != NULL);
     assert (buf != NULL);
@@ -82,14 +82,14 @@ int ipc_message_format_write (const struct ipc_message *m, char **buf, ssize_t *
 }
 
 // 1 on a recipient socket close
-int ipc_message_read (int fd, struct ipc_message *m)
+int32_t ipc_message_read (int32_t fd, struct ipc_message *m)
 {
     assert (m != NULL);
 
     char *buf = NULL;
     ssize_t msize = IPC_MAX_MESSAGE_SIZE;
 
-    int ret = usock_recv (fd, &buf, &msize);
+    int32_t ret = usock_recv (fd, &buf, &msize);
     if (ret < 0) {
 		// on error, buffer already freed
         handle_err ("msg_read", "usock_recv");
@@ -109,7 +109,7 @@ int ipc_message_read (int fd, struct ipc_message *m)
     return 0;
 }
 
-int ipc_message_write (int fd, const struct ipc_message *m)
+int32_t ipc_message_write (int32_t fd, const struct ipc_message *m)
 {
     assert (m != NULL);
 
@@ -118,7 +118,7 @@ int ipc_message_write (int fd, const struct ipc_message *m)
     ipc_message_format_write (m, &buf, &msize);
 
 	ssize_t nbytes_sent = 0;
-    int ret = usock_send (fd, buf, msize, &nbytes_sent);
+    int32_t ret = usock_send (fd, buf, msize, &nbytes_sent);
     if (ret < 0) {
 		if (buf != NULL) {
 			free (buf);
@@ -145,7 +145,7 @@ int ipc_message_write (int fd, const struct ipc_message *m)
 
 // MSG FORMAT
 
-int ipc_message_format (struct ipc_message *m, char type, const char *payload, ssize_t length)
+int32_t ipc_message_format (struct ipc_message *m, char type, const char *payload, ssize_t length)
 {
     assert (m != NULL);
     assert (length <= IPC_MAX_MESSAGE_SIZE);
@@ -157,7 +157,7 @@ int ipc_message_format (struct ipc_message *m, char type, const char *payload, s
     }
 
     m->type = type;
-    m->length = (unsigned int) length;
+    m->length = (uint32_t) length;
 
     if (payload != NULL) {
 		if (m->payload != NULL) {
@@ -177,17 +177,17 @@ int ipc_message_format (struct ipc_message *m, char type, const char *payload, s
     return 0;
 }
 
-int ipc_message_format_data (struct ipc_message *m, const char *payload, ssize_t length)
+int32_t ipc_message_format_data (struct ipc_message *m, const char *payload, ssize_t length)
 {
     return ipc_message_format (m, MSG_TYPE_DATA, payload, length);
 }
 
-int ipc_message_format_server_close (struct ipc_message *m)
+int32_t ipc_message_format_server_close (struct ipc_message *m)
 {
     return ipc_message_format (m, MSG_TYPE_SERVER_CLOSE, NULL, 0);
 }
 
-int ipc_message_empty (struct ipc_message *m)
+int32_t ipc_message_empty (struct ipc_message *m)
 {
     assert (m != NULL);
 
