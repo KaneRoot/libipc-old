@@ -37,7 +37,7 @@ void interactive (char * service_name, char *env[])
 
 	struct ipc_services services;
 	memset (&services, 0, sizeof (struct ipc_services));
-	ipc_service_add (&services, &srv);
+	ipc_services_add (&services, &srv);
 	int ret = 0;
 
     while (1) {

@@ -212,7 +212,7 @@ int32_t ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
 			} else {
 				for(j = 0; j < clients->size; j++) {
 					if(i == clients->clients[j]->proc_fd ) {
-						ipc_client_add (active_clients, clients->clients[j]);
+						ipc_clients_add (active_clients, clients->clients[j]);
 					}
 				}
 			}
@@ -269,7 +269,7 @@ int32_t ipc_application_select (struct ipc_services *services, struct ipc_servic
 		if (FD_ISSET(i, &readf)) {
 			for(j = 0; j < services->size; j++) {
 				if(i == services->services[j]->service_fd ) {
-					ipc_service_add (active_services, services->services[j]);
+					ipc_services_add (active_services, services->services[j]);
 				}
 			}
 		}
@@ -292,8 +292,8 @@ int32_t handle_new_connection (struct ipc_service *srv
         printf("new connection\n");
     }
 
-    if (ipc_client_add (clients, *new_client) < 0) {
-        handle_error("ipc_client_add < 0");
+    if (ipc_clients_add (clients, *new_client) < 0) {
+        handle_error("ipc_clients_add < 0");
 		return 1;
     }
 
@@ -374,8 +374,8 @@ int32_t ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service 
 							if (ipc_server_close_client (pc) < 0) {
 								handle_err( "ipc_service_poll_event", "ipc_server_close_client < 0");
 							}
-							if (ipc_client_del (clients, pc) < 0) {
-								handle_err( "ipc_service_poll_event", "ipc_client_del < 0");
+							if (ipc_clients_del (clients, pc) < 0) {
+								handle_err( "ipc_service_poll_event", "ipc_clients_del < 0");
 							}
 							ipc_message_empty (m);
 							free (m);
@@ -480,8 +480,8 @@ int32_t ipc_application_poll_event_ (struct ipc_services *services, struct ipc_e
 						if (ipc_application_close (ps) < 0) {
 							handle_err( "ipc_application_poll_event", "ipc_application_close < 0");
 						}
-						if (ipc_service_del (services, ps) < 0) {
-							handle_err( "ipc_application_poll_event", "ipc_service_del < 0");
+						if (ipc_services_del (services, ps) < 0) {
+							handle_err( "ipc_application_poll_event", "ipc_services_del < 0");
 						}
 						ipc_message_empty (m);
 						free (m);

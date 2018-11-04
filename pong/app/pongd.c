@@ -1,4 +1,5 @@
 #include "../../core/ipc.h"
+#include "../../core/error.h"
 #include <signal.h>
 
 #include <sys/socket.h>

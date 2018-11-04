@@ -5,27 +5,10 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include "ipc.h"
 #include <stdint.h>
 
 #define LISTEN_BACKLOG 128
-
-#define RUNDIR "/run/ipc/"
-#define PATH_MAX 4096
-
-#define IPC_HEADER_SIZE  5
-#define IPC_MAX_MESSAGE_SIZE  8000000-IPC_HEADER_SIZE
-
-struct ipc_service {
-    uint32_t version;
-    uint32_t index;
-    char spath[PATH_MAX];
-    int32_t service_fd;
-};
-
-struct ipc_services {
-	struct ipc_service ** services;
-	int32_t size;
-};
 
 /**
  * for all functions: 0 ok, < 0 not ok
@@ -58,22 +41,7 @@ int32_t usock_accept (int32_t fd, int32_t *pfd);
 // same as unlink(2)
 int32_t usock_remove (const char *path);
 
-static inline int32_t ipc_service_empty (struct ipc_service *srv) { srv = srv; return 0 ;};
-
-
-// store and remove only pointers on allocated structures
-int32_t ipc_service_add (struct ipc_services *, struct ipc_service *);
-int32_t ipc_service_del (struct ipc_services *, struct ipc_service *);
-
 void ipc_services_print (struct ipc_services *);
-void ipc_services_free  (struct ipc_services *);
-
-struct ipc_service * ipc_client_server_copy (const struct ipc_service *p);
-int32_t ipc_service_eq (const struct ipc_service *p1, const struct ipc_service *p2);
-// create the client service structure
-void ipc_client_server_gen (struct ipc_service *p
-        , uint32_t index, uint32_t version);
-
 void service_print (struct ipc_service *);
 
 #endif

@@ -30,7 +30,7 @@ void ipc_server_client_gen (struct ipc_client *p
     p->index = index;
 }
 
-int32_t ipc_client_add (struct ipc_clients *clients, struct ipc_client *p)
+int32_t ipc_clients_add (struct ipc_clients *clients, struct ipc_client *p)
 {
     assert(clients != NULL);
     assert(p != NULL);
@@ -47,7 +47,7 @@ int32_t ipc_client_add (struct ipc_clients *clients, struct ipc_client *p)
     return 0;
 }
 
-int32_t ipc_client_del (struct ipc_clients *clients, struct ipc_client *p)
+int32_t ipc_clients_del (struct ipc_clients *clients, struct ipc_client *p)
 {
     assert(clients != NULL);
     assert(p != NULL);
