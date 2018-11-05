@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #define PONGD_SERVICE_NAME "pongd"
+#define PONGD_PRINT_MESSAGES
 
 int cpt = 0;
 
@@ -42,14 +43,18 @@ void main_loop ()
 			case IPC_EVENT_TYPE_CONNECTION:
 				{
 					cpt++;
-					printf ("connection: %d clients connected\n", cpt);
-					printf ("new client has the fd %d\n", ((struct ipc_client*) event.origin)->proc_fd);
+#ifdef PONGD_PRINT_MESSAGES
+					 printf ("connection: client fd %d, %d clients connected\n"
+							 , ((struct ipc_client*) event.origin)->proc_fd, cpt);
+#endif
 				};
 				break;
 			case IPC_EVENT_TYPE_DISCONNECTION:
 				{
 					cpt--;
+#ifdef PONGD_PRINT_MESSAGES
 					printf ("disconnection: %d clients remaining\n", cpt);
+#endif
 
 					// free the ipc_client structure
 					free (event.origin);
@@ -58,9 +63,11 @@ void main_loop ()
 			case IPC_EVENT_TYPE_MESSAGE:
 			   	{
 					struct ipc_message *m = event.m;
+#ifdef PONGD_PRINT_MESSAGES
 					if (m->length > 0) {
 						printf ("message received (type %d): %.*s\n", m->type, m->length, m->payload);
 					}
+#endif
 					if (ipc_server_write (event.origin, m) < 0) {
 						handle_err( "handle_new_msg", "server_write < 0");
 					}

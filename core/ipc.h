@@ -13,6 +13,7 @@
 #define PATH_MAX 4096
 #define IPC_HEADER_SIZE  5
 #define IPC_MAX_MESSAGE_SIZE  8000000-IPC_HEADER_SIZE
+// #define IPC_MAX_MESSAGE_SIZE  100-IPC_HEADER_SIZE
 // #include "queue.h"
 
 #define IPC_VERSION 1

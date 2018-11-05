@@ -59,7 +59,6 @@ int32_t ipc_clients_del (struct ipc_clients *clients, struct ipc_client *p)
     int32_t i;
     for (i = 0; i < clients->size; i++) {
         if (clients->clients[i] == p) {
-
             clients->clients[i] = clients->clients[clients->size-1];
             clients->size--;
             if (clients->size == 0) {

@@ -289,7 +289,7 @@ int32_t handle_new_connection (struct ipc_service *srv
         handle_error("server_accept < 0");
 		return 1;
     } else {
-        printf("new connection\n");
+        // printf("new connection\n");
     }
 
     if (ipc_clients_add (clients, *new_client) < 0) {
