@@ -196,6 +196,8 @@ $(PACKAGE)-$(VERSION).tar.gz: distdir
 		$(PACKAGE)-$(VERSION)/Makefile \
 		$(PACKAGE)-$(VERSION)/project.zsh \
 		$(PACKAGE)-$(VERSION)/error.h \
+		$(PACKAGE)-$(VERSION)/ipc.h \
+		$(PACKAGE)-$(VERSION)/event.h \
 		$(PACKAGE)-$(VERSION)/client.c \
 		$(PACKAGE)-$(VERSION)/communication.c \
 		$(PACKAGE)-$(VERSION)/logger.c \
@@ -216,6 +218,8 @@ $(PACKAGE)-$(VERSION).tar.xz: distdir
 		$(PACKAGE)-$(VERSION)/Makefile \
 		$(PACKAGE)-$(VERSION)/project.zsh \
 		$(PACKAGE)-$(VERSION)/error.h \
+		$(PACKAGE)-$(VERSION)/ipc.h \
+		$(PACKAGE)-$(VERSION)/event.h \
 		$(PACKAGE)-$(VERSION)/client.c \
 		$(PACKAGE)-$(VERSION)/communication.c \
 		$(PACKAGE)-$(VERSION)/logger.c \
@@ -236,6 +240,8 @@ $(PACKAGE)-$(VERSION).tar.bz2: distdir
 		$(PACKAGE)-$(VERSION)/Makefile \
 		$(PACKAGE)-$(VERSION)/project.zsh \
 		$(PACKAGE)-$(VERSION)/error.h \
+		$(PACKAGE)-$(VERSION)/ipc.h \
+		$(PACKAGE)-$(VERSION)/event.h \
 		$(PACKAGE)-$(VERSION)/client.c \
 		$(PACKAGE)-$(VERSION)/communication.c \
 		$(PACKAGE)-$(VERSION)/logger.c \

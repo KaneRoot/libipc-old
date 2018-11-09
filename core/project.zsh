@@ -6,5 +6,5 @@ targets=(libipc)
 type[libipc]=library
 sources[libipc]="$(ls *.c)"
 
-dist=(Makefile project.zsh error.h)
+dist=(Makefile project.zsh error.h ipc.h event.h)
 
