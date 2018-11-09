@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "../../core/ipc.h"
+#include "../../core/error.h"
 
 #define MSG "coucou"
 #define SERVICE_NAME "pongd"
@@ -70,7 +71,7 @@ void interactive (char *env[])
 
 	struct ipc_services services;
 	memset (&services, 0, sizeof (struct ipc_services));
-	ipc_service_add (&services, &srv);
+	ipc_services_add (&services, &srv);
 
     while (1) {
         printf ("msg to send: ");

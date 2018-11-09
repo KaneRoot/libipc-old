@@ -5,25 +5,25 @@ communication.h \- all functions explained
 .nf
 .B #include <communication.h>
 .sp
-.BI "int ipc_server_init (int "argc ", char **" argv ", char **" env ", struct ipc_service *" srv "
+.BI "int32_t ipc_server_init (int32_t "argc ", char **" argv ", char **" env ", struct ipc_service *" srv "
 .BI "       , const char *" service_name );
-.BI "int ipc_server_accept (struct ipc_service *" srv ", struct ipc_client *" p );
+.BI "int32_t ipc_server_accept (struct ipc_service *" srv ", struct ipc_client *" p );
 .sp
-.BI "int ipc_server_read (const struct ipc_client *" p ", struct ipc_message *" message );
-.BI "int ipc_server_write (const struct ipc_client *" p ", const struct ipc_message *" message );
+.BI "int32_t ipc_server_read (const struct ipc_client *" p ", struct ipc_message *" message );
+.BI "int32_t ipc_server_write (const struct ipc_client *" p ", const struct ipc_message *" message );
 .sp
-.BI "int ipc_server_close (struct ipc_service *" srv );
-.BI "int ipc_server_close_client (struct ipc_client *" p );
-.BI "int ipc_server_select (struct ipc_clients *" fds ", struct ipc_service *" srv ", struct ipc_clients *" readfds );
+.BI "int32_t ipc_server_close (struct ipc_service *" srv );
+.BI "int32_t ipc_server_close_client (struct ipc_client *" p );
+.BI "int32_t ipc_server_select (struct ipc_clients *" fds ", struct ipc_service *" srv ", struct ipc_clients *" readfds );
 
-.BI "int ipc_application_connection (int " argc ", char **" argv ", char **" env ", struct ipc_service *" srv
+.BI "int32_t ipc_application_connection (int32_t " argc ", char **" argv ", char **" env ", struct ipc_service *" srv
 .BI "       , const char *" service_name "
 .BI "       , const char *" connection_buffer ", size_t " bufsize );
 .sp
-.BI "int ipc_application_read (const struct ipc_service *" srv ", struct ipc_message *" message );
-.BI "int ipc_application_write (const struct ipc_service *" srv ", const struct ipc_message *" message );
+.BI "int32_t ipc_application_read (const struct ipc_service *" srv ", struct ipc_message *" message );
+.BI "int32_t ipc_application_write (const struct ipc_service *" srv ", const struct ipc_message *" message );
 .sp
-.BI "int ipc_application_close (struct ipc_service *" srv );
+.BI "int32_t ipc_application_close (struct ipc_service *" srv );
 
 
 .fi

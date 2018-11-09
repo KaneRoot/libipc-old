@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <assert.h>
 
-int usock_send (const int fd, const char *buf, ssize_t len, ssize_t *sent)
+int32_t usock_send (const int32_t fd, const char *buf, ssize_t len, ssize_t *sent)
 {
     ssize_t ret = 0;
     ret = send (fd, buf, len, MSG_NOSIGNAL);
@@ -21,7 +21,7 @@ int usock_send (const int fd, const char *buf, ssize_t len, ssize_t *sent)
 }
 
 // *len is changed to the total message size read (header + payload)
-int usock_recv (const int fd, char **buf, ssize_t *len)
+int32_t usock_recv (const int32_t fd, char **buf, ssize_t *len)
 {
     assert(buf != NULL);
     assert(len != NULL);
@@ -47,8 +47,8 @@ int usock_recv (const int fd, char **buf, ssize_t *len)
         *buf = malloc (*len + IPC_HEADER_SIZE);
     }
 
-	unsigned int msize = 0;
-	unsigned int msize_read = 0;
+	uint32_t msize = 0;
+	uint32_t msize_read = 0;
 
 	do {
 		ret = recv (fd, *buf, *len, 0);
@@ -135,12 +135,12 @@ int usock_recv (const int fd, char **buf, ssize_t *len)
 		return 1;
 	}
 
-    // print_hexa ("msg recv", (unsigned char *)*buf, *len);
+    // print_hexa ("msg recv", (uint8_t *)*buf, *len);
     // fflush(stdout);
     return 0;
 }
 
-int usock_connect (int *fd, const char *path)
+int32_t usock_connect (int32_t *fd, const char *path)
 {
     assert (fd != NULL);
     assert (path != NULL);
@@ -155,7 +155,7 @@ int usock_connect (int *fd, const char *path)
         return -1;
     }
 
-    int sfd;
+    int32_t sfd;
     struct sockaddr_un my_addr;
     socklen_t peer_addr_size;
 
@@ -183,7 +183,7 @@ int usock_connect (int *fd, const char *path)
     return 0;
 }
 
-int usock_init (int *fd, const char *path)
+int32_t usock_init (int32_t *fd, const char *path)
 {
     assert (fd != NULL);
     assert (path != NULL);
@@ -198,7 +198,7 @@ int usock_init (int *fd, const char *path)
         return -1;
     }
 
-    int sfd;
+    int32_t sfd;
     struct sockaddr_un my_addr;
     socklen_t peer_addr_size;
 
@@ -236,7 +236,7 @@ int usock_init (int *fd, const char *path)
     return 0;
 }
 
-int usock_accept (int fd, int *pfd)
+int32_t usock_accept (int32_t fd, int32_t *pfd)
 {
     assert (pfd != NULL);
 
@@ -259,9 +259,9 @@ int usock_accept (int fd, int *pfd)
     return 0;
 }
 
-int usock_close (int fd)
+int32_t usock_close (int32_t fd)
 {
-    int ret = 0;
+    int32_t ret = 0;
 
 	ret = close (fd);
     if (ret < 0) {
@@ -272,7 +272,7 @@ int usock_close (int fd)
     return 0;
 }
 
-int usock_remove (const char *path)
+int32_t usock_remove (const char *path)
 {
     return unlink (path);
 }
@@ -292,20 +292,20 @@ struct ipc_service * ipc_client_server_copy (const struct ipc_service *p)
     return copy;
 }
 
-int ipc_client_server_eq (const struct ipc_service *p1, const struct ipc_service *p2)
+int32_t ipc_client_server_eq (const struct ipc_service *p1, const struct ipc_service *p2)
 {
     return (p1->version == p2->version && p1->index == p2->index
             && p1->service_fd == p2->service_fd && memcmp(p1->spath, p1->spath, PATH_MAX) == 0 );
 }
 
 void ipc_client_server_gen (struct ipc_service *p
-        , unsigned int index, unsigned int version)
+        , uint32_t index, uint32_t version)
 {
     p->version = version;
     p->index = index;
 }
 
-int ipc_service_add (struct ipc_services *services, struct ipc_service *p)
+int32_t ipc_services_add (struct ipc_services *services, struct ipc_service *p)
 {
     assert(services != NULL);
     assert(p != NULL);
@@ -322,7 +322,7 @@ int ipc_service_add (struct ipc_services *services, struct ipc_service *p)
     return 0;
 }
 
-int ipc_service_del (struct ipc_services *services, struct ipc_service *p)
+int32_t ipc_services_del (struct ipc_services *services, struct ipc_service *p)
 {
     assert(services != NULL);
     assert(p != NULL);
@@ -331,7 +331,7 @@ int ipc_service_del (struct ipc_services *services, struct ipc_service *p)
         return -1;
     }
 
-    int i;
+    int32_t i;
     for (i = 0; i < services->size; i++) {
         if (services->services[i] == p) {
 
@@ -365,7 +365,7 @@ void service_print (struct ipc_service *p)
 
 void ipc_services_print (struct ipc_services *ap)
 {
-    int i;
+    int32_t i;
     for (i = 0; i < ap->size; i++) {
         printf("%d : ", i);
         service_print(ap->services[i]);

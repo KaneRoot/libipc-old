@@ -8,7 +8,7 @@
 #define PKT_ERROR                   2
 
 void
-ohshit(int rvalue, const char* str) {
+ohshit(int32_t rvalue, const char* str) {
     fprintf (stderr, "\033[31merr: %s\033[00m\n", str);
     exit (rvalue);
 }
@@ -21,15 +21,15 @@ void usage (char **argv)
     printf ( "    This sends a CBOR msg [ 1, \"data\" ]\n");
 }
 
-int
-main(int argc, char **argv)
+int32_t
+main(int32_t argc, char **argv)
 {
     if (argc == 2 && strcmp ("-h", argv[1]) == 0) {
         usage (argv);
         exit (1);
     }
 
-    unsigned char buf[BUFSIZ];
+    uint8_t buf[BUFSIZ];
     memset (buf, 0, BUFSIZ);
 
     ssize_t buflen = read (0, buf, BUFSIZ);
@@ -42,7 +42,7 @@ main(int argc, char **argv)
             .value = cbor_move(cbor_build_bytestring(buf, buflen))
             });
     /* Output: `length` bytes of data in the `buffer` */
-    unsigned char * buffer;
+    uint8_t * buffer;
     size_t buffer_size, length = cbor_serialize_alloc (root, &buffer, &buffer_size);
 
     fwrite(buffer, 1, length, stdout);

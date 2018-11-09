@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-void service_path (char *path, const char *sname, int index, int version)
+void service_path (char *path, const char *sname, int32_t index, int32_t version)
 {
     assert (path != NULL);
     assert (sname != NULL);
@@ -16,7 +16,7 @@ void service_path (char *path, const char *sname, int index, int version)
     snprintf (path, PATH_MAX, "%s/%s-%d-%d", RUNDIR, sname, index, version);
 }
 
-int ipc_server_init (char **env
+int32_t ipc_server_init (char **env
         , struct ipc_service *srv, const char *sname)
 {
     if (srv == NULL)
@@ -33,7 +33,7 @@ int ipc_server_init (char **env
     // gets the service path
     service_path (srv->spath, sname, srv->index, srv->version);
 
-    int ret = usock_init (&srv->service_fd, srv->spath);
+    int32_t ret = usock_init (&srv->service_fd, srv->spath);
 	if (ret < 0) {
 		handle_err ("ipc_server_init", "usock_init ret < 0");
 		return -1;
@@ -42,12 +42,12 @@ int ipc_server_init (char **env
 	return 0;
 }
 
-int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p)
+int32_t ipc_server_accept (struct ipc_service *srv, struct ipc_client *p)
 {
     assert (srv != NULL);
     assert (p != NULL);
 
-    int ret = usock_accept (srv->service_fd, &p->proc_fd);
+    int32_t ret = usock_accept (srv->service_fd, &p->proc_fd);
 	if (ret < 0) {
 		handle_err ("ipc_server_accept", "usock_accept < 0");
 		return -1;
@@ -57,30 +57,30 @@ int ipc_server_accept (struct ipc_service *srv, struct ipc_client *p)
 }
 
 // empty the srv structure
-int ipc_server_close (struct ipc_service *srv)
+int32_t ipc_server_close (struct ipc_service *srv)
 {
     usock_close (srv->service_fd);
-	int ret = usock_remove (srv->spath);
+	int32_t ret = usock_remove (srv->spath);
 	ipc_service_empty (srv);
     return ret;
 }
 
-int ipc_server_close_client (struct ipc_client *p)
+int32_t ipc_server_close_client (struct ipc_client *p)
 {
     return usock_close (p->proc_fd);
 }
 
-int ipc_server_read (const struct ipc_client *p, struct ipc_message *m)
+int32_t ipc_server_read (const struct ipc_client *p, struct ipc_message *m)
 {
     return ipc_message_read (p->proc_fd, m);
 }
 
-int ipc_server_write (const struct ipc_client *p, const struct ipc_message *m)
+int32_t ipc_server_write (const struct ipc_client *p, const struct ipc_message *m)
 {
     return ipc_message_write (p->proc_fd, m);
 }
 
-int ipc_application_connection (char **env
+int32_t ipc_application_connection (char **env
         , struct ipc_service *srv, const char *sname)
 {
     // TODO
@@ -101,7 +101,7 @@ int ipc_application_connection (char **env
     // gets the service path
     service_path (srv->spath, sname, srv->index, srv->version);
 
-    int ret = usock_connect (&srv->service_fd, srv->spath);
+    int32_t ret = usock_connect (&srv->service_fd, srv->spath);
 	if (ret < 0) {
 		handle_err ("ipc_application_connection", "usock_connect ret <= 0");
 		return -1;
@@ -111,27 +111,27 @@ int ipc_application_connection (char **env
 }
 
 // close the socket
-int ipc_application_close (struct ipc_service *srv)
+int32_t ipc_application_close (struct ipc_service *srv)
 {
     return usock_close (srv->service_fd);
 }
 
-int ipc_application_read (struct ipc_service *srv, struct ipc_message *m)
+int32_t ipc_application_read (struct ipc_service *srv, struct ipc_message *m)
 {   
     return ipc_message_read (srv->service_fd, m);
 }
 
-int ipc_application_write (struct ipc_service *srv, const struct ipc_message *m)
+int32_t ipc_application_write (struct ipc_service *srv, const struct ipc_message *m)
 {
     return ipc_message_write (srv->service_fd, m);
 }
 
 
 /*calculer le max filedescriptor*/
-static int get_max_fd_from_ipc_clients_ (struct ipc_clients *clients)
+static int32_t get_max_fd_from_ipc_clients_ (struct ipc_clients *clients)
 {
-    int i;
-    int max = 0;
+    int32_t i;
+    int32_t max = 0;
 
     for (i = 0; i < clients->size; i++ ) {
         if (clients->clients[i]->proc_fd > max) {
@@ -142,10 +142,10 @@ static int get_max_fd_from_ipc_clients_ (struct ipc_clients *clients)
     return max;
 }
 
-static int get_max_fd_from_ipc_services_ (struct ipc_services *services)
+static int32_t get_max_fd_from_ipc_services_ (struct ipc_services *services)
 {
-    int i;
-    int max = 0;
+    int32_t i;
+    int32_t max = 0;
 
     for (i = 0; i < services->size; i++ ) {
         if (services->services[i]->service_fd > max) {
@@ -166,8 +166,8 @@ static int get_max_fd_from_ipc_services_ (struct ipc_services *services)
  * -1 = error
  */
 
-int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
-        , struct ipc_clients *active_clients, int *new_connection)
+int32_t ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
+        , struct ipc_clients *active_clients, int32_t *new_connection)
 {
 	*new_connection = 0;
     assert (clients != NULL);
@@ -176,15 +176,15 @@ int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
     // delete previous read active_clients array
     ipc_clients_free (active_clients);
 
-    int i, j;
+    int32_t i, j;
     /* master file descriptor list */
     fd_set master;
     fd_set readf;
 
     /* maximum file descriptor number */
-    int fdmax;
+    int32_t fdmax;
     /* listening socket descriptor */
-    int listener = srv->service_fd;
+    int32_t listener = srv->service_fd;
 
     /* clear the master and temp sets */
     FD_ZERO(&master);
@@ -212,7 +212,7 @@ int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
 			} else {
 				for(j = 0; j < clients->size; j++) {
 					if(i == clients->clients[j]->proc_fd ) {
-						ipc_client_add (active_clients, clients->clients[j]);
+						ipc_clients_add (active_clients, clients->clients[j]);
 					}
 				}
 			}
@@ -232,7 +232,7 @@ int ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
  * -1 = error
  */
 
-int ipc_application_select (struct ipc_services *services, struct ipc_services *active_services)
+int32_t ipc_application_select (struct ipc_services *services, struct ipc_services *active_services)
 {
     assert (services != NULL);
     assert (active_services != NULL);
@@ -240,13 +240,13 @@ int ipc_application_select (struct ipc_services *services, struct ipc_services *
     // delete previous read active_services array
     ipc_services_free (active_services);
 
-    int i, j;
+    int32_t i, j;
     /* master file descriptor list */
     fd_set master;
     fd_set readf;
 
     /* maximum file descriptor number */
-    int fdmax;
+    int32_t fdmax;
 
     /* clear the master and temp sets */
     FD_ZERO(&master);
@@ -269,7 +269,7 @@ int ipc_application_select (struct ipc_services *services, struct ipc_services *
 		if (FD_ISSET(i, &readf)) {
 			for(j = 0; j < services->size; j++) {
 				if(i == services->services[j]->service_fd ) {
-					ipc_service_add (active_services, services->services[j]);
+					ipc_services_add (active_services, services->services[j]);
 				}
 			}
 		}
@@ -278,7 +278,7 @@ int ipc_application_select (struct ipc_services *services, struct ipc_services *
 	return 0;
 }
 
-int handle_new_connection (struct ipc_service *srv
+int32_t handle_new_connection (struct ipc_service *srv
 		, struct ipc_clients *clients
 		, struct ipc_client **new_client)
 {
@@ -289,33 +289,33 @@ int handle_new_connection (struct ipc_service *srv
         handle_error("server_accept < 0");
 		return 1;
     } else {
-        printf("new connection\n");
+        // printf("new connection\n");
     }
 
-    if (ipc_client_add (clients, *new_client) < 0) {
-        handle_error("ipc_client_add < 0");
+    if (ipc_clients_add (clients, *new_client) < 0) {
+        handle_error("ipc_clients_add < 0");
 		return 1;
     }
 
 	return 0;
 }
 
-int ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
+int32_t ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
         , struct ipc_event *event)
 {
     assert (clients != NULL);
 
 	IPC_EVENT_CLEAN(event);
 
-    int i, j;
+    int32_t i, j;
     /* master file descriptor list */
     fd_set master;
     fd_set readf;
 
     /* maximum file descriptor number */
-    int fdmax;
+    int32_t fdmax;
     /* listening socket descriptor */
-    int listener = srv->service_fd;
+    int32_t listener = srv->service_fd;
 
     /* clear the master and temp sets */
     FD_ZERO(&master);
@@ -349,7 +349,7 @@ int ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
 					if(i == clients->clients[j]->proc_fd ) {
 						// listen to what they have to say (disconnection or message)
 						// then add a client to `event`, the ipc_event structure
-						int ret = 0;
+						int32_t ret = 0;
 						struct ipc_message *m = NULL;
 						m = malloc (sizeof(struct ipc_message));
 						if (m == NULL) {
@@ -374,8 +374,8 @@ int ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
 							if (ipc_server_close_client (pc) < 0) {
 								handle_err( "ipc_service_poll_event", "ipc_server_close_client < 0");
 							}
-							if (ipc_client_del (clients, pc) < 0) {
-								handle_err( "ipc_service_poll_event", "ipc_client_del < 0");
+							if (ipc_clients_del (clients, pc) < 0) {
+								handle_err( "ipc_service_poll_event", "ipc_clients_del < 0");
 							}
 							ipc_message_empty (m);
 							free (m);
@@ -398,19 +398,19 @@ int ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
 	return 0;
 }
 
-int ipc_application_poll_event_ (struct ipc_services *services, struct ipc_event *event, int interactive)
+int32_t ipc_application_poll_event_ (struct ipc_services *services, struct ipc_event *event, int32_t interactive)
 {
     assert (services != NULL);
 
 	IPC_EVENT_CLEAN(event);
 
-    int i, j;
+    int32_t i, j;
     /* master file descriptor list */
     fd_set master;
     fd_set readf;
 
     /* maximum file descriptor number */
-    int fdmax;
+    int32_t fdmax;
 
     /* clear the master and temp sets */
     FD_ZERO(&master);
@@ -455,7 +455,7 @@ int ipc_application_poll_event_ (struct ipc_services *services, struct ipc_event
 				if(i == services->services[j]->service_fd ) {
 					// listen to what they have to say (disconnection or message)
 					// then add a client to `event`, the ipc_event structure
-					int ret = 0;
+					int32_t ret = 0;
 					struct ipc_message *m = NULL;
 					m = malloc (sizeof(struct ipc_message));
 					if (m == NULL) {
@@ -480,8 +480,8 @@ int ipc_application_poll_event_ (struct ipc_services *services, struct ipc_event
 						if (ipc_application_close (ps) < 0) {
 							handle_err( "ipc_application_poll_event", "ipc_application_close < 0");
 						}
-						if (ipc_service_del (services, ps) < 0) {
-							handle_err( "ipc_application_poll_event", "ipc_service_del < 0");
+						if (ipc_services_del (services, ps) < 0) {
+							handle_err( "ipc_application_poll_event", "ipc_services_del < 0");
 						}
 						ipc_message_empty (m);
 						free (m);
@@ -504,10 +504,10 @@ int ipc_application_poll_event_ (struct ipc_services *services, struct ipc_event
 	return 0;
 }
 
-int ipc_application_poll_event (struct ipc_services *services, struct ipc_event *event) {
+int32_t ipc_application_poll_event (struct ipc_services *services, struct ipc_event *event) {
 	return ipc_application_poll_event_ (services, event, 0);
 }
 
-int ipc_application_peek_event (struct ipc_services *services, struct ipc_event *event) {
+int32_t ipc_application_peek_event (struct ipc_services *services, struct ipc_event *event) {
 	return ipc_application_poll_event_ (services, event, 1);
 }
