@@ -14,15 +14,36 @@ lib LibIPC
 		fd :       LibC::Int
 	end
 
+	enum MessageType
+		ServerClose
+		Error
+		Data
+	end
+
 	struct Message
-		type :     LibC::Char
-		length :   LibC::UShort
+		type :     UInt8
+		length :   LibC::UInt
 		payload :  LibC::Char*
 	end
 
 	struct Clients
 		clients :  Client**
 		size :     LibC::Int
+	end
+
+	enum EventType
+		NotSet
+		Error
+		Stdin
+		Connection
+		Disconnection
+		Message
+	end
+
+	struct Event
+		type :     EventType
+		origin :   Client*
+		m :        Message*
 	end
 
 	# FIXME: IPC.initialize:
@@ -38,6 +59,8 @@ lib LibIPC
 	fun ipc_server_write(Client*, Message*) : LibC::Int
 
 	fun ipc_server_select(Clients*, Service*, Clients*, LibC::Int*) : LibC::Int
+
+	fun ipc_service_poll_event(Clients*, Service*, Event*) : LibC::Int
 
 	fun ipc_application_connection(LibC::Char**, Service*, LibC::Char*) : LibC::Int
 	fun ipc_application_close(Service*) : LibC::Int
@@ -99,53 +122,34 @@ class IPC::Service
 	end
 
 	def loop(&block)
-		active_clients = LibIPC::Clients.new
-		anyone_joined = 0_i32
-		message = LibIPC::Message.new
-
 		::loop do
-			if LibIPC.ipc_server_select(pointerof(@clients), pointerof(@service), pointerof(active_clients), pointerof(anyone_joined)) < 0
-				raise Exception.new "ipc_server_select < 0"
+			event = LibIPC::Event.new
+
+			r = LibIPC.ipc_service_poll_event pointerof(@clients), pointerof(@service), pointerof(event)
+
+			if r < 0
+				raise Exception.new "ipc_service_poll_event < 0"
 			end
 
-			if anyone_joined > 0
-				client = LibIPC::Client.new
-				if LibIPC.ipc_server_accept(pointerof(@service), pointerof(client)) < 0
-					raise Exception.new "ipc_server_accept < 0"
-				end
+			client = IPC::RemoteClient.new event.origin.unsafe_as(Pointer(LibIPC::Client)).value
 
-				if LibIPC.ipc_client_add(pointerof(@clients), pointerof(client)) < 0
-					raise Exception.new "ipc_client_add < 0"
-				end
-
-				yield ::IPC::Event::Connection.new ::IPC::Server::Client.new client
+			pp! event
+			message = event.m.unsafe_as(Pointer(LibIPC::Message))
+			unless message.null?
+				pp! message.value
 			end
 
-			i = 0
-			while i < active_clients.size
-				client_pointer = active_clients.clients[i]
+			case event.type
+			when LibIPC::EventType::Connection
+				yield IPC::Event::Connection.new client
+			when LibIPC::EventType::Message
+				message = event.m.unsafe_as(Pointer(LibIPC::Message)).value
 
-				return_value = LibIPC.ipc_server_read(client_pointer, pointerof(message))
-
-				if return_value < 0
-					raise Exception.new "ipc_server_read < 0"
-				elsif return_value == 1
-					LibIPC.ipc_client_del pointerof(@clients), client_pointer
-
-					# FIXME: Should probably not be a new Server::Client. Having unique
-					#        variables helps in using Server::Clients as keys.
-					yield Event::Disconnection.new Server::Client.new client_pointer.value
-				else
-					yield Event::Message.new(IPC::Message.new(message.type, message.length, message.payload), Server::Client.new client_pointer.value)
-				end
-
-				i += 1
+				yield IPC::Event::Message.new IPC::Message.new(message.type, message.length, message.payload), client
+			when LibIPC::EventType::Disconnection
+				yield IPC::Event::Disconnection.new client
 			end
-
-			LibIPC.ipc_clients_free(pointerof(active_clients))
 		end
-
-		close
 	end
 end
 
@@ -162,32 +166,17 @@ class IPC::Message
 	getter payload : String
 
 	def initialize(type, length, payload)
-		@type = type
+		@type = type.to_u8
 		@payload = String.new payload, length
 	end
 end
 
-class IPC::Server::Client
-	@closed = false
-	getter client = LibIPC::Client.new
+class IPC::RemoteClient
+	getter client : LibIPC::Client
 
-	def initialize(service : LibIPC::Service*)
-		if LibIPC.ipc_server_accept(service, pointerof(@client)) < 0
-			raise Exception.new "ipc_server_accept < 0"
-		end
-	end
 	def initialize(@client)
 	end
 
-	def read
-		message = LibIPC::Message.new
-
-		if LibIPC.ipc_server_read(pointerof(@client), pointerof(message)) < 0
-			raise Exception.new "ipc_server_read < 0"
-		end
-
-		Message.new message.type, message.length, message.payload
-	end
 	def send(type : UInt8, payload : String)
 		message = LibIPC::Message.new type: type, length: payload.size, payload: payload.to_unsafe
 
@@ -195,32 +184,24 @@ class IPC::Server::Client
 			raise Exception.new "ipc_server_write < 0"
 		end
 	end
-	def close
-		return if @closed
-
-		LibIPC.ipc_server_close_client pointerof(@client)
-	end
-	def finalize
-		close
-	end
 end
 
 class IPC::Event
 	class Connection
-		getter client : ::IPC::Server::Client
+		getter client : IPC::RemoteClient
 		def initialize(@client)
 		end
 	end
 
 	class Disconnection
-		getter client : ::IPC::Server::Client
+		getter client : IPC::RemoteClient
 		def initialize(@client)
 		end
 	end
 
 	class Message
 		getter message : ::IPC::Message
-		getter client : ::IPC::Server::Client
+		getter client : IPC::RemoteClient
 		def initialize(@message, @client)
 		end
 	end
