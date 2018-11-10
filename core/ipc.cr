@@ -178,7 +178,7 @@ class IPC::RemoteClient
 	end
 
 	def send(type : UInt8, payload : String)
-		message = LibIPC::Message.new type: type, length: payload.size, payload: payload.to_unsafe
+		message = LibIPC::Message.new type: type, length: payload.bytesize, payload: payload.to_unsafe
 
 		if LibIPC.ipc_server_write(pointerof(@client), pointerof(message)) < 0
 			raise Exception.new "ipc_server_write < 0"
@@ -224,7 +224,7 @@ class IPC::Client
 	end
 
 	def send(type, payload : String)
-		message = LibIPC::Message.new type: type, length: payload.size, payload: payload.to_unsafe
+		message = LibIPC::Message.new type: type, length: payload.bytesize, payload: payload.to_unsafe
 
 		if LibIPC.ipc_application_write(pointerof(@service), pointerof(message)) < 0
 			raise Exception.new "ipc_application_write < 0"
