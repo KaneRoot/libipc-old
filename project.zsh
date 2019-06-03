@@ -11,5 +11,5 @@ type[src/ipc.h]=header
 
 type[man/libipc.7]=man
 
-dist=(Makefile project.zsh src/error.h src/ipc.h src/event.h man/*.md)
+dist=(Makefile project.zsh src/ipc.h man/*.md)
 

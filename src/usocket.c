@@ -1,6 +1,9 @@
-#include "usocket.h"
-#include "utils.h"
-#include "error.h"
+#include <time.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,20 +11,23 @@
 #include <unistd.h>
 #include <assert.h>
 
-int32_t usock_send (const int32_t fd, const char *buf, ssize_t len, ssize_t *sent)
+#include "usocket.h"
+#include "utils.h"
+
+enum ipc_errors usock_send (const int32_t fd, const char *buf, ssize_t len, ssize_t *sent)
 {
     ssize_t ret = 0;
     ret = send (fd, buf, len, MSG_NOSIGNAL);
     if (ret <= 0) {
         handle_err ("usock_send", "send ret <= 0");
-		return -1;
+		return IPC_ERROR_USOCK_SEND;
 	}
 	*sent = ret;
-    return 0;
+    return IPC_ERROR_NONE;
 }
 
 // *len is changed to the total message size read (header + payload)
-int32_t usock_recv (const int32_t fd, char **buf, ssize_t *len)
+enum ipc_errors usock_recv (const int32_t fd, char **buf, ssize_t *len)
 {
     assert(buf != NULL);
     assert(len != NULL);
@@ -30,12 +36,12 @@ int32_t usock_recv (const int32_t fd, char **buf, ssize_t *len)
 
     if (buf == NULL) {
         handle_err ("usock_recv", "buf == NULL");
-        return -1;
+        return IPC_ERROR_USOCK_RECV__NO_BUFFER;
     }
 
     if (len == NULL) {
         handle_err ("usock_recv", "len == NULL");
-        return -1;
+        return IPC_ERROR_USOCK_RECV__NO_LENGTH;
     }
 
     if (*buf == NULL) {
@@ -116,7 +122,7 @@ int32_t usock_recv (const int32_t fd, char **buf, ssize_t *len)
 					handle_err ("usock_recv", "unsupported error");
 					;
 			}
-			return -1;
+			return IPC_ERROR_USOCK_RECV;
 		}
 
 #if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
@@ -132,27 +138,27 @@ int32_t usock_recv (const int32_t fd, char **buf, ssize_t *len)
 			free (*buf);
 			*buf = NULL;
 		}
-		return 1;
+		return IPC_ERROR_CLOSED_RECIPIENT;
 	}
 
     // print_hexa ("msg recv", (uint8_t *)*buf, *len);
     // fflush(stdout);
-    return 0;
+    return IPC_ERROR_NONE;
 }
 
-int32_t usock_connect (int32_t *fd, const char *path)
+enum ipc_errors usock_connect (int32_t *fd, const char *path)
 {
     assert (fd != NULL);
     assert (path != NULL);
 
     if (fd == NULL) {
         handle_err ("usock_connect", "fd == NULL");
-        return -1;
+        return IPC_ERROR_USOCK_CONNECT__WRONG_FILE_DESCRIPTOR;
     }
 
     if (path == NULL) {
         handle_err ("usock_connect", "path == NULL");
-        return -1;
+        return IPC_ERROR_USOCK_CONNECT__EMPTY_PATH;
     }
 
     int32_t sfd;
@@ -162,7 +168,7 @@ int32_t usock_connect (int32_t *fd, const char *path)
     sfd = socket (AF_UNIX, SOCK_STREAM, 0);
     if (sfd == -1) {
         handle_err ("usock_connect", "sfd == -1");
-        return -1;
+        return IPC_ERROR_USOCK_CONNECT__SOCKET;
     }
 
     // clear structure 
@@ -180,22 +186,22 @@ int32_t usock_connect (int32_t *fd, const char *path)
 
     *fd = sfd;
 
-    return 0;
+    return IPC_ERROR_NONE;
 }
 
-int32_t usock_init (int32_t *fd, const char *path)
+enum ipc_errors usock_init (int32_t *fd, const char *path)
 {
     assert (fd != NULL);
     assert (path != NULL);
 
     if (fd == NULL) {
         handle_err ("usock_init", "fd == NULL");
-        return -1;
+        return IPC_ERROR_USOCK_INIT__EMPTY_FILE_DESCRIPTOR;
     }
 
     if (path == NULL) {
         handle_err ("usock_init", "path == NULL");
-        return -1;
+        return IPC_ERROR_USOCK_INIT__EMPTY_PATH;
     }
 
     int32_t sfd;
@@ -205,7 +211,7 @@ int32_t usock_init (int32_t *fd, const char *path)
     sfd = socket (AF_UNIX, SOCK_STREAM, 0);
     if (sfd == -1) {
         handle_err ("usock_init", "sfd == -1");
-        return -1;
+        return IPC_ERROR_USOCK_INIT__WRONG_FILE_DESCRIPTOR;
     }
 
     // clear structure 
@@ -214,35 +220,36 @@ int32_t usock_init (int32_t *fd, const char *path)
     my_addr.sun_family = AF_UNIX;
     strncpy(my_addr.sun_path, path, strlen (path));
 
-    // TODO FIXME
-    // delete the unix socket if already created
+	// delete the unix socket if already created
+	// ignore otherwise
+	usock_remove (path);
 
     peer_addr_size = sizeof(struct sockaddr_un);
 
     if (bind (sfd, (struct sockaddr *) &my_addr, peer_addr_size) == -1) {
         handle_err ("usock_init", "bind == -1");
         perror("bind");
-        return -1;
+        return IPC_ERROR_USOCK_INIT__BIND;
     }
 
     if (listen (sfd, LISTEN_BACKLOG) == -1) {
         handle_err ("usock_init", "listen == -1");
         perror("listen");
-        return -1;
+        return IPC_ERROR_USOCK_INIT__LISTEN;
     }
 
     *fd = sfd;
 
-    return 0;
+    return IPC_ERROR_NONE;
 }
 
-int32_t usock_accept (int32_t fd, int32_t *pfd)
+enum ipc_errors usock_accept (int32_t fd, int32_t *pfd)
 {
     assert (pfd != NULL);
 
     if (pfd == NULL) {
         handle_err ("usock_accept", "pfd == NULL");
-        return -1;
+        return IPC_ERROR_USOCK_ACCEPT__PATH_FILE_DESCRIPTOR;
     }
 
     struct sockaddr_un peer_addr;
@@ -253,13 +260,13 @@ int32_t usock_accept (int32_t fd, int32_t *pfd)
     if (*pfd < 0) {
         handle_err ("usock_accept", "accept < 0");
         perror("listen");
-        return -1;
+        return IPC_ERROR_USOCK_ACCEPT;
     }
 
-    return 0;
+    return IPC_ERROR_NONE;
 }
 
-int32_t usock_close (int32_t fd)
+enum ipc_errors usock_close (int32_t fd)
 {
     int32_t ret = 0;
 
@@ -267,116 +274,25 @@ int32_t usock_close (int32_t fd)
     if (ret < 0) {
         handle_err ("usock_close", "close ret < 0");
         perror ("closing");
-		return -1;
+		return IPC_ERROR_USOCK_CLOSE;
     }
-    return 0;
+    return IPC_ERROR_NONE;
 }
 
-int32_t usock_remove (const char *path)
+enum ipc_errors usock_remove (const char *path)
 {
-    return unlink (path);
-}
+	struct stat file_state;
+	memset (&file_state, 0, sizeof (struct stat));
 
+	// if file exists, remove it
+	int ret = stat (path, &file_state);
+	if (ret == 0) {
+		ret = unlink (path);
+		if (ret != 0) {
+			return IPC_ERROR_USOCK_REMOVE__UNLINK;
+		}
+		return IPC_ERROR_NONE;
+	}
 
-// TODO: ipc_services functions
-
-struct ipc_service * ipc_client_server_copy (const struct ipc_service *p)
-{
-    if (p == NULL)
-        return NULL;
-
-    struct ipc_service * copy = malloc (sizeof(struct ipc_service));
-    memset (copy, 0, sizeof (struct ipc_service));
-    memcpy (copy, p, sizeof (struct ipc_service));
-
-    return copy;
-}
-
-int32_t ipc_client_server_eq (const struct ipc_service *p1, const struct ipc_service *p2)
-{
-    return (p1->version == p2->version && p1->index == p2->index
-            && p1->service_fd == p2->service_fd && memcmp(p1->spath, p1->spath, PATH_MAX) == 0 );
-}
-
-void ipc_client_server_gen (struct ipc_service *p
-        , uint32_t index, uint32_t version)
-{
-    p->version = version;
-    p->index = index;
-}
-
-int32_t ipc_services_add (struct ipc_services *services, struct ipc_service *p)
-{
-    assert(services != NULL);
-    assert(p != NULL);
-
-    services->size++;
-    services->services = realloc(services->services
-            , sizeof(struct ipc_service) * services->size);
-
-    if (services->services == NULL) {
-        return -1;
-    }
-
-    services->services[services->size - 1] = p;
-    return 0;
-}
-
-int32_t ipc_services_del (struct ipc_services *services, struct ipc_service *p)
-{
-    assert(services != NULL);
-    assert(p != NULL);
-
-    if (services->services == NULL) {
-        return -1;
-    }
-
-    int32_t i;
-    for (i = 0; i < services->size; i++) {
-        if (services->services[i] == p) {
-
-            services->services[i] = services->services[services->size-1];
-            services->size--;
-            if (services->size == 0) {
-                ipc_services_free (services);
-            }
-            else {
-                services->services = realloc(services->services
-                        , sizeof(struct ipc_service) * services->size);
-
-                if (services->services == NULL) {
-                    return -2;
-                }
-            }
-
-            return 0;
-        }
-    }
-
-    return -3;
-}
-
-void service_print (struct ipc_service *p)
-{
-    if (p != NULL)
-        printf ("client %d : index %d, version %d\n"
-                , p->service_fd, p->index, p->version);
-}
-
-void ipc_services_print (struct ipc_services *ap)
-{
-    int32_t i;
-    for (i = 0; i < ap->size; i++) {
-        printf("%d : ", i);
-        service_print(ap->services[i]);
-    }
-}
-
-void ipc_services_free (struct ipc_services *ap)
-{
-    if (ap->services != NULL) {
-        free (ap->services);
-        ap->services = NULL;
-    }
-    ap->size = 0;
+	return IPC_ERROR_USOCK_REMOVE__NO_FILE;
 }
