@@ -56,8 +56,11 @@ enum ipc_errors ipc_message_format_read (struct ipc_message *m, const char *buf,
         return IPC_ERROR_MESSAGE_FORMAT_READ__MESSAGE_SIZE;
 	}
 
+	// message format:
+	//   Type (1 B) | Length (4 B) | UserType (1 B) | Payload (Length B)
     m->type = buf[0];
     memcpy (&m->length, buf+1, sizeof m->length);
+	m->user_type = buf[1 + sizeof m->length];
 
     assert (m->length <= IPC_MAX_MESSAGE_SIZE);
 #if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
@@ -106,6 +109,7 @@ enum ipc_errors ipc_message_format_write (const struct ipc_message *m, char **bu
 
     buffer[0] = m->type;
     memcpy (buffer + 1, &m->length, sizeof m->length);
+    buffer[1 + sizeof m->length] = m->user_type;
 	if (m->payload != NULL) {
 		memcpy (buffer + IPC_HEADER_SIZE, m->payload, m->length);
 	}
@@ -185,7 +189,8 @@ enum ipc_errors ipc_message_write (int32_t fd, const struct ipc_message *m)
 
 // MSG FORMAT
 
-enum ipc_errors ipc_message_format (struct ipc_message *m, char type, const char *payload, ssize_t length)
+enum ipc_errors ipc_message_format (struct ipc_message *m
+		, char type, char utype, const char *payload, ssize_t length)
 {
     assert (m != NULL);
     assert (length <= IPC_MAX_MESSAGE_SIZE);
@@ -206,6 +211,7 @@ enum ipc_errors ipc_message_format (struct ipc_message *m, char type, const char
     }
 
     m->type = type;
+    m->user_type = utype;
     m->length = (uint32_t) length;
 
     if (payload != NULL) {
@@ -226,14 +232,14 @@ enum ipc_errors ipc_message_format (struct ipc_message *m, char type, const char
     return IPC_ERROR_NONE;
 }
 
-enum ipc_errors ipc_message_format_data (struct ipc_message *m, const char *payload, ssize_t length)
+enum ipc_errors ipc_message_format_data (struct ipc_message *m, char utype, const char *payload, ssize_t length)
 {
-    return ipc_message_format (m, MSG_TYPE_DATA, payload, length);
+    return ipc_message_format (m, MSG_TYPE_DATA, utype, payload, length);
 }
 
 enum ipc_errors ipc_message_format_server_close (struct ipc_message *m)
 {
-    return ipc_message_format (m, MSG_TYPE_SERVER_CLOSE, NULL, 0);
+    return ipc_message_format (m, MSG_TYPE_SERVER_CLOSE, 0, NULL, 0);
 }
 
 enum ipc_errors ipc_message_empty (struct ipc_message *m)

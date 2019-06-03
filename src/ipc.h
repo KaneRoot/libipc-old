@@ -11,7 +11,7 @@
 
 #define RUNDIR "/run/ipc/"
 #define PATH_MAX 4096
-#define IPC_HEADER_SIZE  5
+#define IPC_HEADER_SIZE  6
 #define IPC_MAX_MESSAGE_SIZE  8000000-IPC_HEADER_SIZE
 // #define IPC_MAX_MESSAGE_SIZE  100-IPC_HEADER_SIZE
 // #include "queue.h"
@@ -146,6 +146,7 @@ struct ipc_connection_infos {
 
 struct ipc_message {
     char type;
+    char user_type;
     uint32_t length;
     char *payload;
 };
@@ -211,7 +212,6 @@ enum ipc_errors ipc_connection   (char **env, struct ipc_connection_info *srv, c
 
 enum ipc_errors ipc_server_close (struct ipc_connection_info *srv);
 enum ipc_errors ipc_close (struct ipc_connection_info *p);
-enum ipc_errors ipc_accept (struct ipc_connection_info *srv, struct ipc_connection_info *p);
 
 enum ipc_errors ipc_read (const struct ipc_connection_info *, struct ipc_message *m);
 enum ipc_errors ipc_write (const struct ipc_connection_info *, const struct ipc_message *m);
@@ -259,8 +259,10 @@ enum ipc_errors ipc_message_read (int32_t fd, struct ipc_message *m);
 // write a structure msg to fd
 enum ipc_errors ipc_message_write (int32_t fd, const struct ipc_message *m);
 
-enum ipc_errors ipc_message_format (struct ipc_message *m, char type, const char *payload, ssize_t length);
-enum ipc_errors ipc_message_format_data (struct ipc_message *m, const char *payload, ssize_t length);
+enum ipc_errors ipc_message_format (struct ipc_message *m
+		, char type, char utype, const char *payload, ssize_t length);
+enum ipc_errors ipc_message_format_data (struct ipc_message *m
+		, char utype, const char *payload, ssize_t length);
 enum ipc_errors ipc_message_format_server_close (struct ipc_message *m);
 
 enum ipc_errors ipc_message_empty (struct ipc_message *m);

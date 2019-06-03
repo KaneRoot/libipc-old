@@ -35,7 +35,7 @@ void non_interactive (char *env[])
     }
 
     printf ("msg to send (%ld): %.*s\n", (ssize_t) strlen(MSG) +1, (int) strlen(MSG), MSG);
-    ret = ipc_message_format_data (&m, MSG, (ssize_t) strlen(MSG) +1);
+    ret = ipc_message_format_data (&m, 42, MSG, (ssize_t) strlen(MSG) +1);
 	if (ret != IPC_ERROR_NONE) {
 		PRINTERR(ret, "message format data");
 		exit (EXIT_FAILURE);
@@ -58,7 +58,7 @@ void non_interactive (char *env[])
         exit (EXIT_FAILURE);
     }
 
-    printf ("msg recv: %s\n", m.payload);
+    printf ("msg recv (type: %u): %s\n", m.user_type, m.payload);
     ipc_message_empty (&m);
 
 	ret = ipc_close (&srv);
