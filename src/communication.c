@@ -1,309 +1,227 @@
-#include "communication.h"
+#include "ipc.h"
+
 #include "utils.h"
-#include "error.h"
-#include "event.h"
 #include <unistd.h>
 
 #include <assert.h>
 #include <stdio.h>
-#include <errno.h>
+#include <errno.h> // error numbers
+
+#include <stdlib.h>
+#include <string.h>
+
+// print structures
+#include "message.h"
+
 
 void service_path (char *path, const char *sname, int32_t index, int32_t version)
 {
     assert (path != NULL);
     assert (sname != NULL);
+
     memset (path, 0, PATH_MAX);
-    snprintf (path, PATH_MAX, "%s/%s-%d-%d", RUNDIR, sname, index, version);
+
+	char * rundir = getenv ("IPC_RUNDIR");
+	if (rundir == NULL)
+		rundir = RUNDIR;
+
+    snprintf (path, PATH_MAX, "%s/%s-%d-%d", rundir, sname, index, version);
 }
 
-int32_t ipc_server_init (char **env
-        , struct ipc_service *srv, const char *sname)
+/*calculer le max filedescriptor*/
+static int32_t get_max_fd (struct ipc_connection_infos *cinfos)
 {
+    int32_t i;
+    int32_t max = 0;
+
+    for (i = 0; i < cinfos->size; i++ ) {
+        if (cinfos->cinfos[i]->fd > max) {
+            max = cinfos->cinfos[i]->fd;
+        } 
+    }
+
+    return max;
+}
+
+enum ipc_errors ipc_server_init (char **env, struct ipc_connection_info *srv, const char *sname)
+{
+    if (env == NULL)
+        return IPC_ERROR_SERVER_INIT__NO_ENVIRONMENT_PARAM;
+
     if (srv == NULL)
-        return IPC_ERROR_WRONG_PARAMETERS;
+        return IPC_ERROR_SERVER_INIT__NO_SERVICE_PARAM;
 
-    // TODO
-    //      use env parameters
-    //      it will be useful to change some parameters transparently
-    //      ex: to get resources from other machines, choosing the
-    //          remote with environment variables
+    if (sname == NULL)
+        return IPC_ERROR_SERVER_INIT__NO_SERVER_NAME_PARAM;
 
+	// TODO: loop over environment variables
+	// any IPC_NETWORK_* should be shared with the network service
+	// in order to route requests over any chosen protocol stack
+	// ex: IPC_NETWORK_AUDIO="tor://some.example.com/"
     env = env;
 
     // gets the service path
-    service_path (srv->spath, sname, srv->index, srv->version);
+	char buf [PATH_MAX];
+	memset (buf, 0, PATH_MAX);
+    service_path (buf, sname, srv->index, srv->version);
 
-    int32_t ret = usock_init (&srv->service_fd, srv->spath);
-	if (ret < 0) {
-		handle_err ("ipc_server_init", "usock_init ret < 0");
-		return -1;
+    // gets the service path
+	if (srv->spath != NULL) {
+		free (srv->spath);
 	}
 
-	return 0;
-}
+	size_t s = strlen (buf);
+	srv->spath = malloc (s+1);
+	if (srv->spath == NULL) {
+		return IPC_ERROR_SERVER_INIT__MALLOC;
+	}
+	memcpy (srv->spath, buf, s);
+	srv->spath[s] = '\0'; // to be sure
 
-int32_t ipc_server_accept (struct ipc_service *srv, struct ipc_client *p)
-{
-    assert (srv != NULL);
-    assert (p != NULL);
-
-    int32_t ret = usock_accept (srv->service_fd, &p->proc_fd);
-	if (ret < 0) {
-		handle_err ("ipc_server_accept", "usock_accept < 0");
-		return -1;
+    enum ipc_errors ret = usock_init (&srv->fd, srv->spath);
+	if (ret != IPC_ERROR_NONE) {
+		handle_err ("ipc_server_init", "usock_init");
+		return ret;
 	}
 
-    return 0;
+	return IPC_ERROR_NONE;
 }
 
-// empty the srv structure
-int32_t ipc_server_close (struct ipc_service *srv)
+enum ipc_errors ipc_connection (char **env, struct ipc_connection_info *srv, const char *sname)
 {
-    usock_close (srv->service_fd);
-	int32_t ret = usock_remove (srv->spath);
-	ipc_service_empty (srv);
-    return ret;
-}
-
-int32_t ipc_server_close_client (struct ipc_client *p)
-{
-    return usock_close (p->proc_fd);
-}
-
-int32_t ipc_server_read (const struct ipc_client *p, struct ipc_message *m)
-{
-    return ipc_message_read (p->proc_fd, m);
-}
-
-int32_t ipc_server_write (const struct ipc_client *p, const struct ipc_message *m)
-{
-    return ipc_message_write (p->proc_fd, m);
-}
-
-int32_t ipc_application_connection (char **env
-        , struct ipc_service *srv, const char *sname)
-{
-    // TODO
-    //      use env parameters
-    //      it will be useful to change some parameters transparently
-    //      ex: to get resources from other machines, choosing the
-    //          remote with environment variables
-
+	// TODO: loop over environment variables
+	// any IPC_NETWORK_* should be shared with the network service
+	// in order to route requests over any chosen protocol stack
+	// ex: IPC_NETWORK_AUDIO="tor://some.example.com/"
     env = env;
+    if (env == NULL)
+        return IPC_ERROR_CONNECTION__NO_ENVIRONMENT_PARAM;
 
     assert (srv != NULL);
     assert (sname != NULL);
 
     if (srv == NULL) {
-        return -1;
+        return IPC_ERROR_CONNECTION__NO_SERVER;
+    }
+
+    if (sname == NULL) {
+        return IPC_ERROR_CONNECTION__NO_SERVICE_NAME;
     }
 
     // gets the service path
-    service_path (srv->spath, sname, srv->index, srv->version);
+	char buf [PATH_MAX];
+	memset (buf, 0, PATH_MAX);
+    service_path (buf, sname, srv->index, srv->version);
 
-    int32_t ret = usock_connect (&srv->service_fd, srv->spath);
-	if (ret < 0) {
-		handle_err ("ipc_application_connection", "usock_connect ret <= 0");
-		return -1;
+    enum ipc_errors ret = usock_connect (&srv->fd, buf);
+	if (ret != IPC_ERROR_NONE) {
+		handle_err ("ipc_connection", "usock_connect ret");
+		return ret;
 	}
 
-    return 0;
+    return IPC_ERROR_NONE;
 }
 
-// close the socket
-int32_t ipc_application_close (struct ipc_service *srv)
+enum ipc_errors ipc_server_close (struct ipc_connection_info *srv)
 {
-    return usock_close (srv->service_fd);
+	usock_close (srv->fd);
+	enum ipc_errors ret = usock_remove (srv->spath);
+	if (srv->spath != NULL) {
+		free (srv->spath);
+		srv->spath = NULL;
+	}
+	return ret;
 }
 
-int32_t ipc_application_read (struct ipc_service *srv, struct ipc_message *m)
-{   
-    return ipc_message_read (srv->service_fd, m);
-}
-
-int32_t ipc_application_write (struct ipc_service *srv, const struct ipc_message *m)
+enum ipc_errors ipc_close (struct ipc_connection_info *p)
 {
-    return ipc_message_write (srv->service_fd, m);
+    return usock_close (p->fd);
 }
 
-
-/*calculer le max filedescriptor*/
-static int32_t get_max_fd_from_ipc_clients_ (struct ipc_clients *clients)
+enum ipc_errors ipc_accept (struct ipc_connection_info *srv, struct ipc_connection_info *p)
 {
-    int32_t i;
-    int32_t max = 0;
+    assert (srv != NULL);
+    assert (p != NULL);
 
-    for (i = 0; i < clients->size; i++ ) {
-        if (clients->clients[i]->proc_fd > max) {
-            max = clients->clients[i]->proc_fd;
-        } 
-    }
-
-    return max;
-}
-
-static int32_t get_max_fd_from_ipc_services_ (struct ipc_services *services)
-{
-    int32_t i;
-    int32_t max = 0;
-
-    for (i = 0; i < services->size; i++ ) {
-        if (services->services[i]->service_fd > max) {
-            max = services->services[i]->service_fd;
-        } 
-    }
-
-    return max;
-}
-
-/*
- * ipc_server_select prend en parametre
- *  * un tableau de client qu'on écoute
- *  * le service qui attend de nouvelles connexions
- *  * un tableau de client qui souhaitent parler
- *
- *  0 = OK
- * -1 = error
- */
-
-int32_t ipc_server_select (struct ipc_clients *clients, struct ipc_service *srv
-        , struct ipc_clients *active_clients, int32_t *new_connection)
-{
-	*new_connection = 0;
-    assert (clients != NULL);
-    assert (active_clients != NULL);
-
-    // delete previous read active_clients array
-    ipc_clients_free (active_clients);
-
-    int32_t i, j;
-    /* master file descriptor list */
-    fd_set master;
-    fd_set readf;
-
-    /* maximum file descriptor number */
-    int32_t fdmax;
-    /* listening socket descriptor */
-    int32_t listener = srv->service_fd;
-
-    /* clear the master and temp sets */
-    FD_ZERO(&master);
-    FD_ZERO(&readf);
-    /* add the listener to the master set */
-    FD_SET(listener, &master);
-
-    for (i=0; i < clients->size; i++) {
-        FD_SET(clients->clients[i]->proc_fd, &master);
-    }
-
-    /* keep track of the biggest file descriptor */
-    fdmax = get_max_fd_from_ipc_clients_ (clients) > srv->service_fd ? get_max_fd_from_ipc_clients_ (clients) : srv->service_fd; 
-
-	readf = master;
-	if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1) {
-		perror("select");
-		return -1;
+	if (srv == NULL) {
+		return IPC_ERROR_ACCEPT__NO_SERVICE_PARAM;
 	}
 
-	for (i = 0; i <= fdmax; i++) {
-		if (FD_ISSET(i, &readf)) {
-			if (i == listener) {
-				*new_connection = 1;
-			} else {
-				for(j = 0; j < clients->size; j++) {
-					if(i == clients->clients[j]->proc_fd ) {
-						ipc_clients_add (active_clients, clients->clients[j]);
-					}
-				}
-			}
-		}
+	if (p == NULL) {
+		return IPC_ERROR_ACCEPT__NO_CLIENT_PARAM;
 	}
 
-	return 0;
+    enum ipc_errors ret = usock_accept (srv->fd, &p->fd);
+	if (ret != IPC_ERROR_NONE) {
+		handle_err ("ipc_accept", "usock_accept");
+		return IPC_ERROR_ACCEPT;
+	}
+
+    return IPC_ERROR_NONE;
 }
 
-/*
- * ipc_application_select prend en parametre
- *  * un tableau de server qu'on écoute
- *  * le service qui attend de nouvelles connexions
- *  * un tableau de client qui souhaitent parler
- *
- *  0 = OK
- * -1 = error
- */
-
-int32_t ipc_application_select (struct ipc_services *services, struct ipc_services *active_services)
+enum ipc_errors ipc_read (const struct ipc_connection_info *p, struct ipc_message *m)
 {
-    assert (services != NULL);
-    assert (active_services != NULL);
-
-    // delete previous read active_services array
-    ipc_services_free (active_services);
-
-    int32_t i, j;
-    /* master file descriptor list */
-    fd_set master;
-    fd_set readf;
-
-    /* maximum file descriptor number */
-    int32_t fdmax;
-
-    /* clear the master and temp sets */
-    FD_ZERO(&master);
-    FD_ZERO(&readf);
-
-    for (i=0; i < services->size; i++) {
-        FD_SET(services->services[i]->service_fd, &master);
-    }
-
-    /* keep track of the biggest file descriptor */
-    fdmax = get_max_fd_from_ipc_services_ (services);
-
-	readf = master;
-	if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1) {
-		perror("select");
-		return -1;
-	}
-
-	for (i = 0; i <= fdmax; i++) {
-		if (FD_ISSET(i, &readf)) {
-			for(j = 0; j < services->size; j++) {
-				if(i == services->services[j]->service_fd ) {
-					ipc_services_add (active_services, services->services[j]);
-				}
-			}
-		}
-	}
-
-	return 0;
+    return ipc_message_read (p->fd, m);
 }
 
-int32_t handle_new_connection (struct ipc_service *srv
-		, struct ipc_clients *clients
-		, struct ipc_client **new_client)
+enum ipc_errors ipc_write (const struct ipc_connection_info *p, const struct ipc_message *m)
 {
-    *new_client = malloc(sizeof(struct ipc_client));
-    memset(*new_client, 0, sizeof(struct ipc_client));
-
-    if (ipc_server_accept (srv, *new_client) < 0) {
-        handle_error("server_accept < 0");
-		return 1;
-    } else {
-        // printf("new connection\n");
-    }
-
-    if (ipc_clients_add (clients, *new_client) < 0) {
-        handle_error("ipc_clients_add < 0");
-		return 1;
-    }
-
-	return 0;
+    return ipc_message_write (p->fd, m);
 }
 
-int32_t ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
+enum ipc_errors handle_new_connection (struct ipc_connection_info *cinfo
+		, struct ipc_connection_infos *cinfos
+		, struct ipc_connection_info **new_client)
+{
+	if (cinfo == NULL) {
+		return IPC_ERROR_HANDLE_NEW_CONNECTION__NO_CINFO_PARAM;
+	}
+
+	if (cinfos == NULL) {
+		return IPC_ERROR_HANDLE_NEW_CONNECTION__NO_CINFOS_PARAM;
+	}
+
+    *new_client = malloc(sizeof(struct ipc_connection_info));
+	if (*new_client == NULL) {
+		return IPC_ERROR_HANDLE_NEW_CONNECTION__MALLOC;
+	}
+
+    memset(*new_client, 0, sizeof(struct ipc_connection_info));
+
+	enum ipc_errors ret = ipc_accept (cinfo, *new_client);
+    if (ret != IPC_ERROR_NONE) {
+        handle_error("server_accept error");
+		return ret;
+    }
+
+	ret = ipc_add (cinfos, *new_client);
+    if (ret != IPC_ERROR_NONE) {
+        handle_error("ipc_clients_add error");
+		return ret;
+    }
+
+	return IPC_ERROR_NONE;
+}
+
+// TODO: should replace
+//   ipc_service_poll_event
+//   ipc_application_poll_event
+//   ipc_application_peek_event
+//   ipc_application_poll_event_
+enum ipc_errors ipc_wait_event (struct ipc_connection_infos *cinfos
+		, struct ipc_connection_info *cinfo // NULL for clients
         , struct ipc_event *event)
 {
-    assert (clients != NULL);
+    assert (cinfos != NULL);
+
+	if (cinfos == NULL) {
+		return IPC_ERROR_WAIT_EVENT__NO_CLIENTS_PARAM;
+	}
+
+	if (event == NULL) {
+		return IPC_ERROR_WAIT_EVENT__NO_EVENT_PARAM;
+	}
 
 	IPC_EVENT_CLEAN(event);
 
@@ -312,44 +230,55 @@ int32_t ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service 
     fd_set master;
     fd_set readf;
 
-    /* maximum file descriptor number */
-    int32_t fdmax;
-    /* listening socket descriptor */
-    int32_t listener = srv->service_fd;
-
     /* clear the master and temp sets */
     FD_ZERO(&master);
     FD_ZERO(&readf);
-    /* add the listener to the master set */
-    FD_SET(listener, &master);
 
-    for (i=0; i < clients->size; i++) {
-        FD_SET(clients->clients[i]->proc_fd, &master);
-    }
-
+    /* maximum file descriptor number */
     /* keep track of the biggest file descriptor */
-    fdmax = get_max_fd_from_ipc_clients_ (clients) > srv->service_fd ? get_max_fd_from_ipc_clients_ (clients) : srv->service_fd; 
+    int32_t fdmax = get_max_fd (cinfos);
+
+    /* listening socket descriptor */
+    int32_t listener;
+	if (cinfo != NULL) {
+		listener = cinfo->fd;
+
+		/* add the listener to the master set */
+		FD_SET(listener, &master);
+
+		// if listener is max fd
+		if (fdmax < listener)
+			fdmax = listener;
+	}
+
+    for (i=0; i < cinfos->size; i++) {
+        FD_SET(cinfos->cinfos[i]->fd, &master);
+    }
 
 	readf = master;
 	if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1) {
 		perror("select");
-		return -1;
+		return IPC_ERROR_WAIT_EVENT__SELECT;
 	}
 
 	for (i = 0; i <= fdmax; i++) {
 		if (FD_ISSET(i, &readf)) {
-			if (i == listener) {
+			if (cinfo != NULL && i == listener) {
 				// connection
-				struct ipc_client *new_client = NULL;
-				handle_new_connection (srv, clients, &new_client);
+				struct ipc_connection_info *new_client = NULL;
+				enum ipc_errors ret = handle_new_connection (cinfo, cinfos, &new_client);
+				if (ret != IPC_ERROR_NONE) {
+					// TODO: quit the program
+					return ret;
+				}
 				IPC_EVENT_SET (event, IPC_EVENT_TYPE_CONNECTION, NULL, new_client);
-				return 0;
+				return IPC_ERROR_NONE;
 			} else {
-				for(j = 0; j < clients->size; j++) {
-					if(i == clients->clients[j]->proc_fd ) {
+				for(j = 0; j < cinfos->size; j++) {
+					if(i == cinfos->cinfos[j]->fd ) {
 						// listen to what they have to say (disconnection or message)
 						// then add a client to `event`, the ipc_event structure
-						int32_t ret = 0;
+						enum ipc_errors ret;
 						struct ipc_message *m = NULL;
 						m = malloc (sizeof(struct ipc_message));
 						if (m == NULL) {
@@ -358,24 +287,27 @@ int32_t ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service 
 						memset (m, 0, sizeof (struct ipc_message));
 
 						// current talking client
-						struct ipc_client *pc = clients->clients[j];
-						ret = ipc_server_read (pc, m);
-						if (ret < 0) {
-							handle_err ("ipc_service_poll_event", "ipc_server_read < 0");
+						struct ipc_connection_info *pc = cinfos->cinfos[j];
+						ret = ipc_read (pc, m);
+						if (ret != IPC_ERROR_NONE && ret != IPC_ERROR_CLOSED_RECIPIENT) {
+							handle_err ("ipc_wait_event", "ipc_read");
 							ipc_message_empty (m);
 							free (m);
 
 							IPC_EVENT_SET(event, IPC_EVENT_TYPE_ERROR, NULL, pc);
-							return IPC_ERROR_READ;
+							return ret;
 						}
 
-						// disconnection: close the client then delete it from clients
-						if (ret == 1) {
-							if (ipc_server_close_client (pc) < 0) {
-								handle_err( "ipc_service_poll_event", "ipc_server_close_client < 0");
+						// disconnection: close the client then delete it from cinfos
+						if (ret == IPC_ERROR_CLOSED_RECIPIENT) {
+							ret = ipc_close (pc);
+							if (ret != IPC_ERROR_NONE) {
+								handle_err( "ipc_wait_event", "ipc_close");
 							}
-							if (ipc_clients_del (clients, pc) < 0) {
-								handle_err( "ipc_service_poll_event", "ipc_clients_del < 0");
+
+							ret = ipc_del (cinfos, pc);
+							if (ret != IPC_ERROR_NONE) {
+								handle_err( "ipc_wait_event", "ipc_del");
 							}
 							ipc_message_empty (m);
 							free (m);
@@ -383,131 +315,178 @@ int32_t ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service 
 							IPC_EVENT_SET(event, IPC_EVENT_TYPE_DISCONNECTION, NULL, pc);
 
 							// warning: do not forget to free the ipc_client structure
-							return 0;
+							return IPC_ERROR_NONE;
 						}
 
-						// we received a new message from a client
-						IPC_EVENT_SET (event, IPC_EVENT_TYPE_MESSAGE, m, pc);
-						return 0;
+						// we received a new message
+						// from a client
+						if (pc->type == 'a') {
+							IPC_EVENT_SET (event, IPC_EVENT_TYPE_EXTRA_SOCKET, m, pc);
+						}
+						else {
+							IPC_EVENT_SET (event, IPC_EVENT_TYPE_MESSAGE, m, pc);
+						}
+						return IPC_ERROR_NONE;
 					}
 				}
 			}
 		}
 	}
 
-	return 0;
+	return IPC_ERROR_NONE;
 }
 
-int32_t ipc_application_poll_event_ (struct ipc_services *services, struct ipc_event *event, int32_t interactive)
+// store and remove only pointers on allocated structures
+enum ipc_errors ipc_add (struct ipc_connection_infos *cinfos, struct ipc_connection_info *p)
 {
-    assert (services != NULL);
+    assert(cinfos != NULL);
+    assert(p != NULL);
 
-	IPC_EVENT_CLEAN(event);
-
-    int32_t i, j;
-    /* master file descriptor list */
-    fd_set master;
-    fd_set readf;
-
-    /* maximum file descriptor number */
-    int32_t fdmax;
-
-    /* clear the master and temp sets */
-    FD_ZERO(&master);
-    FD_ZERO(&readf);
-
-	if (interactive) {
-		FD_SET(0, &master);
-	}
-
-    for (i=0; i < services->size; i++) {
-        FD_SET(services->services[i]->service_fd, &master);
+    if (cinfos == NULL) {
+        return IPC_ERROR_ADD__NO_PARAM_CLIENTS;
     }
 
-    /* keep track of the biggest file descriptor */
-    fdmax = get_max_fd_from_ipc_services_ (services);
+    if (p == NULL) {
+        return IPC_ERROR_ADD__NO_PARAM_CLIENT;
+    }
 
-	readf = master;
-	if(select(fdmax+1, &readf, NULL, NULL, NULL) == -1) {
-		perror("select");
-		return -1;
-	}
+    cinfos->size++;
+    cinfos->cinfos = realloc(cinfos->cinfos, sizeof(struct ipc_connection_info) * cinfos->size);
 
-	for (i = 0; i <= fdmax; i++) {
-		if (FD_ISSET(i, &readf)) {
+    if (cinfos->cinfos == NULL) {
+        return IPC_ERROR_ADD__EMPTY_LIST;
+    }
 
-			// interactive: input on stdin
-			if (i == 0) {
-				// XXX: by default, message type is 0
-				struct ipc_message *m = malloc (sizeof (struct ipc_message));
-				if (m == NULL) {
-					return IPC_ERROR_NOT_ENOUGH_MEMORY;
-				}
-				memset (m, 0, sizeof (struct ipc_message));
-				m->payload = malloc (IPC_MAX_MESSAGE_SIZE);
-
-				m->length = read(0, m->payload , IPC_MAX_MESSAGE_SIZE);
-				IPC_EVENT_SET(event, IPC_EVENT_TYPE_STDIN, m, NULL);
-				return 0;
-			}
-
-			for(j = 0; j < services->size; j++) {
-				if(i == services->services[j]->service_fd ) {
-					// listen to what they have to say (disconnection or message)
-					// then add a client to `event`, the ipc_event structure
-					int32_t ret = 0;
-					struct ipc_message *m = NULL;
-					m = malloc (sizeof(struct ipc_message));
-					if (m == NULL) {
-						return IPC_ERROR_NOT_ENOUGH_MEMORY;
-					}
-					memset (m, 0, sizeof (struct ipc_message));
-
-					// current talking client
-					struct ipc_service *ps = services->services[j];
-					ret = ipc_application_read (ps, m);
-					if (ret < 0) {
-						handle_err ("ipc_application_poll_event", "ipc_application_read < 0");
-						ipc_message_empty (m);
-						free (m);
-
-						IPC_EVENT_SET(event, IPC_EVENT_TYPE_ERROR, NULL, ps);
-						return IPC_ERROR_READ;
-					}
-
-					// disconnection: close the service
-					if (ret == 1) {
-						if (ipc_application_close (ps) < 0) {
-							handle_err( "ipc_application_poll_event", "ipc_application_close < 0");
-						}
-						if (ipc_services_del (services, ps) < 0) {
-							handle_err( "ipc_application_poll_event", "ipc_services_del < 0");
-						}
-						ipc_message_empty (m);
-						free (m);
-
-						IPC_EVENT_SET(event, IPC_EVENT_TYPE_DISCONNECTION, NULL, ps);
-
-						// warning: do not forget to free the ipc_client structure
-						return 0;
-					}
-
-					// we received a new message from a client
-					IPC_EVENT_SET (event, IPC_EVENT_TYPE_MESSAGE, m, ps);
-					return 0;
-
-				}
-			}
-		}
-	}
-
-	return 0;
+    cinfos->cinfos[cinfos->size - 1] = p;
+    return IPC_ERROR_NONE;
 }
 
-int32_t ipc_application_poll_event (struct ipc_services *services, struct ipc_event *event) {
-	return ipc_application_poll_event_ (services, event, 0);
+enum ipc_errors ipc_del (struct ipc_connection_infos *cinfos, struct ipc_connection_info *p)
+{
+    assert(cinfos != NULL);
+    assert(p != NULL);
+
+    if (cinfos == NULL) {
+        return IPC_ERROR_DEL__NO_CLIENTS_PARAM;
+    }
+
+    if (p == NULL) {
+        return IPC_ERROR_DEL__NO_CLIENT_PARAM;
+    }
+
+    if (cinfos->cinfos == NULL) {
+        return IPC_ERROR_DEL__EMPTY_LIST;
+    }
+
+    int32_t i;
+    for (i = 0; i < cinfos->size; i++) {
+        if (cinfos->cinfos[i] == p) {
+            cinfos->cinfos[i] = cinfos->cinfos[cinfos->size-1];
+            cinfos->size--;
+            if (cinfos->size == 0) {
+                ipc_connections_free (cinfos);
+            }
+            else {
+                cinfos->cinfos = realloc(cinfos->cinfos, sizeof(struct ipc_connection_info) * cinfos->size);
+
+                if (cinfos->cinfos == NULL) {
+                    return IPC_ERROR_DEL__EMPTIED_LIST;
+                }
+            }
+
+            return IPC_ERROR_NONE;
+        }
+    }
+
+    return IPC_ERROR_DEL__CANNOT_FIND_CLIENT;
 }
 
-int32_t ipc_application_peek_event (struct ipc_services *services, struct ipc_event *event) {
-	return ipc_application_poll_event_ (services, event, 1);
+void ipc_connections_free  (struct ipc_connection_infos *cinfos)
+{
+    if (cinfos->cinfos != NULL) {
+        free (cinfos->cinfos);
+        cinfos->cinfos = NULL;
+    }
+    cinfos->size = 0;
+}
+
+// TODO: should replace  ipc_client_server_copy and ipc_server_client_copy
+struct ipc_connection_info * ipc_connection_copy (const struct ipc_connection_info *p)
+{
+    if (p == NULL)
+        return NULL;
+
+    struct ipc_connection_info * copy = malloc (sizeof(struct ipc_connection_info));
+
+    if (copy == NULL)
+        return NULL;
+
+    memset (copy, 0, sizeof (struct ipc_connection_info));
+    memcpy (copy, p, sizeof (struct ipc_connection_info));
+
+    return copy;
+}
+
+// TODO: should replace ipc_server_client_eq, ipc_service_eq
+int8_t ipc_connection_eq (const struct ipc_connection_info *p1, const struct ipc_connection_info *p2)
+{
+    return (p1->type == p2->type && p1->version == p2->version && p1->index == p2->index && p1->fd == p2->fd);
+}
+
+// create the client service structure
+// TODO: should replace ipc_client_server_gen, ipc_server_client_gen
+enum ipc_errors ipc_connection_gen (struct ipc_connection_info *cinfo
+		, uint32_t index, uint32_t version, int fd, char type)
+{
+	if (cinfo == NULL) {
+		return IPC_ERROR_CONNECTION_GEN__NO_CINFO;
+	}
+
+	cinfo->type = type;
+    cinfo->version = version;
+    cinfo->index = index;
+	cinfo->fd = fd;
+
+	return IPC_ERROR_NONE;
+}
+
+// add an arbitrary file descriptor to read
+enum ipc_errors ipc_add_fd (struct ipc_connection_infos *cinfos, int fd)
+{
+	if (cinfos == NULL) {
+		return IPC_ERROR_ADD_FD__NO_PARAM_CINFOS;
+	}
+
+	struct ipc_connection_info *cinfo;
+
+	enum ipc_errors ret;
+	ret = ipc_connection_gen (cinfo, 0, 0, fd, 'a');
+
+	return IPC_ERROR_NONE;
+}
+
+void ipc_connection_print (struct ipc_connection_info *cinfo)
+{
+    if (cinfo == NULL) {
+		return;
+	}
+
+	printf ("fd %d: index %d, version %d, type %c"
+			, cinfo->fd, cinfo->index, cinfo->version, cinfo->type);
+
+	if (cinfo->spath != NULL) {
+		printf (", path %s\n", cinfo->spath);
+	}
+	else {
+		printf ("\n");
+	}
+}
+
+void ipc_connections_print (struct ipc_connection_infos *cinfos)
+{
+    int32_t i;
+    for (i = 0; i < cinfos->size; i++) {
+        printf("[%d] : ", i);
+        ipc_connection_print(cinfos->cinfos[i]);
+    }
 }

@@ -28,40 +28,121 @@ enum msg_types {
 enum ipc_event_type {
 	IPC_EVENT_TYPE_NOT_SET
 	, IPC_EVENT_TYPE_ERROR
-	, IPC_EVENT_TYPE_STDIN
+
+	, IPC_EVENT_TYPE_EXTRA_SOCKET
+
 	, IPC_EVENT_TYPE_CONNECTION
 	, IPC_EVENT_TYPE_DISCONNECTION
 	, IPC_EVENT_TYPE_MESSAGE
 };
 
 enum ipc_errors {
-	IPC_ERROR_NOT_ENOUGH_MEMORY
-	, IPC_ERROR_WRONG_PARAMETERS
-	, IPC_ERROR_READ
+	/* general errors */
+	IPC_ERROR_NONE
+	, IPC_ERROR_NOT_ENOUGH_MEMORY
+	, IPC_ERROR_CLOSED_RECIPIENT
+
+	, IPC_ERROR_SERVER_INIT__NO_ENVIRONMENT_PARAM
+	, IPC_ERROR_SERVER_INIT__NO_SERVICE_PARAM
+	, IPC_ERROR_SERVER_INIT__NO_SERVER_NAME_PARAM
+	, IPC_ERROR_SERVER_INIT__MALLOC
+
+	, IPC_ERROR_CONNECTION__NO_SERVER
+	, IPC_ERROR_CONNECTION__NO_SERVICE_NAME
+	, IPC_ERROR_CONNECTION__NO_ENVIRONMENT_PARAM
+
+	, IPC_ERROR_CONNECTION_GEN__NO_CINFO
+
+	, IPC_ERROR_ACCEPT__NO_SERVICE_PARAM
+	, IPC_ERROR_ACCEPT__NO_CLIENT_PARAM
+	, IPC_ERROR_ACCEPT
+
+	, IPC_ERROR_HANDLE_NEW_CONNECTION__NO_CINFO_PARAM
+	, IPC_ERROR_HANDLE_NEW_CONNECTION__NO_CINFOS_PARAM
+
+	, IPC_ERROR_WAIT_EVENT__SELECT
+	, IPC_ERROR_WAIT_EVENT__NO_CLIENTS_PARAM
+	, IPC_ERROR_WAIT_EVENT__NO_EVENT_PARAM
+
+	, IPC_ERROR_HANDLE_NEW_CONNECTION__MALLOC
+
+	, IPC_ERROR_ADD__EMPTY_LIST
+	, IPC_ERROR_ADD__NO_PARAM_CLIENTS
+	, IPC_ERROR_ADD__NO_PARAM_CLIENT
+
+	, IPC_ERROR_ADD_FD__NO_PARAM_CINFOS
+
+	, IPC_ERROR_DEL__EMPTY_LIST
+	, IPC_ERROR_DEL__EMPTIED_LIST
+	, IPC_ERROR_DEL__CANNOT_FIND_CLIENT
+	, IPC_ERROR_DEL__NO_CLIENTS_PARAM
+	, IPC_ERROR_DEL__NO_CLIENT_PARAM
+	
+
+	/* unix socket */
+
+	, IPC_ERROR_USOCK_SEND
+
+	, IPC_ERROR_USOCK_CONNECT__SOCKET
+	, IPC_ERROR_USOCK_CONNECT__WRONG_FILE_DESCRIPTOR
+	, IPC_ERROR_USOCK_CONNECT__EMPTY_PATH
+
+	, IPC_ERROR_USOCK_CLOSE
+
+	, IPC_ERROR_USOCK_REMOVE__UNLINK
+	, IPC_ERROR_USOCK_REMOVE__NO_FILE
+
+	, IPC_ERROR_USOCK_INIT__EMPTY_FILE_DESCRIPTOR
+	, IPC_ERROR_USOCK_INIT__WRONG_FILE_DESCRIPTOR
+	, IPC_ERROR_USOCK_INIT__EMPTY_PATH
+	, IPC_ERROR_USOCK_INIT__BIND
+	, IPC_ERROR_USOCK_INIT__LISTEN
+
+	, IPC_ERROR_USOCK_ACCEPT__PATH_FILE_DESCRIPTOR
+	, IPC_ERROR_USOCK_ACCEPT
+
+	, IPC_ERROR_USOCK_RECV__NO_BUFFER
+	, IPC_ERROR_USOCK_RECV__NO_LENGTH
+	, IPC_ERROR_USOCK_RECV
+
+
+	/* message function errors */
+
+	, IPC_ERROR_MESSAGE_NEW__NO_MESSAGE_PARAM
+	, IPC_ERROR_MESSAGE_READ__NO_MESSAGE_PARAM
+
+	, IPC_ERROR_MESSAGE_WRITE__NO_MESSAGE_PARAM
+	, IPC_ERROR_MESSAGE_WRITE__NOT_ENOUGH_DATA
+
+	, IPC_ERROR_MESSAGE_FORMAT__NO_MESSAGE_PARAM
+	, IPC_ERROR_MESSAGE_FORMAT__INCONSISTENT_PARAMS
+	, IPC_ERROR_MESSAGE_FORMAT__LENGTH
+
+	, IPC_ERROR_MESSAGE_FORMAT_WRITE__EMPTY_MESSAGE
+	, IPC_ERROR_MESSAGE_FORMAT_WRITE__EMPTY_MSIZE
+	, IPC_ERROR_MESSAGE_FORMAT_WRITE__EMPTY_BUFFER
+
+	, IPC_ERROR_MESSAGE_FORMAT_READ__EMPTY_MESSAGE
+	, IPC_ERROR_MESSAGE_FORMAT_READ__EMPTY_BUFFER
+	, IPC_ERROR_MESSAGE_FORMAT_READ__MESSAGE_SIZE
+
+	, IPC_ERROR_MESSAGE_EMPTY__EMPTY_MESSAGE_LIST
 };
 
-struct ipc_service {
+
+struct ipc_connection_info {
     uint32_t version;
     uint32_t index;
-    char spath[PATH_MAX];
-    int32_t service_fd;
+    int32_t fd;
+	char type; // server, client, arbitrary fd
+    char *spath; // max size: PATH_MAX
 };
 
-struct ipc_services {
-	struct ipc_service ** services;
+struct ipc_connection_infos {
+	struct ipc_connection_info ** cinfos;
 	int32_t size;
 };
 
-struct ipc_client {
-    uint32_t version;
-    uint32_t index;
-    int32_t proc_fd;
-};
-
-struct ipc_clients {
-	struct ipc_client **clients;
-	int32_t size;
-};
 
 struct ipc_message {
     char type;
@@ -71,111 +152,122 @@ struct ipc_message {
 
 struct ipc_event {
 	enum ipc_event_type type;
-	void* origin; // currently used as an client or service pointer
+	struct ipc_connection_info *origin;
 	void* m; // message pointer
 };
 
 
-
-/*
- * SERVICE
- *
+/**
+ * MACROS
  **/
 
-// srv->version and srv->index must be already set
-// init unix socket + fill srv->spath
-int32_t ipc_server_init (char **env , struct ipc_service *srv, const char *sname);
-int32_t ipc_server_close (struct ipc_service *srv);
-int32_t ipc_server_close_client (struct ipc_client *p);
-int32_t ipc_server_accept (struct ipc_service *srv, struct ipc_client *p);
+// #define IPC_WITH_ERRORS                               3
 
-// 1 on a recipient socket close
-int32_t ipc_server_read (const struct ipc_client *, struct ipc_message *m);
-int32_t ipc_server_write (const struct ipc_client *, const struct ipc_message *m);
+#ifdef IPC_WITH_ERRORS
+#include "logger.h"
+#define handle_error(msg) \
+    do { log_error (msg); exit(EXIT_FAILURE); } while (0)
 
-int32_t ipc_server_select (struct ipc_clients * clients, struct ipc_service *srv
-        , struct ipc_clients *active_clients, int32_t *new_connection);
+#define handle_err(fun,msg)\
+    do { log_error ("%s: file %s line %d %s", fun, __FILE__, __LINE__, msg); } while (0)
+#else
+#define handle_error(msg)
+#define handle_err(fun,msg)
+#endif
 
-int32_t ipc_service_poll_event (struct ipc_clients *clients, struct ipc_service *srv
-        , struct ipc_event *event);
+#define IPC_EVENT_SET(pevent,type_,message_,origin_) {\
+	pevent->type = type_; \
+	pevent->m = message_; \
+	pevent->origin = origin_; \
+};
+
+#define IPC_EVENT_CLEAN(pevent) {\
+	pevent->type = IPC_EVENT_TYPE_NOT_SET;\
+	if (pevent->m != NULL) {\
+		ipc_message_empty (pevent->m);\
+		free(pevent->m);\
+		pevent->m = NULL;\
+	}\
+};
+
+#define IPC_WITH_UNIX_SOCKETS
+#ifdef  IPC_WITH_UNIX_SOCKETS
+#include "usocket.h"
+#endif
+
+
+#define LOG
+
+void log_error (const char* message, ...);
+void log_info  (const char* message, ...);
+void log_debug (const char* message, ...);
 
 /**
- * SERVICES
+ * main public functions
  */
 
+enum ipc_errors ipc_server_init  (char **env, struct ipc_connection_info *srv, const char *sname);
+enum ipc_errors ipc_connection   (char **env, struct ipc_connection_info *srv, const char *sname);
+
+enum ipc_errors ipc_server_close (struct ipc_connection_info *srv);
+enum ipc_errors ipc_close (struct ipc_connection_info *p);
+enum ipc_errors ipc_accept (struct ipc_connection_info *srv, struct ipc_connection_info *p);
+
+enum ipc_errors ipc_read (const struct ipc_connection_info *, struct ipc_message *m);
+enum ipc_errors ipc_write (const struct ipc_connection_info *, const struct ipc_message *m);
+
+enum ipc_errors ipc_wait_event (struct ipc_connection_infos *clients
+		, struct ipc_connection_info *srv
+        , struct ipc_event *event);
+
 // store and remove only pointers on allocated structures
-int32_t ipc_services_add (struct ipc_services *, struct ipc_service *);
-int32_t ipc_services_del (struct ipc_services *, struct ipc_service *);
+enum ipc_errors ipc_add (struct ipc_connection_infos *, struct ipc_connection_info *);
+enum ipc_errors ipc_del (struct ipc_connection_infos *, struct ipc_connection_info *);
 
-void ipc_services_free  (struct ipc_services *);
+// add an arbitrary file descriptor to read
+enum ipc_errors ipc_add_fd (struct ipc_connection_infos *cinfos, int fd);
 
-struct ipc_service * ipc_client_server_copy (const struct ipc_service *p);
-int32_t ipc_service_eq (const struct ipc_service *p1, const struct ipc_service *p2);
+void ipc_connections_free  (struct ipc_connection_infos *);
+
+
+struct ipc_connection_info * ipc_connection_copy (const struct ipc_connection_info *p);
+int8_t ipc_connection_eq (const struct ipc_connection_info *p1, const struct ipc_connection_info *p2);
 // create the client service structure
-void ipc_client_server_gen (struct ipc_service *p, uint32_t index, uint32_t version);
+enum ipc_errors ipc_connection_gen (struct ipc_connection_info *cinfo
+		, uint32_t index, uint32_t version, int fd, char type);
 
-static inline int32_t ipc_service_empty (struct ipc_service *srv) { srv = srv; return 0 ;};
+void ipc_connection_print (struct ipc_connection_info *cinfo);
+void ipc_connections_print (struct ipc_connection_infos *cinfos);
+
+// get explanation about an error
+const char * ipc_errors_get (enum ipc_errors e);
 
 
-/*
- * APPLICATION
- *
+/**
+ * message functions
  **/
 
-// Initialize connection with unix socket
-// send the connection string to $TMP/<service>
-// fill srv->spath && srv->service_fd
-int32_t ipc_application_connection (char **env, struct ipc_service *, const char *);
-int32_t ipc_application_close (struct ipc_service *);
-
-// 1 on a recipient socket close
-int32_t ipc_application_read (struct ipc_service *srv, struct ipc_message *m);
-int32_t ipc_application_write (struct ipc_service *, const struct ipc_message *m);
-
-int32_t ipc_application_select (struct ipc_services *services, struct ipc_services *active_services);
-int32_t ipc_application_poll_event (struct ipc_services *services, struct ipc_event *event);
-int32_t ipc_application_peek_event (struct ipc_services *services, struct ipc_event *event);
-
-
-
-/*
- * MESSAGE
- *
- **/
-
+// used to create msg structure with a certain payload length (0 for no payload memory allocation)
+enum ipc_errors ipc_message_new (struct ipc_message **m, ssize_t paylen);
 // used to create msg structure from buffer
-int32_t ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msize);
+enum ipc_errors ipc_message_format_read (struct ipc_message *m, const char *buf, ssize_t msize);
 // used to create buffer from msg structure
-int32_t ipc_message_format_write (const struct ipc_message *m, char **buf, ssize_t *msize);
+enum ipc_errors ipc_message_format_write (const struct ipc_message *m, char **buf, ssize_t *msize);
 
 // read a structure msg from fd
-int32_t ipc_message_read (int32_t fd, struct ipc_message *m);
+enum ipc_errors ipc_message_read (int32_t fd, struct ipc_message *m);
 // write a structure msg to fd
-int32_t ipc_message_write (int32_t fd, const struct ipc_message *m);
+enum ipc_errors ipc_message_write (int32_t fd, const struct ipc_message *m);
 
-int32_t ipc_message_format (struct ipc_message *m, char type, const char *payload, ssize_t length);
-int32_t ipc_message_format_data (struct ipc_message *m, const char *payload, ssize_t length);
-int32_t ipc_message_format_server_close (struct ipc_message *m);
+enum ipc_errors ipc_message_format (struct ipc_message *m, char type, const char *payload, ssize_t length);
+enum ipc_errors ipc_message_format_data (struct ipc_message *m, const char *payload, ssize_t length);
+enum ipc_errors ipc_message_format_server_close (struct ipc_message *m);
 
-int32_t ipc_message_empty (struct ipc_message *m);
+enum ipc_errors ipc_message_empty (struct ipc_message *m);
 
 
 
-/*
- * CLIENT
- *
- **/
-
-// store and remove only pointers on allocated structures
-int32_t ipc_clients_add (struct ipc_clients *, struct ipc_client *);
-int32_t ipc_clients_del (struct ipc_clients *, struct ipc_client *);
-
-void ipc_clients_free  (struct ipc_clients *);
-
-struct ipc_client * ipc_server_client_copy (const struct ipc_client *p);
-int32_t ipc_server_client_eq (const struct ipc_client *p1, const struct ipc_client *p2);
-// create the service client structure
-void ipc_server_client_gen (struct ipc_client *p, uint32_t index, uint32_t version);
-
+// non public functions
+void service_path (char *path, const char *sname, int32_t index, int32_t version);
 
 #endif

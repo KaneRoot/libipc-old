@@ -10,18 +10,118 @@ section: 7
 
 libipc - Simple, easy-to-use IPC library
 
-# SYNOPSIS
-
-**`#include <ipc.h>`**
-
-**`...`**
-
 # DESCRIPTION
 
 **libipc** is a library that provides interprocess communication medium between applications.
 It provides both client and server code.
 
-# USAGE
+# SYNOPSIS
+
+**`#include <ipc.h>`**
+
+## Initialization, exchanges, disconnection
+
+// server initialization\
+*enum ipc_errors* **ipc_server_init**   (*char* \*\*env , *struct ipc_connection_info* \*srv, *const char* \*sname);\
+// connection establishement to a server\
+*enum ipc_errors* **ipc_connection**    (*char* \*\*env, *struct ipc_connection_info* \*, *const char* \*);\
+
+// closing a server\
+*enum ipc_errors* **ipc_server_close**  (*struct ipc_connection_info* \*srv);\
+// closing a connection\
+*enum ipc_errors* **ipc_close**         (*struct ipc_connection_info* \*p);\
+*enum ipc_errors* **ipc_accept**        (*struct ipc_connection_info* \*srv, *struct ipc_connection_info* \*p);
+
+*enum ipc_errors* **ipc_read**          (*const struct ipc_connection_info* \*, *struct ipc_message* \*m);\
+*enum ipc_errors* **ipc_write**         (*const struct ipc_connection_info* \*, *const struct ipc_message* \*m);\
+*enum ipc_errors* **ipc_wait_event**    (*struct ipc_connection_infos* \*clients, *struct ipc_connection_info* \*srv, *struct ipc_event* \*event);
+
+
+// store and remove only pointers on allocated structures\
+*enum ipc_errors* **ipc_add** (*struct ipc_connection_infos* \*cinfos, *struct ipc_connection_info* \*cinfo);\
+*enum ipc_errors* **ipc_del** (*struct ipc_connection_infos* \*cinfos, *struct ipc_connection_info* \*cinfo);
+
+// add an arbitrary file descriptor to read\
+*enum ipc_errors* **ipc_add_fd** (*struct ipc_connection_infos* \*cinfos, *int* fd);
+
+
+## Message functions
+
+// create msg structure with a certain payload length (0 for no payload memory allocation)\
+*enum ipc_errors* **ipc_message_new** (*struct ipc_message* \*\*m, *ssize_t* paylen);\
+// create msg structure from buffer\
+*enum ipc_errors* **ipc_message_format_read** (*struct ipc_message* \*m, *const char* \*buf, *ssize_t* msize);\
+// create buffer from msg structure\
+*enum ipc_errors* **ipc_message_format_write** (*const struct ipc_message* \*m, *char* \*\*buf, *ssize_t* \*msize);\
+
+// read a structure msg from fd\
+*enum ipc_errors* **ipc_message_read** (*int32_t* fd, *struct ipc_message* \*m);\
+// write a structure msg to fd\
+*enum ipc_errors* **ipc_message_write**               (*int32_t* fd, *const struct ipc_message* \*m);\
+*enum ipc_errors* **ipc_message_format**              (*struct ipc_message* \*m, *char* type, *const char* \*payload, *ssize_t* length);\
+*enum ipc_errors* **ipc_message_format_data**         (*struct ipc_message* \*m, *const char* \*payload, *ssize_t* length);\
+*enum ipc_errors* **ipc_message_format_server_close** (*struct ipc_message* \*m);\
+
+*enum ipc_errors* **ipc_message_empty** (*struct ipc_message* \*m);
+
+
+# STRUCTURES
+
+	struct ipc_connection_info {
+		uint32_t version;
+		uint32_t index;
+		int32_t fd;
+		char type;   // may be an arbitrary fd
+		char *spath; // max size: PATH_MAX, used to store unix socket path
+	};
+
+	struct ipc_connection_infos {
+		struct ipc_connection_info ** cinfos;
+		int32_t size;
+	};
+
+	struct ipc_message {
+		char type;
+		uint32_t length;
+		char *payload;
+	};
+
+	struct ipc_event {
+		enum ipc_event_type type;
+		void* origin; // currently used as an client or service pointer
+		void* m; // message pointer
+	};
+
+
+# ENUMERATIONS
+
+	enum msg_types {
+		MSG_TYPE_SERVER_CLOSE = 0
+		, MSG_TYPE_ERR
+		, MSG_TYPE_DATA
+	} message_types;
+
+Function **ipc_wait_event** returns an *event type* structure.\
+The event may be a (dis)connection, received data or an error.\
+It also can be *IPC_EVENT_TYPE_EXTRA_SOCKET* since an arbitrary file descriptor can be added to the *ipc_connection_infos* structure with **ipc_add_fd**.
+
+	enum ipc_event_type {
+		IPC_EVENT_TYPE_NOT_SET
+		, IPC_EVENT_TYPE_ERROR
+		, IPC_EVENT_TYPE_EXTRA_SOCKET
+		, IPC_EVENT_TYPE_CONNECTION
+		, IPC_EVENT_TYPE_DISCONNECTION
+		, IPC_EVENT_TYPE_MESSAGE
+	};
+
+	enum ipc_errors {
+		...
+	};
+
+
+# EXAMPLES
+
+Examples are available in the */examples* directory.
 
 # NOTES
 
@@ -31,5 +131,4 @@ It provides both client and server code.
 
   - Documentation is currently limited.
   - Rerouting IPC connexions through other services (for example, through a network bridge service) is currently not possible.
-  - Errors management is currently limited, and precise errors cannot be distinguished.
 
