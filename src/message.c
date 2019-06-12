@@ -4,10 +4,14 @@
 
 #include <stdint.h>
 
+#include <arpa/inet.h>
+
 #include "message.h"
 #include "usocket.h"
 
 #include <assert.h>
+
+#define IPC_WITH_ERRORS 3
 
 void ipc_message_print (const struct ipc_message *m)
 {
@@ -59,12 +63,14 @@ enum ipc_errors ipc_message_format_read (struct ipc_message *m, const char *buf,
 	// message format:
 	//   Type (1 B) | Length (4 B) | UserType (1 B) | Payload (Length B)
     m->type = buf[0];
-    memcpy (&m->length, buf+1, sizeof m->length);
+	size_t unformated_size = 0;
+    memcpy (&unformated_size, buf+1, sizeof(size_t));
+	m->length = ntohl (unformated_size);
 	m->user_type = buf[1 + sizeof m->length];
 
     assert (m->length <= IPC_MAX_MESSAGE_SIZE);
 #if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
-    printf ("type %d, paylen = %u, total = %lu\n", m->type, m->length, msize);
+    printf ("receiving msg:\ttype %d, paylen %u, total %lu\n", m->type, m->length, msize);
 #endif
     assert (m->length == msize - IPC_HEADER_SIZE || m->length == 0);
 
@@ -77,6 +83,9 @@ enum ipc_errors ipc_message_format_read (struct ipc_message *m, const char *buf,
         m->payload = malloc (m->length);
         memcpy (m->payload, buf+IPC_HEADER_SIZE, m->length);
     }
+	else {
+        m->payload = malloc (1);
+	}
 
     return IPC_ERROR_NONE;
 }
@@ -106,18 +115,20 @@ enum ipc_errors ipc_message_format_write (const struct ipc_message *m, char **bu
     }
 
     char *buffer = *buf;
+	uint32_t paylen = htonl(m->length);
 
     buffer[0] = m->type;
-    memcpy (buffer + 1, &m->length, sizeof m->length);
+	uint32_t net_paylen = htonl(m->length);
+    memcpy (buffer + 1, &net_paylen, sizeof(uint32_t));
     buffer[1 + sizeof m->length] = m->user_type;
-	if (m->payload != NULL) {
+	if (m->payload != NULL && m->length > 0) {
 		memcpy (buffer + IPC_HEADER_SIZE, m->payload, m->length);
 	}
 
     *msize = IPC_HEADER_SIZE + m->length;
 
 #if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
-	printf ("sending msg: type %u, size %d, msize %ld\n", m->type, m->length, *msize);
+	printf ("sending msg:\ttype %u, paylen %u, msize %lu\n", m->type, m->length, *msize);
 #endif
 
     return IPC_ERROR_NONE;
@@ -137,21 +148,19 @@ enum ipc_errors ipc_message_read (int32_t fd, struct ipc_message *m)
 
     enum ipc_errors ret = usock_recv (fd, &buf, &msize);
     if (ret != IPC_ERROR_NONE && ret != IPC_ERROR_CLOSED_RECIPIENT) {
-		if (buf != NULL)
-			free (buf);
         handle_err ("msg_read", "usock_recv");
         return ret;
     }
 
 	// closed recipient, buffer already freed
 	if (ret == IPC_ERROR_CLOSED_RECIPIENT) {
-		if (buf != NULL)
-			free (buf);
 		return IPC_ERROR_CLOSED_RECIPIENT;
 	}
 
-	ret = ipc_message_format_read (m, buf, msize);
-    free (buf);
+	if (buf != NULL) {
+		ret = ipc_message_format_read (m, buf, msize);
+		free (buf);
+	}
 	return ret; // propagates ipc_message_format return
 }
 

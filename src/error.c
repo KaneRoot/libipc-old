@@ -19,9 +19,10 @@ static struct ipc_errors_verbose ipc_errors_verbose [] = {
 	, IPC_ERROR_SERVER_INIT__NO_SERVER_NAME_PARAM, "ipc_server_init: no server name param"
 	, IPC_ERROR_SERVER_INIT__MALLOC,               "ipc_server_init: error on malloc function"
 
-	, IPC_ERROR_CONNECTION__NO_SERVER,       "ipc_connection: no server parameter"
-	, IPC_ERROR_CONNECTION__NO_SERVICE_NAME, "ipc_connection: no service name parameter"
+	, IPC_ERROR_CONNECTION__NO_SERVER,            "ipc_connection: no server parameter"
+	, IPC_ERROR_CONNECTION__NO_SERVICE_NAME,      "ipc_connection: no service name parameter"
 	, IPC_ERROR_CONNECTION__NO_ENVIRONMENT_PARAM, "ipc_connection: no environment param"
+	, IPC_ERROR_USOCK_CONNECT__CONNECT,           "ipc_connection: error on the connect function"
 
 	, IPC_ERROR_CONNECTION_GEN__NO_CINFO, "ipc_connection_gen: no cinfo"
 
@@ -43,6 +44,12 @@ static struct ipc_errors_verbose ipc_errors_verbose [] = {
 	, IPC_ERROR_ADD__NO_PARAM_CLIENT,    "ipc_clients_add: no param client"
 
 	, IPC_ERROR_ADD_FD__NO_PARAM_CINFOS,  "ipc_add_fd: no cinfos param"
+	, IPC_ERROR_ADD_FD__EMPTY_LIST,       "ipc_add_fd: empty list after realloc (memory problem)"
+
+	, IPC_ERROR_DEL_FD__NO_PARAM_CINFOS,    "ipc_del_fd: no cinfos param"
+	, IPC_ERROR_DEL_FD__EMPTIED_LIST,       "ipc_del_fd: empty list after realloc (memory problem)"
+	, IPC_ERROR_DEL_FD__EMPTY_LIST,         "ipc_del_fd: empty list"
+	, IPC_ERROR_DEL_FD__CANNOT_FIND_CLIENT, "ipc_del_fd: cannot find user"
 
 	, IPC_ERROR_DEL__EMPTY_LIST,         "ipc_clients_del: empty list"
 	, IPC_ERROR_DEL__EMPTIED_LIST,       "ipc_clients_del: cannot realloc"

@@ -11,8 +11,19 @@
 #include <unistd.h>
 #include <assert.h>
 
+#include <arpa/inet.h>
+
 #include "usocket.h"
 #include "utils.h"
+
+#define IPC_DEBUG
+
+#undef handle_err
+#define handle_err(a,b) fprintf (stderr, "FUNCTION %s LINE %d ERROR %s\n", a, __LINE__, b);
+
+/**
+ * TODO: non blocking read
+ */
 
 enum ipc_errors usock_send (const int32_t fd, const char *buf, ssize_t len, ssize_t *sent)
 {
@@ -32,7 +43,7 @@ enum ipc_errors usock_recv (const int32_t fd, char **buf, ssize_t *len)
     assert(buf != NULL);
     assert(len != NULL);
 
-    ssize_t ret = 0;
+    int32_t ret_recv = 0;
 
     if (buf == NULL) {
         handle_err ("usock_recv", "buf == NULL");
@@ -57,71 +68,95 @@ enum ipc_errors usock_recv (const int32_t fd, char **buf, ssize_t *len)
 	uint32_t msize_read = 0;
 
 	do {
-		ret = recv (fd, *buf, *len, 0);
-		if (msize == 0) {
-			if (ret != 0) {
+		ret_recv = recv (fd, *buf, *len, 0);
+		if (ret_recv > 0) {
+			if (msize == 0) {
 				memcpy (&msize, *buf + 1, sizeof msize);
 			}
-		}
-		assert (msize < IPC_MAX_MESSAGE_SIZE);
-		msize_read += ret - IPC_HEADER_SIZE;
+			else {
+				printf ("pas la première boucle, msize == %u\n", msize);
+			}
+			msize = ntohl (msize);
 
-		if (ret < 0) {
+			if (msize >= IPC_MAX_MESSAGE_SIZE) {
+#ifdef IPC_DEBUG
+				printf ("lecture bien passée : %d octets\n", ret_recv);
+				print_hexa ("msg recv", (uint8_t *)*buf, ret_recv);
+				fflush(stdout);
+#endif
+			}
+			assert (msize < IPC_MAX_MESSAGE_SIZE);
+			msize_read += ret_recv - IPC_HEADER_SIZE;
+
+		}
+		else if (ret_recv < 0) {
 			if (*buf != NULL)
 				free (*buf);
-
-			handle_err ("usock_recv", "recv ret < 0");
-			perror("recv");
 			*len = 0;
 
-			switch (ret) {
+			switch (errno) {
 
 				// The receive buffer pointer(s) point outside the process's address space.
 				case EFAULT:
 					handle_err ("usock_recv", "critical error: use of unallocated memory, quitting...");
-					exit (1);
+					fprintf (stderr, "ERROR WHILE RECEIVING: EFAULT\n");
+					break;
 
 				// Invalid argument passed.
 				case EINVAL:
 					handle_err ("usock_recv", "critical error: invalid arguments to read(2), quitting...");
-					exit (1);
+					fprintf (stderr, "ERROR WHILE RECEIVING: EINVAL\n");
+					break;
 
 				// Could not allocate memory for recvmsg().
 				case ENOMEM:
 					handle_err ("usock_recv", "critical error: cannot allocate memory, quitting...");
-					exit (1);
+					fprintf (stderr, "ERROR WHILE RECEIVING: ENOMEM\n");
+					break;
 
 				// The argument sockfd is an invalid descriptor.
 				case EBADF:
 					handle_err ("usock_recv", "critical error: invalid descriptor, quitting...");
-					exit (1);
+					fprintf (stderr, "ERROR WHILE RECEIVING: EBADF\n");
+					break;
 
 				// The file descriptor sockfd does not refer to a socket.
 				case ENOTSOCK:
 					handle_err ("usock_recv", "critical error: fd is not a socket, quitting...");
-					exit (1);
+					fprintf (stderr, "ERROR WHILE RECEIVING: ENOTSOCK\n");
+					break;
 
 				// The socket is associated with a connection-oriented protocol and has not
 				// been connected (see connect(2) and accept(2)).
 				case ENOTCONN:
 					handle_err ("usock_recv", "critical error: read(2) on a non connected socket, quitting...");
-					exit (1);
+					fprintf (stderr, "ERROR WHILE RECEIVING: ENOTCONN\n");
+					break;
 
-				// EWOULDBLOCK
 				case EAGAIN:
+					fprintf (stderr, "ERROR WHILE RECEIVING: EAGAIN / EWOULDBLOCK\n");
+					break;
 
 				// A remote host refused to allow the network connection
 				// (typically because it is not running the requested service).
 				case ECONNREFUSED:
+					fprintf (stderr, "ERROR WHILE RECEIVING: ECONNREFUSED\n");
+					break;
 
 				// The receive was interrupted by delivery of a signal before
 				// any data were available; see signal(7).
 				case EINTR:
+					handle_err ("usock_recv", "unsupported error");
+					break;
 
 				default:
+					printf ("usock_recv unsupported error : %d\n", errno);
 					handle_err ("usock_recv", "unsupported error");
-					;
 			}
+
+			handle_err ("usock_recv", "recv < 0");
+			perror("recv");
+
 			return IPC_ERROR_USOCK_RECV;
 		}
 
@@ -133,7 +168,7 @@ enum ipc_errors usock_recv (const int32_t fd, char **buf, ssize_t *len)
 	*len = msize + IPC_HEADER_SIZE;
 
 	// 1 on none byte received, indicates a closed recipient
-	if (ret == 0) {
+	if (ret_recv == 0) {
 		if (*buf != NULL) {
 			free (*buf);
 			*buf = NULL;
@@ -181,7 +216,7 @@ enum ipc_errors usock_connect (int32_t *fd, const char *path)
     if(connect(sfd, (struct sockaddr *) &my_addr, peer_addr_size) == -1) {
         handle_err ("usock_connect", "connect == -1");
         perror("connect");
-        exit(errno);
+        return IPC_ERROR_USOCK_CONNECT__CONNECT;
     }
 
     *fd = sfd;

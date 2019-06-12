@@ -14,6 +14,9 @@
 #include "message.h"
 
 
+#define IPC_CONNECTION_TYPE_IPC		 'i'
+#define IPC_CONNECTION_TYPE_EXTERNAL 'a'
+
 void service_path (char *path, const char *sname, int32_t index, int32_t version)
 {
     assert (path != NULL);
@@ -25,7 +28,7 @@ void service_path (char *path, const char *sname, int32_t index, int32_t version
 	if (rundir == NULL)
 		rundir = RUNDIR;
 
-    snprintf (path, PATH_MAX, "%s/%s-%d-%d", rundir, sname, index, version);
+    snprintf (path, PATH_MAX-1, "%s/%s-%d-%d", rundir, sname, index, version);
 }
 
 /*calculer le max filedescriptor*/
@@ -68,6 +71,7 @@ enum ipc_errors ipc_server_init (char **env, struct ipc_connection_info *srv, co
     // gets the service path
 	if (srv->spath != NULL) {
 		free (srv->spath);
+		srv->spath = NULL;
 	}
 
 	size_t s = strlen (buf);
@@ -157,6 +161,8 @@ enum ipc_errors ipc_accept (struct ipc_connection_info *srv, struct ipc_connecti
 		return IPC_ERROR_ACCEPT;
 	}
 
+	p->type = IPC_CONNECTION_TYPE_IPC;
+
     return IPC_ERROR_NONE;
 }
 
@@ -182,33 +188,25 @@ enum ipc_errors handle_new_connection (struct ipc_connection_info *cinfo
 		return IPC_ERROR_HANDLE_NEW_CONNECTION__NO_CINFOS_PARAM;
 	}
 
-    *new_client = malloc(sizeof(struct ipc_connection_info));
+    *new_client = malloc (sizeof(struct ipc_connection_info));
 	if (*new_client == NULL) {
 		return IPC_ERROR_HANDLE_NEW_CONNECTION__MALLOC;
 	}
-
     memset(*new_client, 0, sizeof(struct ipc_connection_info));
 
 	enum ipc_errors ret = ipc_accept (cinfo, *new_client);
     if (ret != IPC_ERROR_NONE) {
-        handle_error("server_accept error");
 		return ret;
     }
 
 	ret = ipc_add (cinfos, *new_client);
     if (ret != IPC_ERROR_NONE) {
-        handle_error("ipc_clients_add error");
 		return ret;
     }
 
 	return IPC_ERROR_NONE;
 }
 
-// TODO: should replace
-//   ipc_service_poll_event
-//   ipc_application_poll_event
-//   ipc_application_peek_event
-//   ipc_application_poll_event_
 enum ipc_errors ipc_wait_event (struct ipc_connection_infos *cinfos
 		, struct ipc_connection_info *cinfo // NULL for clients
         , struct ipc_event *event)
@@ -276,6 +274,15 @@ enum ipc_errors ipc_wait_event (struct ipc_connection_infos *cinfos
 			} else {
 				for(j = 0; j < cinfos->size; j++) {
 					if(i == cinfos->cinfos[j]->fd ) {
+
+						struct ipc_connection_info *pc = cinfos->cinfos[j];
+
+						// no treatment of the socket if external socket
+						if (pc->type == IPC_CONNECTION_TYPE_EXTERNAL) {
+							IPC_EVENT_SET (event, IPC_EVENT_TYPE_EXTRA_SOCKET, NULL, pc);
+							return IPC_ERROR_NONE;
+						}
+
 						// listen to what they have to say (disconnection or message)
 						// then add a client to `event`, the ipc_event structure
 						enum ipc_errors ret;
@@ -287,12 +294,22 @@ enum ipc_errors ipc_wait_event (struct ipc_connection_infos *cinfos
 						memset (m, 0, sizeof (struct ipc_message));
 
 						// current talking client
-						struct ipc_connection_info *pc = cinfos->cinfos[j];
 						ret = ipc_read (pc, m);
 						if (ret != IPC_ERROR_NONE && ret != IPC_ERROR_CLOSED_RECIPIENT) {
 							handle_err ("ipc_wait_event", "ipc_read");
 							ipc_message_empty (m);
 							free (m);
+
+							// if there is a problem, just remove the client
+							ret = ipc_close (pc);
+							if (ret != IPC_ERROR_NONE) {
+								handle_err( "ipc_wait_event", "ipc_close");
+							}
+
+							ret = ipc_del (cinfos, pc);
+							if (ret != IPC_ERROR_NONE) {
+								handle_err( "ipc_wait_event", "ipc_del");
+							}
 
 							IPC_EVENT_SET(event, IPC_EVENT_TYPE_ERROR, NULL, pc);
 							return ret;
@@ -318,14 +335,7 @@ enum ipc_errors ipc_wait_event (struct ipc_connection_infos *cinfos
 							return IPC_ERROR_NONE;
 						}
 
-						// we received a new message
-						// from a client
-						if (pc->type == 'a') {
-							IPC_EVENT_SET (event, IPC_EVENT_TYPE_EXTRA_SOCKET, m, pc);
-						}
-						else {
-							IPC_EVENT_SET (event, IPC_EVENT_TYPE_MESSAGE, m, pc);
-						}
+						IPC_EVENT_SET (event, IPC_EVENT_TYPE_MESSAGE, m, pc);
 						return IPC_ERROR_NONE;
 					}
 				}
@@ -351,7 +361,14 @@ enum ipc_errors ipc_add (struct ipc_connection_infos *cinfos, struct ipc_connect
     }
 
     cinfos->size++;
-    cinfos->cinfos = realloc(cinfos->cinfos, sizeof(struct ipc_connection_info) * cinfos->size);
+	if (cinfos->size == 1 && cinfos->cinfos == NULL) {
+		// first allocation
+		cinfos->cinfos = malloc (sizeof(struct ipc_connection_info));
+	}
+	else {
+		cinfos->cinfos = realloc(cinfos->cinfos, sizeof(struct ipc_connection_info) * cinfos->size);
+	}
+
 
     if (cinfos->cinfos == NULL) {
         return IPC_ERROR_ADD__EMPTY_LIST;
@@ -381,6 +398,7 @@ enum ipc_errors ipc_del (struct ipc_connection_infos *cinfos, struct ipc_connect
     int32_t i;
     for (i = 0; i < cinfos->size; i++) {
         if (cinfos->cinfos[i] == p) {
+			// TODO: possible memory leak if the ipc_connection_info is not free'ed
             cinfos->cinfos[i] = cinfos->cinfos[cinfos->size-1];
             cinfos->size--;
             if (cinfos->size == 0) {
@@ -404,13 +422,15 @@ enum ipc_errors ipc_del (struct ipc_connection_infos *cinfos, struct ipc_connect
 void ipc_connections_free  (struct ipc_connection_infos *cinfos)
 {
     if (cinfos->cinfos != NULL) {
+		for (size_t i = 0; i < cinfos->size ; i++) {
+			free (cinfos->cinfos[i]);
+		}
         free (cinfos->cinfos);
         cinfos->cinfos = NULL;
     }
     cinfos->size = 0;
 }
 
-// TODO: should replace  ipc_client_server_copy and ipc_server_client_copy
 struct ipc_connection_info * ipc_connection_copy (const struct ipc_connection_info *p)
 {
     if (p == NULL)
@@ -427,14 +447,12 @@ struct ipc_connection_info * ipc_connection_copy (const struct ipc_connection_in
     return copy;
 }
 
-// TODO: should replace ipc_server_client_eq, ipc_service_eq
 int8_t ipc_connection_eq (const struct ipc_connection_info *p1, const struct ipc_connection_info *p2)
 {
     return (p1->type == p2->type && p1->version == p2->version && p1->index == p2->index && p1->fd == p2->fd);
 }
 
 // create the client service structure
-// TODO: should replace ipc_client_server_gen, ipc_server_client_gen
 enum ipc_errors ipc_connection_gen (struct ipc_connection_info *cinfo
 		, uint32_t index, uint32_t version, int fd, char type)
 {
@@ -457,12 +475,55 @@ enum ipc_errors ipc_add_fd (struct ipc_connection_infos *cinfos, int fd)
 		return IPC_ERROR_ADD_FD__NO_PARAM_CINFOS;
 	}
 
-	struct ipc_connection_info *cinfo;
+	struct ipc_connection_info *cinfo = NULL;
+
+	cinfo = malloc (sizeof(struct ipc_connection_info));
+	if (cinfo == NULL) {
+		return IPC_ERROR_NOT_ENOUGH_MEMORY;
+	}
+	memset (cinfo, 0, sizeof(struct ipc_connection_info));
 
 	enum ipc_errors ret;
-	ret = ipc_connection_gen (cinfo, 0, 0, fd, 'a');
+	ipc_connection_gen (cinfo, 0, 0, fd, IPC_CONNECTION_TYPE_EXTERNAL);
 
-	return IPC_ERROR_NONE;
+	return ipc_add (cinfos, cinfo);
+}
+
+// remove a connection from its file descriptor
+enum ipc_errors ipc_del_fd (struct ipc_connection_infos *cinfos, int fd)
+{
+    assert(cinfos != NULL);
+	if (cinfos == NULL) {
+		return IPC_ERROR_DEL_FD__NO_PARAM_CINFOS;
+	}
+
+    if (cinfos->cinfos == NULL) {
+        return IPC_ERROR_DEL_FD__EMPTY_LIST;
+    }
+
+    int32_t i;
+    for (i = 0; i < cinfos->size; i++) {
+        if (cinfos->cinfos[i]->fd == fd) {
+			free (cinfos->cinfos[i]);
+            cinfos->size--;
+            if (cinfos->size == 0) {
+				// free cinfos->cinfos
+                ipc_connections_free (cinfos);
+            }
+            else {
+				cinfos->cinfos[i] = cinfos->cinfos[cinfos->size];
+                cinfos->cinfos = realloc(cinfos->cinfos, sizeof(struct ipc_connection_info) * cinfos->size);
+
+                if (cinfos->cinfos == NULL) {
+                    return IPC_ERROR_DEL_FD__EMPTIED_LIST;
+                }
+            }
+
+            return IPC_ERROR_NONE;
+        }
+    }
+
+    return IPC_ERROR_DEL_FD__CANNOT_FIND_CLIENT;
 }
 
 void ipc_connection_print (struct ipc_connection_info *cinfo)

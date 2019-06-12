@@ -5,7 +5,8 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define PONGD_SERVICE_NAME "pongd"
+#define PONGD_SERVICE_NAME "pong"
+#define PONGD_VERBOSE
 
 #define PRINTERR(ret,msg) {\
 	const char * err = ipc_errors_get (ret);\
@@ -32,16 +33,15 @@ void main_loop ()
     while(1) {
 		// ipc_service_poll_event provides one event at a time
 		// warning: event->m is free'ed if not NULL
-		printf ("before poll\n"); // TODO remove
+		// printf ("before wait event\n"); // TODO remove
 		ret = ipc_wait_event (clients, srv, &event);
+		// printf ("after wait event\n"); // TODO remove
 		if (ret != IPC_ERROR_NONE && ret != IPC_ERROR_CLOSED_RECIPIENT) {
-			handle_error("ipc_service_poll_event != IPC_ERROR_NONE");
 			PRINTERR(ret,"service poll event");
 
 			// the application will shut down, and close the service
 			ret = ipc_server_close (srv);
 			if (ret != IPC_ERROR_NONE) {
-				handle_error("ipc_server_close < 0");
 				PRINTERR(ret,"server close");
 			}
 			exit (EXIT_FAILURE);
@@ -51,14 +51,18 @@ void main_loop ()
 			case IPC_EVENT_TYPE_CONNECTION:
 				{
 					cpt++;
-					printf ("connection: %d clients connected\n", cpt);
-					printf ("new client has the fd %d\n", (event.origin)->fd);
+#ifdef PONGD_VERBOSE
+					printf ("connection: %d clients connected, new client is %d\n"
+							, cpt, (event.origin)->fd);
+#endif
 				};
 				break;
 			case IPC_EVENT_TYPE_DISCONNECTION:
 				{
 					cpt--;
+#ifdef PONGD_VERBOSE
 					printf ("disconnection: %d clients remaining\n", cpt);
+#endif
 
 					// free the ipc_client structure
 					free (event.origin);
@@ -68,21 +72,25 @@ void main_loop ()
 			   	{
 					struct ipc_message *m = event.m;
 					if (m->length > 0) {
+#ifdef PONGD_VERBOSE
 						printf ("message received (type %d): %.*s\n", m->type, m->length, m->payload);
+#endif
 					}
 
 					ret = ipc_write (event.origin, m);
-
 					if (ret != IPC_ERROR_NONE) {
-						handle_err( "handle_new_msg", "server_write < 0");
 						PRINTERR(ret,"server write");
 					}
 				};
 				break;
 			case IPC_EVENT_TYPE_ERROR:
 			   	{
-					fprintf (stderr, "a problem happened with client %d\n"
-							, (event.origin)->fd);
+					cpt--;
+					fprintf (stderr, "a problem happened with client %d (now disconnected)", (event.origin)->fd);
+					fprintf (stderr, ", %d clients remaining\n", cpt);
+
+					// free the ipc_client structure
+					free (event.origin);
 				};
 				break;
 			default :
@@ -117,7 +125,6 @@ void exit_program(int signal)
     // the application will shut down, and close the service
 	enum ipc_errors ret = ipc_server_close (srv);
     if (ret != IPC_ERROR_NONE) {
-        handle_error("ipc_server_close < 0");
 		PRINTERR(ret,"server close");
     }
 	free (srv);
@@ -150,7 +157,6 @@ int main(int argc, char * argv[], char **env)
 
 	enum ipc_errors ret = ipc_server_init (env, srv, PONGD_SERVICE_NAME);
     if (ret != IPC_ERROR_NONE) {
-        handle_error("ipc_server_init != IPC_ERROR_NONE");
 		PRINTERR(ret,"server init");
         return EXIT_FAILURE;
     }

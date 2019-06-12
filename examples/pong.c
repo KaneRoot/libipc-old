@@ -6,28 +6,24 @@
 #include "../src/ipc.h"
 
 #define MSG "coucou"
-#define SERVICE_NAME "pongd"
+#define SERVICE_NAME "pong"
 
 #define PRINTERR(ret,msg) {\
 	const char * err = ipc_errors_get (ret);\
 	fprintf(stderr, "error while %s: %s\n", msg, err);\
 }
 
+struct ipc_connection_info *srv;
+
 void non_interactive (char *env[])
 {
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
-    struct ipc_connection_info srv;
-    memset (&srv, 0, sizeof (struct ipc_connection_info));
-
-    // index and version should be filled
-    srv.index = 0;
-    srv.version = 0;
 
 	enum ipc_errors ret;
 
     // init service
-	ret = ipc_connection (env, &srv, SERVICE_NAME);
+	ret = ipc_connection (env, srv, SERVICE_NAME);
     if (ret != IPC_ERROR_NONE) {
         handle_err("main", "ipc_application_connection < 0");
 		PRINTERR(ret, "application connection");
@@ -43,7 +39,7 @@ void non_interactive (char *env[])
 
     // printf ("msg to send in the client: ");
     // ipc_message_print (&m);
-	ret = ipc_write (&srv, &m);
+	ret = ipc_write (srv, &m);
     if (ret != IPC_ERROR_NONE) {
         handle_err("main", "application_write");
 		PRINTERR(ret, "application write");
@@ -51,7 +47,7 @@ void non_interactive (char *env[])
     }
     ipc_message_empty (&m);
 
-	ret = ipc_read (&srv, &m);
+	ret = ipc_read (srv, &m);
     if (ret != IPC_ERROR_NONE) {
         handle_err("main", "application_read");
 		PRINTERR(ret, "application read");
@@ -61,7 +57,7 @@ void non_interactive (char *env[])
     printf ("msg recv (type: %u): %s\n", m.user_type, m.payload);
     ipc_message_empty (&m);
 
-	ret = ipc_close (&srv);
+	ret = ipc_close (srv);
     if (ret != IPC_ERROR_NONE) {
         handle_err("main", "application_close");
 		PRINTERR(ret, "application close");
@@ -72,15 +68,9 @@ void non_interactive (char *env[])
 void interactive (char *env[])
 {
 	enum ipc_errors ret;
-    struct ipc_connection_info srv;
-    memset (&srv, 0, sizeof (struct ipc_connection_info));
-
-    // index and version should be filled
-    srv.index = 0;
-    srv.version = 0;
 
     // init service
-	ret = ipc_connection (env, &srv, SERVICE_NAME);
+	ret = ipc_connection (env, srv, SERVICE_NAME);
     if (ret != IPC_ERROR_NONE) {
         handle_err ("main", "ipc_application_connection < 0");
 		PRINTERR(ret, "application connection");
@@ -92,9 +82,11 @@ void interactive (char *env[])
 
 	struct ipc_connection_infos services;
 	memset (&services, 0, sizeof (struct ipc_connection_infos));
-	ipc_add (&services, &srv);
+	ipc_add (&services, srv);
 
 	ipc_add_fd (&services, 0); // add STDIN
+
+	ipc_connections_print(&services);
 
     while (1) {
         printf ("msg to send: ");
@@ -102,38 +94,54 @@ void interactive (char *env[])
 		ret = ipc_wait_event (&services, NULL, &event);
 
 		if (ret != IPC_ERROR_NONE) {
-			handle_error("ipc_application_peek_event != 0");
-			PRINTERR(ret, "application peek event");
+			PRINTERR(ret, "wait event");
 			exit (EXIT_FAILURE);
 		}
 
 		switch (event.type) {
 			case IPC_EVENT_TYPE_EXTRA_SOCKET:
 				{
-					struct ipc_message *m = event.m;
-					if ( m->length == 0 || strncmp (m->payload, "exit", 4) == 0) {
+					// structure not read, should read the message here
 
-						ipc_message_empty (m);
-						free (m);
+					ssize_t len;
+					char buf[4096];
+					memset(buf, 0, 4096);
 
-						ipc_connections_free (&services);
+					len = read (event.origin->fd, buf, 4096);
 
-						ret = ipc_close (&srv);
+					buf[100] = '\0';
+
+					// in case we want to quit the program
+					if ( len == 0
+						|| strncmp (buf, "quit", 4) == 0
+						|| strncmp (buf, "exit", 4) == 0) {
+
+						ret = ipc_close (srv);
 						if (ret != IPC_ERROR_NONE) {
-							handle_err("main", "application_close < 0");
+							handle_err("main", "ipc_close");
 							PRINTERR(ret, "application close");
 							exit (EXIT_FAILURE);
 						}
 
+						ipc_connections_free (&services);
+
 						exit (EXIT_SUCCESS);
 					}
 
-					ret = ipc_write (&srv, m);
+					// send the message read on STDIN
+					struct ipc_message *m = NULL;
+					m = malloc (sizeof (struct ipc_message));
+					memset (m, 0, sizeof (struct ipc_message));
+
+					ret = ipc_write (srv, m);
 					if (ret != IPC_ERROR_NONE) {
-						handle_err("main", "application_write < 0");
-						PRINTERR(ret, "application write");
+						handle_err("main", "ipc_write");
+						PRINTERR(ret, "ipc_write");
 						exit (EXIT_FAILURE);
 					}
+
+					ipc_message_empty (m);
+					free (m);
 				}
 				break;
 			case IPC_EVENT_TYPE_MESSAGE:
@@ -156,6 +164,13 @@ int main (int argc, char *argv[], char *env[])
 {
 	argc = argc; // warnings
 	argv = argv; // warnings
+
+	srv = malloc (sizeof (struct ipc_connection_info));
+    memset (srv, 0, sizeof (struct ipc_connection_info));
+	
+    // index and version should be filled
+    srv->index = 0;
+    srv->version = 0;
 
     if (argc == 1)
         non_interactive (env);

@@ -16,6 +16,8 @@
 // #define IPC_MAX_MESSAGE_SIZE  100-IPC_HEADER_SIZE
 // #include "queue.h"
 
+#define SECURE_DECLARATION(t,v)   t v; memset(&v,0,sizeof(t));
+
 #define IPC_VERSION 1
 
 
@@ -71,6 +73,12 @@ enum ipc_errors {
 	, IPC_ERROR_ADD__NO_PARAM_CLIENT
 
 	, IPC_ERROR_ADD_FD__NO_PARAM_CINFOS
+	, IPC_ERROR_ADD_FD__EMPTY_LIST
+
+	, IPC_ERROR_DEL_FD__NO_PARAM_CINFOS
+	, IPC_ERROR_DEL_FD__EMPTIED_LIST
+	, IPC_ERROR_DEL_FD__EMPTY_LIST
+	, IPC_ERROR_DEL_FD__CANNOT_FIND_CLIENT
 
 	, IPC_ERROR_DEL__EMPTY_LIST
 	, IPC_ERROR_DEL__EMPTIED_LIST
@@ -86,6 +94,7 @@ enum ipc_errors {
 	, IPC_ERROR_USOCK_CONNECT__SOCKET
 	, IPC_ERROR_USOCK_CONNECT__WRONG_FILE_DESCRIPTOR
 	, IPC_ERROR_USOCK_CONNECT__EMPTY_PATH
+	, IPC_ERROR_USOCK_CONNECT__CONNECT
 
 	, IPC_ERROR_USOCK_CLOSE
 
@@ -166,13 +175,10 @@ struct ipc_event {
 
 #ifdef IPC_WITH_ERRORS
 #include "logger.h"
-#define handle_error(msg) \
-    do { log_error (msg); exit(EXIT_FAILURE); } while (0)
 
 #define handle_err(fun,msg)\
     do { log_error ("%s: file %s line %d %s", fun, __FILE__, __LINE__, msg); } while (0)
 #else
-#define handle_error(msg)
 #define handle_err(fun,msg)
 #endif
 
@@ -226,6 +232,7 @@ enum ipc_errors ipc_del (struct ipc_connection_infos *, struct ipc_connection_in
 
 // add an arbitrary file descriptor to read
 enum ipc_errors ipc_add_fd (struct ipc_connection_infos *cinfos, int fd);
+enum ipc_errors ipc_del_fd (struct ipc_connection_infos *cinfos, int fd);
 
 void ipc_connections_free  (struct ipc_connection_infos *);
 
