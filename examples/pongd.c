@@ -71,16 +71,20 @@ void main_loop ()
 			case IPC_EVENT_TYPE_MESSAGE:
 			   	{
 					struct ipc_message *m = event.m;
-					if (m->length > 0) {
 #ifdef PONGD_VERBOSE
-						printf ("message received (type %d): %.*s\n", m->type, m->length, m->payload);
-#endif
+					if (m->length > 0) {
+						printf ("message received (type %d, user type %d, size %u bytes): %.*s\n", m->type, m->user_type, m->length, m->length, m->payload);
 					}
+					else {
+						printf ("message with a 0-byte size :(\n");
+					}
+#endif
 
 					ret = ipc_write (event.origin, m);
 					if (ret != IPC_ERROR_NONE) {
 						PRINTERR(ret,"server write");
 					}
+					printf ("message sent\n");
 				};
 				break;
 			case IPC_EVENT_TYPE_ERROR:
@@ -110,7 +114,7 @@ void exit_program(int signal)
 	printf("Quitting, signal: %d\n", signal);
 
 	// free remaining clients
-	for (int i = 0; i < clients->size ; i++) {
+	for (size_t i = 0; i < clients->size ; i++) {
 		struct ipc_connection_info *cli = clients->cinfos[i];
 		if (cli != NULL) {
 			free (cli);
