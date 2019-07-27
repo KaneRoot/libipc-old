@@ -7,12 +7,12 @@
 
 // input:  len   = max buf size
 // output: *sent = nb received bytes
-enum ipc_errors usock_send (const int32_t fd, const char *buf, ssize_t len, ssize_t *sent);
+enum ipc_errors usock_send (const int32_t fd, const char *buf, size_t len, size_t *sent);
 
 // allocation of *len bytes on *buf == NULL
 //
 // output: *len = nb sent bytes
-enum ipc_errors usock_recv (int32_t fd, char **buf, ssize_t *len);
+enum ipc_errors usock_recv (int32_t fd, char **buf, size_t *len);
 
 enum ipc_errors usock_close (int32_t fd);
 
