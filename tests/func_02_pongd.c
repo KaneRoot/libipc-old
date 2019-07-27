@@ -6,7 +6,6 @@
 #include <unistd.h>
 
 #define PONGD_SERVICE_NAME "pong"
-#define PONGD_VERBOSE
 
 #define PRINTERR(ret,msg) {\
 	const char * err = ipc_errors_get (ret);\
@@ -15,8 +14,8 @@
 
 int cpt = 0;
 
-struct ipc_connection_info *srv = NULL;
-struct ipc_connection_infos *clients = NULL;
+struct ipc_connection_info *srv = 0;
+struct ipc_connection_infos *clients;
 
 
 void main_loop ()
@@ -26,16 +25,12 @@ void main_loop ()
 	clients = malloc (sizeof (struct ipc_connection_infos));
 	memset(clients, 0, sizeof(struct ipc_connection_infos));
 
-	struct ipc_event event;
-	memset(&event, 0, sizeof (struct ipc_event));
-	event.type = IPC_EVENT_TYPE_NOT_SET;
+	SECURE_DECLARATION(struct ipc_event,event);
 
     while(1) {
-		// ipc_service_poll_event provides one event at a time
+		// ipc_wait_event provides one event at a time
 		// warning: event->m is free'ed if not NULL
-		// printf ("before wait event\n"); // TODO remove
 		ret = ipc_wait_event (clients, srv, &event);
-		// printf ("after wait event\n"); // TODO remove
 		if (ret != IPC_ERROR_NONE && ret != IPC_ERROR_CLOSED_RECIPIENT) {
 			PRINTERR(ret,"service poll event");
 
@@ -51,50 +46,36 @@ void main_loop ()
 			case IPC_EVENT_TYPE_CONNECTION:
 				{
 					cpt++;
-#ifdef PONGD_VERBOSE
-					printf ("connection: %d clients connected, new client is %d\n"
-							, cpt, (event.origin)->fd);
-#endif
+					printf ("connection: %d clients connected\n", cpt);
+					printf ("new client has the fd %d\n", ((struct ipc_connection_info*) event.origin)->fd);
 				};
 				break;
 			case IPC_EVENT_TYPE_DISCONNECTION:
 				{
 					cpt--;
-#ifdef PONGD_VERBOSE
 					printf ("disconnection: %d clients remaining\n", cpt);
-#endif
 
-					// free the ipc_client structure
+					// free the ipc_connection_info structure
 					free (event.origin);
 				};
 				break;
 			case IPC_EVENT_TYPE_MESSAGE:
 			   	{
 					struct ipc_message *m = event.m;
-#ifdef PONGD_VERBOSE
 					if (m->length > 0) {
-						printf ("message received (type %d, user type %d, size %u bytes): %.*s\n", m->type, m->user_type, m->length, m->length, m->payload);
+						printf ("message received (type %d): %.*s\n", m->type, m->length, m->payload);
 					}
-					else {
-						printf ("message with a 0-byte size :(\n");
-					}
-#endif
 
 					ret = ipc_write (event.origin, m);
 					if (ret != IPC_ERROR_NONE) {
 						PRINTERR(ret,"server write");
 					}
-					printf ("message sent\n");
 				};
 				break;
 			case IPC_EVENT_TYPE_ERROR:
 			   	{
-					cpt--;
-					fprintf (stderr, "a problem happened with client %d (now disconnected)", (event.origin)->fd);
-					fprintf (stderr, ", %d clients remaining\n", cpt);
-
-					// free the ipc_client structure
-					free (event.origin);
+					fprintf (stderr, "a problem happened with client %d\n"
+							, ((struct ipc_connection_info*) event.origin)->fd);
 				};
 				break;
 			default :
@@ -105,7 +86,7 @@ void main_loop ()
     }
 
 	// should never go there
-	exit (EXIT_FAILURE);
+	exit (1);
 }
 
 
@@ -114,7 +95,7 @@ void exit_program(int signal)
 	printf("Quitting, signal: %d\n", signal);
 
 	// free remaining clients
-	for (size_t i = 0; i < clients->size ; i++) {
+	for (int i = 0; i < clients->size ; i++) {
 		struct ipc_connection_info *cli = clients->cinfos[i];
 		if (cli != NULL) {
 			free (cli);
@@ -150,14 +131,13 @@ int main(int argc, char * argv[], char **env)
 
 	srv = malloc (sizeof (struct ipc_connection_info));
 	if (srv == NULL) {
-		exit (EXIT_FAILURE);
+		exit (1);
 	}
     memset (srv, 0, sizeof (struct ipc_connection_info));
-    srv->type = '\0';
     srv->index = 0;
     srv->version = 0;
-    srv->fd = 0;
-    srv->spath = NULL;
+
+    // unlink("/tmp/ipc/pongd-0-0");
 
 	enum ipc_errors ret = ipc_server_init (env, srv, PONGD_SERVICE_NAME);
     if (ret != IPC_ERROR_NONE) {

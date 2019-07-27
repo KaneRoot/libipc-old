@@ -23,18 +23,14 @@
  */
 
 
-int connection(int port)
+int connection(char *ipstr, int port)
 {
 	int sockfd;
-	struct sockaddr_in server;
+	SECURE_DECLARATION (struct sockaddr_in, server);
 	socklen_t addrlen;
 
 	// socket factory
-	if((sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1)
-	{
-		perror("socket");
-		exit(EXIT_FAILURE);
-	}
+	T_PERROR_Q (((sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1), "socket creation", EXIT_FAILURE);
 
 	// init remote addr structure and other params
 	server.sin_family = AF_INET;
@@ -42,19 +38,11 @@ int connection(int port)
 	addrlen           = sizeof(struct sockaddr_in);
 
 	// get addr from command line and convert it
-	if(inet_pton(AF_INET, "127.0.0.1", &server.sin_addr) <= 0)
-	{
-		perror("inet_pton");
-		close(sockfd);
-		exit(EXIT_FAILURE);
-	}
+	T_PERROR_Q ((inet_pton(AF_INET, ipstr, &server.sin_addr) <= 0), "inet_pton", EXIT_FAILURE);
 
 	printf("Trying to connect to the remote host\n");
-	if(connect(sockfd, (struct sockaddr *) &server, addrlen) == -1)
-	{
-		perror("connect");
-		exit(EXIT_FAILURE);
-	}
+
+	T_PERROR_Q ((connect(sockfd, (struct sockaddr *) &server, addrlen) == -1), "connection", EXIT_FAILURE);
 
 	printf("Connection OK\n");
 
@@ -63,69 +51,36 @@ int connection(int port)
 
 
 void send_receive (int sockfd) {
-	unsigned char buf[BUFSIZ];
-	memset (buf, 0, BUFSIZ);
+	SECURE_BUFFER_DECLARATION (unsigned char, buf, BUFSIZ);
+	int paylen;
 
 	// first, send service name "pong"
 	// send string
-	if(send(sockfd, "pong", 4, 0) == -1) {
-		perror("send pong");
-		close(sockfd);
-		exit(EXIT_FAILURE);
-	}
+	T_PERROR_Q ((send(sockfd, "pong", 4, 0) == -1), "sending a message", EXIT_FAILURE);
 	printf ("message 'pong' sent\n");
 
+	T_PERROR_Q (((paylen = recv(sockfd, buf, BUFSIZ, 0)) <= 0), "cannot connect to networkd", EXIT_FAILURE);
+	print_hexa ("should be 'OK'", buf, paylen);
 	memset (buf, 0, BUFSIZ);
-
-	int paylen;
-	paylen = recv(sockfd, buf, BUFSIZ, 0);
-	if (paylen <= 0) {
-		printf ("cannot connect to networkd\n");
-		exit (EXIT_FAILURE);
-	}
-	printf ("should receive 'OK': %*.s\n", paylen, buf);
-
-	memset (buf, 0, BUFSIZ);
-
-	buf[0] = MSG_TYPE_DATA;
-
-	// uint32_t v = htonl(6);
-	// memcpy (buf+1, &v, sizeof (uint32_t));
-	
-	uint32_t v = 6;
-	uint32_t net_paylen = htonl (v);
-	memcpy (buf+1, &net_paylen, sizeof (uint32_t));
-
-	buf[5] = 0;
-	memcpy (buf+6, "coucou", 6);
-
-	print_hexa ("SENT MESSAGE", buf, 12);
 
 	// 2    | 6    | 0 | "coucou"
 	// 1 B  | 4 B  | 1 | 6 B
-
-	if(send(sockfd, buf, 12, 0) == -1) {
-		perror("send coucou");
-		close(sockfd);
-		exit(EXIT_FAILURE);
-	}
+	ipc_message_raw_serialize ((char *) buf, MSG_TYPE_DATA, 42, "coucou", 6);
+	print_hexa ("WAITING 10 seconds then message to send", buf, 12);
+	// sleep (1);
+	T_PERROR_Q ((send(sockfd, buf, 12, 0) == -1), "sending a message", EXIT_FAILURE);
 	printf ("message 'coucou' sent\n");
-
 	memset (buf, 0, BUFSIZ);
 
-	paylen = recv (sockfd, buf, BUFSIZ, 0);
-	if(paylen < 0) {
-		perror("recv a message");
-		close(sockfd);
-		exit(EXIT_FAILURE);
-	}
-	if (paylen > 0) {
-		print_hexa ("RECEIVED MESSAGE", buf, paylen);
-	}
-	else {
+	// receiving a message
+	T_PERROR_Q ( ((paylen = recv (sockfd, buf, BUFSIZ, 0)) < 0), "receiving a message", EXIT_FAILURE);
+
+	if (paylen == 0) {
 		fprintf (stderr, "error: disconnection from the server\n");
 		exit (EXIT_FAILURE);
 	}
+
+	print_hexa ("RECEIVED MESSAGE", buf, paylen);
 
 #if 0
 	// send string
@@ -141,12 +96,17 @@ void send_receive (int sockfd) {
 
 int main(int argc, char * argv[])
 {
+	char *ipstr = "127.0.0.1";
 	int port = 9000;
-	if (argc > 1) {
+	if (argc == 2) {
 		port = atoi (argv[1]);
 	}
+	else if (argc == 3) {
+		ipstr = argv[1];
+		port = atoi (argv[2]);
+	}
 
-	int sockfd = connection (port);
+	int sockfd = connection (ipstr, port);
 
 	send_receive (sockfd);
 

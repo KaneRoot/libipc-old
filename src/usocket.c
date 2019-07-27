@@ -9,59 +9,45 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
-#include <assert.h>
 
 #include <arpa/inet.h>
 
 #include "usocket.h"
 #include "utils.h"
 
-#define IPC_DEBUG
-
-#undef handle_err
-#define handle_err(a,b) fprintf (stderr, "FUNCTION %s LINE %d ERROR %s\n", a, __LINE__, b);
+// #define IPC_DEBUG 3
 
 /**
  * TODO: non blocking read
  */
 
-enum ipc_errors usock_send (const int32_t fd, const char *buf, ssize_t len, ssize_t *sent)
+enum ipc_errors usock_send (const int32_t fd, const char *buf, size_t len, size_t *sent)
 {
     ssize_t ret = 0;
     ret = send (fd, buf, len, MSG_NOSIGNAL);
-    if (ret <= 0) {
-        handle_err ("usock_send", "send ret <= 0");
-		return IPC_ERROR_USOCK_SEND;
-	}
+    T_R ((ret <= 0), IPC_ERROR_USOCK_SEND);
 	*sent = ret;
     return IPC_ERROR_NONE;
 }
 
 // *len is changed to the total message size read (header + payload)
-enum ipc_errors usock_recv (const int32_t fd, char **buf, ssize_t *len)
+enum ipc_errors usock_recv (const int32_t fd, char **buf, size_t *len)
 {
-    assert(buf != NULL);
-    assert(len != NULL);
+    T_R ((buf == NULL), IPC_ERROR_USOCK_RECV__NO_BUFFER);
+    T_R ((len == NULL), IPC_ERROR_USOCK_RECV__NO_LENGTH);
 
     int32_t ret_recv = 0;
 
-    if (buf == NULL) {
-        handle_err ("usock_recv", "buf == NULL");
-        return IPC_ERROR_USOCK_RECV__NO_BUFFER;
-    }
-
-    if (len == NULL) {
-        handle_err ("usock_recv", "len == NULL");
-        return IPC_ERROR_USOCK_RECV__NO_LENGTH;
-    }
+	if (*len == 0)
+		*len = IPC_MAX_MESSAGE_SIZE;
 
     if (*buf == NULL) {
         // do not allocate too much memory
         if (*len > IPC_MAX_MESSAGE_SIZE) {
-            handle_err ("usock_recv", "len > IPC_MAX_MESSAGE_SIZE");
+            LOG_ERROR ("usock_recv: len > IPC_MAX_MESSAGE_SIZE");
             *len = IPC_MAX_MESSAGE_SIZE;
 		}
-        *buf = malloc (*len + IPC_HEADER_SIZE);
+		SECURE_BUFFER_HEAP_ALLOCATION (*buf,*len + IPC_HEADER_SIZE, , return (IPC_ERROR_NOT_ENOUGH_MEMORY));
     }
 
 	uint32_t msize = 0;
@@ -69,99 +55,78 @@ enum ipc_errors usock_recv (const int32_t fd, char **buf, ssize_t *len)
 
 	do {
 		ret_recv = recv (fd, *buf, *len, 0);
+#ifdef IPC_DEBUG
+		if (ret_recv > 0) {
+			print_hexa ("msg recv", (uint8_t *)*buf, ret_recv);
+			fflush(stdout);
+		}
+#endif
+
 		if (ret_recv > 0) {
 			if (msize == 0) {
 				memcpy (&msize, *buf + 1, sizeof msize);
-			}
-			else {
-				printf ("pas la première boucle, msize == %u\n", msize);
 			}
 			msize = ntohl (msize);
 
 			if (msize >= IPC_MAX_MESSAGE_SIZE) {
 #ifdef IPC_DEBUG
-				printf ("lecture bien passée : %d octets\n", ret_recv);
 				print_hexa ("msg recv", (uint8_t *)*buf, ret_recv);
 				fflush(stdout);
 #endif
 			}
-			assert (msize < IPC_MAX_MESSAGE_SIZE);
+			T_R ((msize > IPC_MAX_MESSAGE_SIZE), IPC_ERROR_USOCK_RECV__MESSAGE_SIZE);
 			msize_read += ret_recv - IPC_HEADER_SIZE;
-
 		}
 		else if (ret_recv < 0) {
-			if (*buf != NULL)
+			if (*buf != NULL) {
 				free (*buf);
+				*buf = NULL;
+			}
 			*len = 0;
 
 			switch (errno) {
 
 				// The receive buffer pointer(s) point outside the process's address space.
-				case EFAULT:
-					handle_err ("usock_recv", "critical error: use of unallocated memory, quitting...");
-					fprintf (stderr, "ERROR WHILE RECEIVING: EFAULT\n");
-					break;
+				ERROR_CASE (EFAULT, "usock_recv", "critical error: use of unallocated memory, quitting...");
 
 				// Invalid argument passed.
-				case EINVAL:
-					handle_err ("usock_recv", "critical error: invalid arguments to read(2), quitting...");
-					fprintf (stderr, "ERROR WHILE RECEIVING: EINVAL\n");
-					break;
+				ERROR_CASE (EINVAL, "usock_recv", "critical error: invalid arguments to read(2), quitting...");
 
 				// Could not allocate memory for recvmsg().
-				case ENOMEM:
-					handle_err ("usock_recv", "critical error: cannot allocate memory, quitting...");
-					fprintf (stderr, "ERROR WHILE RECEIVING: ENOMEM\n");
-					break;
+				ERROR_CASE (ENOMEM, "usock_recv", "critical error: cannot allocate memory, quitting...");
 
 				// The argument sockfd is an invalid descriptor.
-				case EBADF:
-					handle_err ("usock_recv", "critical error: invalid descriptor, quitting...");
-					fprintf (stderr, "ERROR WHILE RECEIVING: EBADF\n");
-					break;
+				ERROR_CASE (EBADF, "usock_recv", "critical error: invalid descriptor, quitting...");
 
 				// The file descriptor sockfd does not refer to a socket.
-				case ENOTSOCK:
-					handle_err ("usock_recv", "critical error: fd is not a socket, quitting...");
-					fprintf (stderr, "ERROR WHILE RECEIVING: ENOTSOCK\n");
-					break;
+				ERROR_CASE (ENOTSOCK, "usock_recv", "critical error: fd is not a socket, quitting...");
 
 				// The socket is associated with a connection-oriented protocol and has not
 				// been connected (see connect(2) and accept(2)).
-				case ENOTCONN:
-					handle_err ("usock_recv", "critical error: read(2) on a non connected socket, quitting...");
-					fprintf (stderr, "ERROR WHILE RECEIVING: ENOTCONN\n");
-					break;
+				ERROR_CASE (ENOTCONN, "usock_recv", "critical error: read(2) on a non connected socket, quitting...");
 
-				case EAGAIN:
-					fprintf (stderr, "ERROR WHILE RECEIVING: EAGAIN / EWOULDBLOCK\n");
-					break;
+				ERROR_CASE (EAGAIN, "usock_recv", "ERROR WHILE RECEIVING: EAGAIN / EWOULDBLOCK");
 
 				// A remote host refused to allow the network connection
 				// (typically because it is not running the requested service).
-				case ECONNREFUSED:
-					fprintf (stderr, "ERROR WHILE RECEIVING: ECONNREFUSED\n");
-					break;
+				ERROR_CASE (ECONNREFUSED, "usock_recv", "ERROR WHILE RECEIVING: ECONNREFUSED");
 
 				// The receive was interrupted by delivery of a signal before
 				// any data were available; see signal(7).
-				case EINTR:
-					handle_err ("usock_recv", "unsupported error");
-					break;
+				ERROR_CASE (EINTR, "usock_recv", "unsupported error");
 
 				default:
-					printf ("usock_recv unsupported error : %d\n", errno);
-					handle_err ("usock_recv", "unsupported error");
+					LOG_ERROR ("usock_recv: unsupported error");
 			}
 
-			handle_err ("usock_recv", "recv < 0");
-			perror("recv");
-
+			LOG_ERROR ("usock_recv: recv < 0");
 			return IPC_ERROR_USOCK_RECV;
 		}
 
+#if 0
 #if defined(IPC_WITH_ERRORS) && IPC_WITH_ERRORS > 2
-		printf ("fragmentation: message size read %u, should read %u\n", msize_read, msize);
+		LOG_ERROR ("fragmentation: message size read %u, should read %u", msize_read, msize);
+#endif
 #endif
 	} while (msize > msize_read);
 
@@ -173,6 +138,7 @@ enum ipc_errors usock_recv (const int32_t fd, char **buf, ssize_t *len)
 			free (*buf);
 			*buf = NULL;
 		}
+		*len = 0;
 		return IPC_ERROR_CLOSED_RECIPIENT;
 	}
 
@@ -183,41 +149,24 @@ enum ipc_errors usock_recv (const int32_t fd, char **buf, ssize_t *len)
 
 enum ipc_errors usock_connect (int32_t *fd, const char *path)
 {
-    assert (fd != NULL);
-    assert (path != NULL);
+    T_R ((fd == NULL), IPC_ERROR_USOCK_CONNECT__WRONG_FILE_DESCRIPTOR);
+    T_R ((path == NULL), IPC_ERROR_USOCK_CONNECT__EMPTY_PATH);
 
-    if (fd == NULL) {
-        handle_err ("usock_connect", "fd == NULL");
-        return IPC_ERROR_USOCK_CONNECT__WRONG_FILE_DESCRIPTOR;
-    }
-
-    if (path == NULL) {
-        handle_err ("usock_connect", "path == NULL");
-        return IPC_ERROR_USOCK_CONNECT__EMPTY_PATH;
-    }
+    SECURE_DECLARATION (struct sockaddr_un, my_addr);
+    my_addr.sun_family = AF_UNIX;
 
     int32_t sfd;
-    struct sockaddr_un my_addr;
-    socklen_t peer_addr_size;
+    socklen_t peer_addr_size = sizeof(struct sockaddr_un);
 
-    sfd = socket (AF_UNIX, SOCK_STREAM, 0);
-    if (sfd == -1) {
-        handle_err ("usock_connect", "sfd == -1");
-        return IPC_ERROR_USOCK_CONNECT__SOCKET;
-    }
-
-    // clear structure 
-    memset(&my_addr, 0, sizeof(struct sockaddr_un));
-
-    my_addr.sun_family = AF_UNIX;
+    T_PERROR_R (((sfd = socket (AF_UNIX, SOCK_STREAM, 0)) == -1), "socket", IPC_ERROR_USOCK_CONNECT__SOCKET);
     strncpy(my_addr.sun_path, path, (strlen (path) < PATH_MAX) ? strlen(path) : PATH_MAX);
 
-    peer_addr_size = sizeof(struct sockaddr_un);
-    if(connect(sfd, (struct sockaddr *) &my_addr, peer_addr_size) == -1) {
-        handle_err ("usock_connect", "connect == -1");
-        perror("connect");
-        return IPC_ERROR_USOCK_CONNECT__CONNECT;
-    }
+	/** TODO: massive series of tests */
+    T_PERROR_F_R (
+			  /** test */         (connect(sfd, (struct sockaddr *) &my_addr, peer_addr_size) == -1)
+			, /** perror */       "connect"
+			, /** log error */    ("unix socket connection to the path %s not possible", path)
+			, /** return value */ IPC_ERROR_USOCK_CONNECT__CONNECT);
 
     *fd = sfd;
 
@@ -226,34 +175,17 @@ enum ipc_errors usock_connect (int32_t *fd, const char *path)
 
 enum ipc_errors usock_init (int32_t *fd, const char *path)
 {
-    assert (fd != NULL);
-    assert (path != NULL);
+    T_R ((fd == NULL), IPC_ERROR_USOCK_INIT__EMPTY_FILE_DESCRIPTOR);
+    T_R ((path == NULL), IPC_ERROR_USOCK_INIT__EMPTY_PATH);
 
-    if (fd == NULL) {
-        handle_err ("usock_init", "fd == NULL");
-        return IPC_ERROR_USOCK_INIT__EMPTY_FILE_DESCRIPTOR;
-    }
-
-    if (path == NULL) {
-        handle_err ("usock_init", "path == NULL");
-        return IPC_ERROR_USOCK_INIT__EMPTY_PATH;
-    }
-
-    int32_t sfd;
-    struct sockaddr_un my_addr;
-    socklen_t peer_addr_size;
-
-    sfd = socket (AF_UNIX, SOCK_STREAM, 0);
-    if (sfd == -1) {
-        handle_err ("usock_init", "sfd == -1");
-        return IPC_ERROR_USOCK_INIT__WRONG_FILE_DESCRIPTOR;
-    }
-
-    // clear structure 
-    memset(&my_addr, 0, sizeof(struct sockaddr_un));
-
+    SECURE_DECLARATION (struct sockaddr_un, my_addr);
     my_addr.sun_family = AF_UNIX;
     strncpy(my_addr.sun_path, path, strlen (path));
+
+    int32_t sfd;
+    socklen_t peer_addr_size;
+
+    T_PERROR_R (((sfd = socket (AF_UNIX, SOCK_STREAM, 0)) == -1), "socket", IPC_ERROR_USOCK_INIT__WRONG_FILE_DESCRIPTOR);
 
 	// delete the unix socket if already created
 	// ignore otherwise
@@ -261,17 +193,8 @@ enum ipc_errors usock_init (int32_t *fd, const char *path)
 
     peer_addr_size = sizeof(struct sockaddr_un);
 
-    if (bind (sfd, (struct sockaddr *) &my_addr, peer_addr_size) == -1) {
-        handle_err ("usock_init", "bind == -1");
-        perror("bind");
-        return IPC_ERROR_USOCK_INIT__BIND;
-    }
-
-    if (listen (sfd, LISTEN_BACKLOG) == -1) {
-        handle_err ("usock_init", "listen == -1");
-        perror("listen");
-        return IPC_ERROR_USOCK_INIT__LISTEN;
-    }
+    T_PERROR_R ((bind (sfd, (struct sockaddr *) &my_addr, peer_addr_size) == -1), "bind", IPC_ERROR_USOCK_INIT__BIND);
+    T_PERROR_R ((listen (sfd, LISTEN_BACKLOG) == -1), "listen", IPC_ERROR_USOCK_INIT__LISTEN);
 
     *fd = sfd;
 
@@ -280,54 +203,29 @@ enum ipc_errors usock_init (int32_t *fd, const char *path)
 
 enum ipc_errors usock_accept (int32_t fd, int32_t *pfd)
 {
-    assert (pfd != NULL);
+    T_R ((pfd == NULL), IPC_ERROR_USOCK_ACCEPT__PATH_FILE_DESCRIPTOR);
 
-    if (pfd == NULL) {
-        handle_err ("usock_accept", "pfd == NULL");
-        return IPC_ERROR_USOCK_ACCEPT__PATH_FILE_DESCRIPTOR;
-    }
-
-    struct sockaddr_un peer_addr;
-    memset (&peer_addr, 0, sizeof (struct sockaddr_un));
+    SECURE_DECLARATION (struct sockaddr_un, peer_addr);
     socklen_t peer_addr_size = 0;
 
-    *pfd = accept (fd, (struct sockaddr *) &peer_addr, &peer_addr_size);
-    if (*pfd < 0) {
-        handle_err ("usock_accept", "accept < 0");
-        perror("listen");
-        return IPC_ERROR_USOCK_ACCEPT;
-    }
+    T_PERROR_R (((*pfd = accept (fd, (struct sockaddr *) &peer_addr, &peer_addr_size)) < 0), "accept", IPC_ERROR_USOCK_ACCEPT);
 
     return IPC_ERROR_NONE;
 }
 
 enum ipc_errors usock_close (int32_t fd)
 {
-    int32_t ret = 0;
-
-	ret = close (fd);
-    if (ret < 0) {
-        handle_err ("usock_close", "close ret < 0");
-        perror ("closing");
-		return IPC_ERROR_USOCK_CLOSE;
-    }
+	T_PERROR_R ((close (fd) < 0), "close", IPC_ERROR_USOCK_CLOSE);
     return IPC_ERROR_NONE;
 }
 
 enum ipc_errors usock_remove (const char *path)
 {
-	struct stat file_state;
-	memset (&file_state, 0, sizeof (struct stat));
+	SECURE_DECLARATION(struct stat, file_state);
 
 	// if file exists, remove it
-	int ret = stat (path, &file_state);
-	if (ret == 0) {
-		ret = unlink (path);
-		if (ret != 0) {
-			return IPC_ERROR_USOCK_REMOVE__UNLINK;
-		}
-		return IPC_ERROR_NONE;
-	}
+	T_R ((stat (path, &file_state) != 0), IPC_ERROR_USOCK_REMOVE__NO_FILE);
+	T_R ((unlink (path) != 0), IPC_ERROR_USOCK_REMOVE__UNLINK);
 
-	return IPC_ERROR_USOCK_REMOVE__NO_FILE;
+	return IPC_ERROR_NONE;
 }

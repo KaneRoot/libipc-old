@@ -8,6 +8,5 @@
 #include <stdint.h>
 
 void print_hexa (const char *prefix, uint8_t *payload, size_t size);
-void mprint_hexa (char *prefix, uint8_t *buf, size_t length);
 
 #endif
