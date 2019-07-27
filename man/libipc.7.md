@@ -47,17 +47,11 @@ It provides both client and server code.
 
 ## Message functions
 
-// create msg structure with a certain payload length (0 for no payload memory allocation)\
-*enum ipc_errors* **ipc_message_new** (*struct ipc_message* \*\*m, *ssize_t* paylen);\
 // create msg structure from buffer\
 *enum ipc_errors* **ipc_message_format_read** (*struct ipc_message* \*m, *const char* \*buf, *ssize_t* msize);\
 // create buffer from msg structure\
 *enum ipc_errors* **ipc_message_format_write** (*const struct ipc_message* \*m, *char* \*\*buf, *ssize_t* \*msize);\
 
-// read a structure msg from fd\
-*enum ipc_errors* **ipc_message_read** (*int32_t* fd, *struct ipc_message* \*m);\
-// write a structure msg to fd\
-*enum ipc_errors* **ipc_message_write**               (*int32_t* fd, *const struct ipc_message* \*m);\
 *enum ipc_errors* **ipc_message_format**              (*struct ipc_message* \*m, *char* type, *const char* \*payload, *ssize_t* length);\
 *enum ipc_errors* **ipc_message_format_data**         (*struct ipc_message* \*m, *const char* \*payload, *ssize_t* length);\
 *enum ipc_errors* **ipc_message_format_server_close** (*struct ipc_message* \*m);\
