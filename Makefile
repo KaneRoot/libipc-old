@@ -39,9 +39,9 @@ src/ipc.h.uninstall:
 	@echo '[01;37m  RM >    [01;37m$(INCLUDEDIR)/ipc.h[00m'
 	$(Q)rm -f '$(DESTDIR)$(INCLUDEDIR)/ipc.h'
 
-man/libipc.7: man/libipc.7.md man
+man/libipc.7: man/libipc.7.scd man
 	@echo '[01;32m  MAN >   [01;37mman/libipc.7[00m'
-	$(Q)pandoc -s --from markdown --to man 'man/libipc.7.md' -o 'man/libipc.7'
+	$(Q)scdoc < 'man/libipc.7.scd' > 'man/libipc.7'
 
 
 man/libipc.7.install: man/libipc.7
@@ -127,7 +127,7 @@ src/error.o.clean:
 
 src/error.o.uninstall:
 
-src/logger.o: src/logger.c  src/logger.h
+src/logger.o: src/logger.c  src/logger.h src/ipc.h
 	@echo '[01;34m  CC >    [01;37msrc/logger.o[00m'
 	$(Q)$(CC) $(CFLAGS) -fPIC -std=c11 -c src/logger.c  -fPIC -std=c11 -o src/logger.o
 
@@ -242,7 +242,7 @@ $(PACKAGE)-$(VERSION).tar.gz: distdir
 		$(PACKAGE)-$(VERSION)/Makefile \
 		$(PACKAGE)-$(VERSION)/project.zsh \
 		$(PACKAGE)-$(VERSION)/src/ipc.h \
-		$(PACKAGE)-$(VERSION)/man/libipc.7.md \
+		$(PACKAGE)-$(VERSION)/man/libipc.7.scd \
 		$(PACKAGE)-$(VERSION)/src/communication.c \
 		$(PACKAGE)-$(VERSION)/src/error.c \
 		$(PACKAGE)-$(VERSION)/src/logger.c \
@@ -262,7 +262,7 @@ $(PACKAGE)-$(VERSION).tar.xz: distdir
 		$(PACKAGE)-$(VERSION)/Makefile \
 		$(PACKAGE)-$(VERSION)/project.zsh \
 		$(PACKAGE)-$(VERSION)/src/ipc.h \
-		$(PACKAGE)-$(VERSION)/man/libipc.7.md \
+		$(PACKAGE)-$(VERSION)/man/libipc.7.scd \
 		$(PACKAGE)-$(VERSION)/src/communication.c \
 		$(PACKAGE)-$(VERSION)/src/error.c \
 		$(PACKAGE)-$(VERSION)/src/logger.c \
@@ -282,7 +282,7 @@ $(PACKAGE)-$(VERSION).tar.bz2: distdir
 		$(PACKAGE)-$(VERSION)/Makefile \
 		$(PACKAGE)-$(VERSION)/project.zsh \
 		$(PACKAGE)-$(VERSION)/src/ipc.h \
-		$(PACKAGE)-$(VERSION)/man/libipc.7.md \
+		$(PACKAGE)-$(VERSION)/man/libipc.7.scd \
 		$(PACKAGE)-$(VERSION)/src/communication.c \
 		$(PACKAGE)-$(VERSION)/src/error.c \
 		$(PACKAGE)-$(VERSION)/src/logger.c \
@@ -321,7 +321,7 @@ help:
 	@echo '[01;37mProject targets: [00m'
 	@echo '    - [01;33mlibipc        [37m library[00m'
 	@echo '    - [01;33msrc/ipc.h     [37m header[00m'
-	@echo '    - [01;33mman/libipc.7  [37m man[00m'
+	@echo '    - [01;33mman/libipc.7  [37m scdocman[00m'
 	@echo ''
 	@echo '[01;37mMakefile options:[00m'
 	@echo '    - gnu:           false'

@@ -12,7 +12,7 @@ cflags[libipc]="-std=c11"
 
 type[src/ipc.h]=header
 
-type[man/libipc.7]=man
+type[man/libipc.7]=scdocman
 
-dist=(Makefile project.zsh src/ipc.h man/*.md)
+dist=(Makefile project.zsh src/ipc.h man/*.scd)
 
