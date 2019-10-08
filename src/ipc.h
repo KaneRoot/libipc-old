@@ -18,7 +18,7 @@
 #define IPC_HEADER_SIZE  6
 #define IPC_MAX_MESSAGE_SIZE  8000000-IPC_HEADER_SIZE
 
-#define IPC_VERSION 2
+#define IPC_VERSION 3
 
 #if ! defined(IPC_WITHOUT_ERRORS) && ! defined(IPC_WITH_ERRORS)
 #define IPC_WITH_ERRORS                               2

@@ -73,11 +73,13 @@ void main_loop ()
 					struct ipc_message *m = event.m;
 #ifdef PONGD_VERBOSE
 					if (m->length > 0) {
-						printf ("message received (type %d, user type %d, size %u bytes): %.*s\n", m->type, m->user_type, m->length, m->length, m->payload);
+						printf ("message received (type %d, user type %d, size %u bytes): %.*s\n"
+								, m->type, m->user_type, m->length, m->length, m->payload);
 					}
 					else {
 						printf ("message with a 0-byte size :(\n");
 					}
+
 #endif
 
 					ret = ipc_write (event.origin, m);
