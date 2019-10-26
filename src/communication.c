@@ -381,7 +381,8 @@ enum ipc_errors handle_message (struct ipc_event *event
 enum ipc_errors ipc_wait_event_networkd (struct ipc_connection_infos *cinfos
         , struct ipc_connection_info *cinfo // NULL for clients
         , struct ipc_event *event
-		, struct ipc_switchings *switchdb)
+		, struct ipc_switchings *switchdb
+		, long *timer /** TODO: timers */)
 {
     T_R ((cinfos == NULL), IPC_ERROR_WAIT_EVENT__NO_CLIENTS_PARAM);
     T_R ((event == NULL), IPC_ERROR_WAIT_EVENT__NO_EVENT_PARAM);
@@ -419,7 +420,24 @@ enum ipc_errors ipc_wait_event_networkd (struct ipc_connection_infos *cinfos
     }
 
     readf = master;
-    T_PERROR_R ((select(fdmax+1, &readf, NULL, NULL, NULL) == -1), "select", IPC_ERROR_WAIT_EVENT__SELECT);
+
+	struct timeval *ptimeout = NULL;
+	SECURE_DECLARATION (struct timeval, timeout);
+
+	if (timer != NULL && *timer > 0) {
+		timeout.tv_sec = *timer;
+		ptimeout = &timeout;
+	}
+
+    T_PERROR_R ((select(fdmax+1, &readf, NULL, NULL, ptimeout) == -1), "select", IPC_ERROR_WAIT_EVENT__SELECT);
+
+	if (ptimeout != NULL) {
+		*timer = timeout.tv_sec;
+		if (*timer == 0) {
+			IPC_EVENT_SET(event, IPC_EVENT_TYPE_TIMER, NULL, NULL);
+			return IPC_ERROR_NONE;
+		}
+	}
 
     for (i = 0; i <= (size_t) fdmax; i++) {
         if (FD_ISSET(i, &readf)) {
@@ -440,9 +458,10 @@ enum ipc_errors ipc_wait_event_networkd (struct ipc_connection_infos *cinfos
 
 enum ipc_errors ipc_wait_event (struct ipc_connection_infos *cinfos
         , struct ipc_connection_info *cinfo // NULL for clients
-        , struct ipc_event *event)
+        , struct ipc_event *event
+        , long *timer)
 {
-	return ipc_wait_event_networkd (cinfos, cinfo, event, NULL);
+	return ipc_wait_event_networkd (cinfos, cinfo, event, NULL, timer);
 }
 
 // store and remove only pointers on allocated structures

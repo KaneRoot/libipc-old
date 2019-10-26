@@ -18,7 +18,7 @@
 #define IPC_HEADER_SIZE  6
 #define IPC_MAX_MESSAGE_SIZE  8000000-IPC_HEADER_SIZE
 
-#define IPC_VERSION 3
+#define IPC_VERSION 4
 
 #if ! defined(IPC_WITHOUT_ERRORS) && ! defined(IPC_WITH_ERRORS)
 #define IPC_WITH_ERRORS                               2
@@ -123,6 +123,7 @@ enum ipc_event_type {
 	, IPC_EVENT_TYPE_DISCONNECTION  = 5
 	, IPC_EVENT_TYPE_MESSAGE        = 6
 	, IPC_EVENT_TYPE_LOOKUP         = 7
+	, IPC_EVENT_TYPE_TIMER          = 8
 };
 
 enum ipc_errors {
@@ -310,7 +311,8 @@ enum ipc_errors ipc_write (const struct ipc_connection_info *, const struct ipc_
 
 enum ipc_errors ipc_wait_event (struct ipc_connection_infos *clients
 		, struct ipc_connection_info *srv
-        , struct ipc_event *event);
+        , struct ipc_event *event
+        , long *timer);
 
 // store and remove only pointers on allocated structures
 enum ipc_errors ipc_add (struct ipc_connection_infos *, struct ipc_connection_info *);
@@ -390,7 +392,8 @@ struct networkd {
 enum ipc_errors ipc_wait_event_networkd (struct ipc_connection_infos *cinfos
         , struct ipc_connection_info *cinfo // NULL for clients
         , struct ipc_event *event
-		, struct ipc_switchings *switchdb);
+		, struct ipc_switchings *switchdb
+		, long *timer);
 
 
 void ipc_switching_add (struct ipc_switchings *is, int orig, int dest);
