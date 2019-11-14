@@ -2,7 +2,7 @@
 package=ipc
 version=0.4.0
 
-CFLAGS="-Wall -Wextra -g"
+variables+=(CFLAGS "-Wall -Wextra -g")
 
 targets=(libipc src/ipc.h man/libipc.7)
 

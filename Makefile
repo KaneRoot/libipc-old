@@ -7,12 +7,12 @@ LIBDIR := $(PREFIX)/lib
 SHAREDIR := $(PREFIX)/share
 INCLUDEDIR := $(PREFIX)/include
 MANDIR := $(SHAREDIR)/man
-
-CC := cc
-AR := ar
-RANLIB := ranlib
 CFLAGS := -Wall -Wextra -g
-LDFLAGS := 
+CC := cc
+CXX := c++
+LD := ${CC}
+CXXFLAGS :=  
+LDFLAGS :=  
 
 Q := @
 
@@ -40,7 +40,7 @@ src/ipc.h.uninstall:
 	$(Q)rm -f '$(DESTDIR)$(INCLUDEDIR)/ipc.h'
 
 man/libipc.7: man/libipc.7.scd man
-	@echo '[01;32m  MAN >   [01;37mman/libipc.7[00m'
+	@echo '[01;33m  MAN >   [01;37mman/libipc.7[00m'
 	$(Q)scdoc < 'man/libipc.7.scd' > 'man/libipc.7'
 
 
@@ -65,11 +65,11 @@ libipc.so.install: libipc.so
 	@echo '[01;31m  IN >    [01;37m$(LIBDIR)/libipc.so.0.4.0[00m'
 	$(Q)mkdir -p '$(DESTDIR)$(LIBDIR)'
 	$(Q)install -m0755 libipc.so $(DESTDIR)$(LIBDIR)/libipc.so.0.4.0
-	@echo '[01;33m  LN >    [01;37m$(LIBDIR)/libipc.so.0.4[00m'
+	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so.0.4[00m'
 	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.4.0' '$(DESTDIR)/$(LIBDIR)/libipc.so.0.4'
-	@echo '[01;33m  LN >    [01;37m$(LIBDIR)/libipc.so.0[00m'
+	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so.0[00m'
 	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.4.0' '$(DESTDIR)/$(LIBDIR)/libipc.so.0'
-	@echo '[01;33m  LN >    [01;37m$(LIBDIR)/libipc.so[00m'
+	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so[00m'
 	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.4.0' '$(DESTDIR)/$(LIBDIR)/libipc.so'
 
 libipc.so.clean:
@@ -209,25 +209,17 @@ $(DESTDIR)$(INCLUDEDIR):
 $(DESTDIR)$(MANDIR):
 	@echo '[01;35m  DIR >   [01;37m$(MANDIR)[00m'
 	$(Q)mkdir -p $(DESTDIR)$(MANDIR)
-install: subdirs.install libipc.install src/ipc.h.install man/libipc.7.install libipc.so.install libipc.a.install src/communication.o.install src/error.o.install src/logger.o.install src/message.o.install src/network.o.install src/usocket.o.install src/utils.o.install src/communication.o.install src/error.o.install src/logger.o.install src/message.o.install src/network.o.install src/usocket.o.install src/utils.o.install
+install: libipc.install src/ipc.h.install man/libipc.7.install libipc.so.install libipc.a.install src/communication.o.install src/error.o.install src/logger.o.install src/message.o.install src/network.o.install src/usocket.o.install src/utils.o.install src/communication.o.install src/error.o.install src/logger.o.install src/message.o.install src/network.o.install src/usocket.o.install src/utils.o.install
 	@:
 
-subdirs.install:
-
-uninstall: subdirs.uninstall libipc.uninstall src/ipc.h.uninstall man/libipc.7.uninstall libipc.so.uninstall libipc.a.uninstall src/communication.o.uninstall src/error.o.uninstall src/logger.o.uninstall src/message.o.uninstall src/network.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall src/communication.o.uninstall src/error.o.uninstall src/logger.o.uninstall src/message.o.uninstall src/network.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall
+uninstall: libipc.uninstall src/ipc.h.uninstall man/libipc.7.uninstall libipc.so.uninstall libipc.a.uninstall src/communication.o.uninstall src/error.o.uninstall src/logger.o.uninstall src/message.o.uninstall src/network.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall src/communication.o.uninstall src/error.o.uninstall src/logger.o.uninstall src/message.o.uninstall src/network.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall
 	@:
 
-subdirs.uninstall:
-
-test: all subdirs subdirs.test
+test: all
 	@:
-
-subdirs.test:
 
 clean: libipc.clean src/ipc.h.clean man/libipc.7.clean libipc.so.clean libipc.a.clean src/communication.o.clean src/error.o.clean src/logger.o.clean src/message.o.clean src/network.o.clean src/usocket.o.clean src/utils.o.clean src/communication.o.clean src/error.o.clean src/logger.o.clean src/message.o.clean src/network.o.clean src/usocket.o.clean src/utils.o.clean
-
 distclean: clean
-
 dist: dist-gz dist-xz dist-bz2
 	$(Q)rm -- $(PACKAGE)-$(VERSION)
 
@@ -307,10 +299,12 @@ help:
 	@echo '[00m    - [01;32muninstall     [37m Deinstalls the project.[00m'
 	@echo ''
 	@echo '[01;37mCLI-modifiable variables:[00m'
-	@echo '    - [01;34mCC            [37m ${CC}[00m'
 	@echo '    - [01;34mCFLAGS        [37m ${CFLAGS}[00m'
+	@echo '    - [01;34mCC            [37m ${CC}[00m'
+	@echo '    - [01;34mCXX           [37m ${CXX}[00m'
+	@echo '    - [01;34mLD            [37m ${LD}[00m'
+	@echo '    - [01;34mCXXFLAGS      [37m ${CXXFLAGS}[00m'
 	@echo '    - [01;34mLDFLAGS       [37m ${LDFLAGS}[00m'
-	@echo '    - [01;34mDESTDIR       [37m ${DESTDIR}[00m'
 	@echo '    - [01;34mPREFIX        [37m ${PREFIX}[00m'
 	@echo '    - [01;34mBINDIR        [37m ${BINDIR}[00m'
 	@echo '    - [01;34mLIBDIR        [37m ${LIBDIR}[00m'
@@ -329,5 +323,5 @@ help:
 	@echo ''
 	@echo '[01;37mRebuild the Makefile with:[00m'
 	@echo '    zsh ./build.zsh -c'
-.PHONY: all subdirs clean distclean dist install uninstall help
+.PHONY: all  clean distclean dist install uninstall help
 
