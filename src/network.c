@@ -28,119 +28,116 @@
  * get a networkd working with this
  */
 
-
-
-enum ipc_errors ipc_receive_fd (int sock, int *fd)
+struct ipc_error ipc_receive_fd (int sock, int *fd)
 {
 	T_R ((fd == NULL), IPC_ERROR_RECEIVE_FD__NO_PARAM_FD);
 	*fd = -1;
 
 	SECURE_DECLARATION (struct msghdr, msg);
-    SECURE_BUFFER_DECLARATION (char, c_buffer, 256);
+	SECURE_BUFFER_DECLARATION (char, c_buffer, 256);
 
-    /* On Mac OS X, the struct iovec is needed, even if it points to minimal data */
-    char m_buffer[1];
-    struct iovec io = { .iov_base = m_buffer, .iov_len = sizeof(m_buffer) };
-    msg.msg_iov = &io;
-    msg.msg_iovlen = 1;
+	/* On Mac OS X, the struct iovec is needed, even if it points to minimal data */
+	char m_buffer[1];
+	struct iovec io = {.iov_base = m_buffer,.iov_len = sizeof (m_buffer) };
+	msg.msg_iov = &io;
+	msg.msg_iovlen = 1;
 
-    msg.msg_control = c_buffer;
-    msg.msg_controllen = sizeof(c_buffer);
+	msg.msg_control = c_buffer;
+	msg.msg_controllen = sizeof (c_buffer);
 
-    T_PERROR_R ((recvmsg(sock, &msg, 0) <= 0), "recvmsg", IPC_ERROR_RECEIVE_FD__RECVMSG);
+	T_PERROR_RIPC ((recvmsg (sock, &msg, 0) <= 0), "recvmsg", IPC_ERROR_RECEIVE_FD__RECVMSG);
 
-    struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR (&msg);
 
-    memmove(fd, CMSG_DATA(cmsg), sizeof(*fd));
+	memmove (fd, CMSG_DATA (cmsg), sizeof (*fd));
 
-	return IPC_ERROR_NONE;
+	IPC_RETURN_NO_ERROR;
 }
 
-enum ipc_errors ipc_provide_fd (int sock, int fd)
+struct ipc_error ipc_provide_fd (int sock, int fd)
 {
-    SECURE_DECLARATION (struct msghdr, msg);
-    SECURE_BUFFER_DECLARATION (char, buf, CMSG_SPACE(sizeof(fd)));
+	SECURE_DECLARATION (struct msghdr, msg);
+	SECURE_BUFFER_DECLARATION (char, buf, CMSG_SPACE (sizeof (fd)));
 
-    /* On Mac OS X, the struct iovec is needed, even if it points to minimal data */
-    struct iovec io = { .iov_base = "", .iov_len = 1 };
+	/* On Mac OS X, the struct iovec is needed, even if it points to minimal data */
+	struct iovec io = {.iov_base = "",.iov_len = 1 };
 
-    msg.msg_iov = &io;
-    msg.msg_iovlen = 1;
-    msg.msg_control = buf;
-    msg.msg_controllen = sizeof(buf);
+	msg.msg_iov = &io;
+	msg.msg_iovlen = 1;
+	msg.msg_control = buf;
+	msg.msg_controllen = sizeof (buf);
 
-    struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg);
-    cmsg->cmsg_level = SOL_SOCKET;
-    cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = CMSG_LEN(sizeof(fd));
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR (&msg);
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
+	cmsg->cmsg_len = CMSG_LEN (sizeof (fd));
 
-    memmove(CMSG_DATA(cmsg), &fd, sizeof(fd));
+	memmove (CMSG_DATA (cmsg), &fd, sizeof (fd));
 
-    msg.msg_controllen = cmsg->cmsg_len;
+	msg.msg_controllen = cmsg->cmsg_len;
 
-    T_PERROR_R ((sendmsg(sock, &msg, 0) < 0), "sendmsg", IPC_ERROR_PROVIDE_FD__SENDMSG);
+	T_PERROR_RIPC ((sendmsg (sock, &msg, 0) < 0), "sendmsg", IPC_ERROR_PROVIDE_FD__SENDMSG);
 
-	return IPC_ERROR_NONE;
+	IPC_RETURN_NO_ERROR;
 }
 
 void ipc_switching_add (struct ipc_switchings *is, int orig, int dest)
 {
-    is->collection = realloc(is->collection, sizeof(struct ipc_switching) * (is->size+1));
-    if (is->collection == NULL) {
-        LOG_ERROR ("error realloc");
-        exit (EXIT_FAILURE);
-    }
+	is->collection = realloc (is->collection, sizeof (struct ipc_switching) * (is->size + 1));
+	if (is->collection == NULL) {
+		fprintf (stderr, __FILE__ " error realloc line %d", __LINE__);
+		exit (EXIT_FAILURE);
+	}
 
-    is->size++;
+	is->size++;
 
-    is->collection[is->size-1].orig = orig;
-    is->collection[is->size-1].dest = dest;
+	is->collection[is->size - 1].orig = orig;
+	is->collection[is->size - 1].dest = dest;
 }
 
 int ipc_switching_del (struct ipc_switchings *is, int fd)
 {
-    for (size_t i = 0; i < is->size; i++) {
-        if (is->collection[i].orig == fd || is->collection[i].dest == fd) {
-            int ret;
+	for (size_t i = 0; i < is->size; i++) {
+		if (is->collection[i].orig == fd || is->collection[i].dest == fd) {
+			int ret;
 
-            if (fd == is->collection[i].orig) {
-                ret = is->collection[i].dest;
-            }
-            else {
-                ret = is->collection[i].orig;
-            }
+			if (fd == is->collection[i].orig) {
+				ret = is->collection[i].dest;
+			} else {
+				ret = is->collection[i].orig;
+			}
 
-            is->collection[i].orig = is->collection[is->size-1].orig;
-            is->collection[i].dest = is->collection[is->size-1].dest;
+			is->collection[i].orig = is->collection[is->size - 1].orig;
+			is->collection[i].dest = is->collection[is->size - 1].dest;
 
-            size_t s = (is->size - 1) > 0 ? (is->size - 1) : 1;
+			size_t s = (is->size - 1) > 0 ? (is->size - 1) : 1;
 
-            is->collection = realloc(is->collection, sizeof(struct ipc_switching) * s);
-            if (is->collection == NULL) {
-                LOG_ERROR ("error realloc");
-                exit (EXIT_FAILURE);
-            }
+			is->collection = realloc (is->collection, sizeof (struct ipc_switching) * s);
+			if (is->collection == NULL) {
+				/** TODO: not sure we want this behavior */
+				fprintf (stderr, __FILE__ " error realloc line %d", __LINE__);
+				exit (EXIT_FAILURE);
+			}
 
-            is->size--;
-            return ret;
-        }
-    }
+			is->size--;
+			return ret;
+		}
+	}
 
-    return -1;
+	return -1;
 }
 
 int ipc_switching_get (struct ipc_switchings *is, int fd)
 {
-    for (size_t i = 0; i < is->size; i++) {
-        if (is->collection[i].orig == fd) {
-            return is->collection[i].dest;
-        }
-        else if (is->collection[i].dest == fd) {
-            return is->collection[i].orig;
-        }
-    }
+	for (size_t i = 0; i < is->size; i++) {
+		if (is->collection[i].orig == fd) {
+			return is->collection[i].dest;
+		} else if (is->collection[i].dest == fd) {
+			return is->collection[i].orig;
+		}
+	}
 
-    return -1;
+	return -1;
 }
 
 void ipc_switching_free (struct ipc_switchings *is)
@@ -153,11 +150,4 @@ void ipc_switching_free (struct ipc_switchings *is)
 		is->collection = NULL;
 	}
 	is->size = 0;
-}
-
-void ipc_switching_print (struct ipc_switchings *is)
-{
-    for (size_t i = 0; i < is->size; i++) {
-        LOG_DEBUG ("client %d - %d", is->collection[i].orig, is->collection[i].dest);
-    }
 }

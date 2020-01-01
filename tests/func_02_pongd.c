@@ -8,7 +8,7 @@
 #define PONGD_SERVICE_NAME "pong"
 
 #define PRINTERR(ret,msg) {\
-	const char * err = ipc_errors_get (ret);\
+	const char * err = ipc_errors_get (ret.error_code);\
 	fprintf(stderr, "error while %s: %s\n", msg, err);\
 }
 
@@ -20,31 +20,34 @@ struct ipc_connection_infos *clients;
 
 void main_loop ()
 {
-    enum ipc_errors ret = 0; 
+	SECURE_DECLARATION(struct ipc_error, ret);
 
 	clients = malloc (sizeof (struct ipc_connection_infos));
 	memset(clients, 0, sizeof(struct ipc_connection_infos));
 
 	SECURE_DECLARATION(struct ipc_event,event);
 
+	long timer = 10;
+
     while(1) {
 		// ipc_wait_event provides one event at a time
 		// warning: event->m is free'ed if not NULL
-		ret = ipc_wait_event (clients, srv, &event);
-		if (ret != IPC_ERROR_NONE && ret != IPC_ERROR_CLOSED_RECIPIENT) {
+		ret = ipc_wait_event (clients, srv, &event, &timer);
+		if (ret.error_code != IPC_ERROR_NONE && ret.error_code != IPC_ERROR_CLOSED_RECIPIENT) {
 			PRINTERR(ret,"service poll event");
 
 			// the application will shut down, and close the service
-			ret = ipc_server_close (srv);
-			if (ret != IPC_ERROR_NONE) {
-				PRINTERR(ret,"server close");
-			}
+			TEST_IPC_Q(ipc_server_close (srv), EXIT_FAILURE);
 			exit (EXIT_FAILURE);
 		}
 
 		switch (event.type) {
-			case IPC_EVENT_TYPE_CONNECTION:
-				{
+			case IPC_EVENT_TYPE_TIMER: {
+					fprintf(stderr, "time up!\n");
+					timer = 10;
+				};
+				break;
+			case IPC_EVENT_TYPE_CONNECTION: {
 					cpt++;
 					printf ("connection: %d clients connected\n", cpt);
 					printf ("new client has the fd %d\n", ((struct ipc_connection_info*) event.origin)->fd);
@@ -67,7 +70,7 @@ void main_loop ()
 					}
 
 					ret = ipc_write (event.origin, m);
-					if (ret != IPC_ERROR_NONE) {
+					if (ret.error_code != IPC_ERROR_NONE) {
 						PRINTERR(ret,"server write");
 					}
 				};
@@ -95,7 +98,7 @@ void exit_program(int signal)
 	printf("Quitting, signal: %d\n", signal);
 
 	// free remaining clients
-	for (int i = 0; i < clients->size ; i++) {
+	for (size_t i = 0; i < clients->size ; i++) {
 		struct ipc_connection_info *cli = clients->cinfos[i];
 		if (cli != NULL) {
 			free (cli);
@@ -108,10 +111,7 @@ void exit_program(int signal)
 
 
     // the application will shut down, and close the service
-	enum ipc_errors ret = ipc_server_close (srv);
-    if (ret != IPC_ERROR_NONE) {
-		PRINTERR(ret,"server close");
-    }
+	TEST_IPC_Q(ipc_server_close (srv), EXIT_FAILURE);
 	free (srv);
 
 	exit(EXIT_SUCCESS);
@@ -137,13 +137,8 @@ int main(int argc, char * argv[], char **env)
     srv->index = 0;
     srv->version = 0;
 
-    // unlink("/tmp/ipc/pongd-0-0");
+	TEST_IPC_Q(ipc_server_init (env, srv, PONGD_SERVICE_NAME), EXIT_FAILURE);
 
-	enum ipc_errors ret = ipc_server_init (env, srv, PONGD_SERVICE_NAME);
-    if (ret != IPC_ERROR_NONE) {
-		PRINTERR(ret,"server init");
-        return EXIT_FAILURE;
-    }
     printf ("Listening on %s.\n", srv->spath);
 
     printf("MAIN: server created\n" );

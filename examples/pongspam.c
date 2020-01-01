@@ -9,7 +9,7 @@
 #define SERVICE_NAME "pong"
 
 #define PRINTERR(ret,msg) {\
-	const char * err = ipc_errors_get (ret.error_code);\
+	const char * err = ipc_errors_get (ret);\
 	fprintf(stderr, "error while %s: %s\n", msg, err);\
 }
 
@@ -30,26 +30,25 @@ void non_interactive (char *env[])
 	SECURE_DECLARATION (struct ipc_message, m);
 
 	// init service
-	TEST_IPC_QUIT_ON_ERROR (ipc_connection (env, srv, SERVICE_NAME), EXIT_FAILURE);
-	TEST_IPC_QUIT_ON_ERROR (ipc_message_format_data (&m, 42, MSG, (ssize_t) strlen (MSG) + 1), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (env, srv, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_message_format_data (&m, 42, MSG, (ssize_t) strlen (MSG) + 1), EXIT_FAILURE);
 
 	printf ("msg to send (%ld): %.*s\n", (ssize_t) strlen (MSG) + 1, (int)strlen (MSG), MSG);
-	TEST_IPC_QUIT_ON_ERROR (ipc_write (srv, &m), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_write (srv, &m), EXIT_FAILURE);
 	ipc_message_empty (&m);
-	TEST_IPC_QUIT_ON_ERROR (ipc_read (srv, &m), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_read (srv, &m), EXIT_FAILURE);
 
 	printf ("msg recv (type: %u): %s\n", m.user_type, m.payload);
 	ipc_message_empty (&m);
 
-	TEST_IPC_QUIT_ON_ERROR (ipc_close (srv), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_close (srv), EXIT_FAILURE);
 }
 
 void interactive (char *env[])
 {
 	// init service
-	TEST_IPC_QUIT_ON_ERROR (ipc_connection (env, srv, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (env, srv, SERVICE_NAME), EXIT_FAILURE);
 
-	SECURE_DECLARATION (struct ipc_error, ret);
 	SECURE_DECLARATION (struct ipc_event, event);
 	SECURE_DECLARATION (struct ipc_connection_infos, services);
 
@@ -65,7 +64,13 @@ void interactive (char *env[])
 		fflush (stdout);
 
 		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (&services, NULL, &event, &timer), EXIT_FAILURE);
+
 		switch (event.type) {
+		case IPC_EVENT_TYPE_TIMER:{
+				printf ("time up!\n");
+				timer = 10;
+			};
+			break;
 		case IPC_EVENT_TYPE_EXTRA_SOCKET:
 			{
 				// structure not read, should read the message here
@@ -86,11 +91,7 @@ void interactive (char *env[])
 				// in case we want to quit the program
 				if (len == 0 || strncmp (buf, "quit", 4) == 0 || strncmp (buf, "exit", 4) == 0) {
 
-					struct ipc_error ret = ipc_close (srv);
-					if (ret.error_code != IPC_ERROR_NONE) {
-						fprintf (stderr, "%s", ret.error_message);
-						exit (EXIT_FAILURE);
-					}
+					TEST_IPC_Q (ipc_close (srv), EXIT_FAILURE);
 
 					ipc_connections_free (&services);
 
@@ -98,27 +99,29 @@ void interactive (char *env[])
 				}
 				// send the message read on STDIN
 				struct ipc_message *m = NULL;
-				SECURE_BUFFER_HEAP_ALLOCATION (m, sizeof (struct ipc_message),, return; );
+				SECURE_BUFFER_HEAP_ALLOCATION (m, sizeof (struct ipc_message),,);
 
-				struct ipc_error ret = ipc_message_format_data (m, 42, buf, len);
-				if (ret.error_code != IPC_ERROR_NONE) {
-					fprintf (stderr, "%s", ret.error_message);
-					exit (EXIT_FAILURE);
-				}
+				for (size_t i = 0; i < 5; i++) {
+					memset (buf, 0, 4096);
+					snprintf (buf, 4096, "%lu", i);
+					len = strlen (buf);
+					printf ("message %lu, buffer %.*s\n", i, (int)len, buf);
+					TEST_IPC_Q (ipc_message_format_data (m, 42, buf, len), EXIT_FAILURE);
+
+					printf ("message from structure: %.*s\n", m->length, m->payload);
+
 #if 0
-				printf ("\n");
-				printf ("right before sending a message\n");
+					printf ("\n");
+					printf ("right before sending a message\n");
 #endif
-				ret = ipc_write (srv, m);
-				if (ret.error_code != IPC_ERROR_NONE) {
-					fprintf (stderr, "%s", ret.error_message);
-					exit (EXIT_FAILURE);
-				}
+					TEST_IPC_Q (ipc_write (srv, m), EXIT_FAILURE);
 #if 0
-				printf ("right after sending a message\n");
+					printf ("right after sending a message\n");
 #endif
 
-				ipc_message_empty (m);
+					ipc_message_empty (m);
+					// sleep (1);
+				}
 				free (m);
 			}
 			break;

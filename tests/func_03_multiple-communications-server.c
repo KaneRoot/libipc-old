@@ -9,14 +9,14 @@
 
 int main_loop(int argc, char * argv[], char **env)
 {
-	enum ipc_errors ret;
+	argc = argc;
+	argv = argv;
+
 	SECURE_DECLARATION (struct ipc_connection_info, srv);
+	long timer = 10;
 
 	printf ("func 03 - server init...\n");
-	ret = ipc_server_init (env, &srv, SERVICE_NAME);
-	if (ret != IPC_ERROR_NONE) {
-		exit(EXIT_FAILURE);
-	}
+	TEST_IPC_Q (ipc_server_init (env, &srv, SERVICE_NAME), EXIT_FAILURE);
 	printf ("func 03 - server init ok\n");
 
 	SECURE_DECLARATION (struct ipc_connection_infos, clients);
@@ -25,9 +25,14 @@ int main_loop(int argc, char * argv[], char **env)
 	printf ("func 01 - service polling...\n");
 	// listen only for a single client
 	while (1) {
-		ret = ipc_wait_event (&clients, &srv, &event);
+		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (&clients, &srv, &event, &timer), EXIT_FAILURE);
 
 		switch (event.type) {
+			case IPC_EVENT_TYPE_TIMER : {
+					fprintf (stderr, "time up!");
+					timer = 10;
+				}
+				break;
 			case IPC_EVENT_TYPE_CONNECTION : {
 					printf ("connection establishment: %d \n", event.origin->fd);
 				}
@@ -54,12 +59,7 @@ int main_loop(int argc, char * argv[], char **env)
 	printf ("func 03 - closing clients...\n");
 	ipc_connections_free (&clients);
 	printf ("func 03 - closing server...\n");
-	ret = ipc_server_close(&srv);
-	if (ret != IPC_ERROR_NONE)
-	{
-		const char * error_explanation = ipc_errors_get (ret);
-		printf ("ipc_server_close: %s\n", error_explanation);
-	}
+	TEST_IPC_Q (ipc_server_close(&srv), EXIT_FAILURE);
 
 	return 0;
 }

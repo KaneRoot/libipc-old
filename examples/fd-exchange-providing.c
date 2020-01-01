@@ -12,7 +12,7 @@
 // This program opens a file then provide it to another running program.
 // see examples/fd-exchange-receiving.c
 
-int main(int argc, char * argv[])
+int main (int argc, char *argv[])
 {
 	if (argc != 2) {
 		fprintf (stderr, "usage: %s file", argv[0]);
@@ -24,8 +24,8 @@ int main(int argc, char * argv[])
 
 	T_PERROR_R (((fd = open (argv[1], O_CREAT | O_RDWR)) < 0), "cannot open the file", EXIT_FAILURE);
 
-	TIPC_P_Q (usock_connect (&sock, "SOCKET_FD_EXCHANGE_TEST"), "trying to connect to the unix socket", EXIT_FAILURE);
-	TIPC_P_Q (ipc_provide_fd (sock, fd), "cannot send the file descriptor", EXIT_FAILURE);
+	TEST_IPC_Q (usock_connect (&sock, "SOCKET_FD_EXCHANGE_TEST"), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_provide_fd (sock, fd), EXIT_FAILURE);
 
-    return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }

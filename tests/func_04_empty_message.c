@@ -7,24 +7,6 @@
 #define SERVICE_NAME "pong"
 #define SECURE_MALLOC(p, s, wat) p = malloc (s); if (p == NULL) { wat; }
 
-void connection (char **env, struct ipc_connection_info *ci)
-{
-	enum ipc_errors ret = ipc_connection (env, ci, SERVICE_NAME);
-	if (ret != IPC_ERROR_NONE) {
-		fprintf (stderr, "cannot connect to the server\n");
-		exit(EXIT_FAILURE);
-	}
-}
-
-void closing (struct ipc_connection_info *ci)
-{
-	enum ipc_errors ret = ipc_close (ci);
-	if (ret != IPC_ERROR_NONE) {
-		fprintf (stderr, "cannot close server\n");
-		exit(EXIT_FAILURE);
-	}
-}
-
 // test the behavior of the server when the client never read its messages
 
 void send_message (struct ipc_connection_info *ci)
@@ -61,12 +43,17 @@ void read_message (struct ipc_connection_info *ci)
 
 int main(int argc, char * argv[], char **env)
 {
+	argc = argc;
+	argv = argv;
+
 	SECURE_DECLARATION(struct ipc_connection_info,srv1);
 
-	connection (env, &srv1);
+	TEST_IPC_Q(ipc_connection (env, &srv1, SERVICE_NAME), EXIT_FAILURE);
+
 	send_message (&srv1);
 	read_message (&srv1);
-	closing (&srv1);
+
+	TEST_IPC_Q(ipc_close (&srv1), EXIT_FAILURE);
 
     return EXIT_SUCCESS;
 }

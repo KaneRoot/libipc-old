@@ -7,24 +7,6 @@
 #define SERVICE_NAME "pong"
 #define SECURE_MALLOC(p, s, wat) p = malloc (s); if (p == NULL) { wat; }
 
-void connection (char **env, struct ipc_connection_info *ci)
-{
-	enum ipc_errors ret = ipc_connection (env, ci, SERVICE_NAME);
-	if (ret != IPC_ERROR_NONE) {
-		fprintf (stderr, "cannot connect to the server\n");
-		exit(EXIT_FAILURE);
-	}
-}
-
-void closing (struct ipc_connection_info *ci)
-{
-	enum ipc_errors ret = ipc_close (ci);
-	if (ret != IPC_ERROR_NONE) {
-		fprintf (stderr, "cannot close server\n");
-		exit(EXIT_FAILURE);
-	}
-}
-
 // test the behavior of the server when the client never read its messages
 
 void send_message (struct ipc_connection_info *ci)
@@ -48,9 +30,11 @@ void read_message (struct ipc_connection_info *ci)
 	SECURE_DECLARATION(struct ipc_event, event);
 	SECURE_DECLARATION(struct ipc_connection_infos, clients);
 
-	ipc_add (&clients, ci);
+	long timer = 10;
 
-	ipc_wait_event (&clients, NULL, &event);
+	TEST_IPC_Q(ipc_read (ci, &m), EXIT_FAILURE);
+
+	ipc_wait_event (&clients, NULL, &event, &timer);
 
 	switch (event.type) {
 		case IPC_EVENT_TYPE_MESSAGE : {
@@ -72,7 +56,7 @@ void read_message (struct ipc_connection_info *ci)
 #else
 	SECURE_DECLARATION (struct ipc_message, m);
 
-	ipc_read (ci, &m);
+	TEST_IPC_Q(ipc_read (ci, &m), EXIT_FAILURE);
 	printf ("received message: %*.s\n", m.length, m.payload);
 	free (m.payload);
 #endif
@@ -80,18 +64,25 @@ void read_message (struct ipc_connection_info *ci)
 
 int main(int argc, char * argv[], char **env)
 {
+	argc = argc;
+	argv = argv;
+
 	SECURE_DECLARATION(struct ipc_connection_info,srv1);
 	SECURE_DECLARATION(struct ipc_connection_info,srv2);
 	SECURE_DECLARATION(struct ipc_event, event);
 
-	connection (env, &srv1);
-	connection (env, &srv2);
+	TEST_IPC_Q (ipc_connection (env, &srv1, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (env, &srv2, SERVICE_NAME), EXIT_FAILURE);
+
 	send_message (&srv1);
 	read_message (&srv1);
-	closing (&srv1);
+
+	TEST_IPC_Q (ipc_close (&srv1), EXIT_FAILURE);
+
 	send_message (&srv2);
 	read_message (&srv2);
-	closing (&srv2);
+
+	TEST_IPC_Q (ipc_close (&srv2), EXIT_FAILURE);
 
     return EXIT_SUCCESS;
 }

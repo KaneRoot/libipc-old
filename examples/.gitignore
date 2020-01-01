@@ -1,0 +1,5 @@
+*.[^ch]
+!Makefile
+!.zsh
+!.gitignore
+*.o

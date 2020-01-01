@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
-void print_hexa (const char *prefix, uint8_t *payload, size_t size);
+void error_message_format (char *formatted_message, const char *tag, const char *message, ...);
+void print_hexa (const char *prefix, uint8_t * payload, size_t size);
 
 #endif

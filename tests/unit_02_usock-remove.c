@@ -19,8 +19,7 @@ int main(int argc, char * argv[])
 		return EXIT_FAILURE;
 	}
 
-	enum ipc_errors ret = usock_remove (ftr);
-	if (ret == IPC_ERROR_NONE)
-		return 0;
-	return 1;
+	TEST_IPC_Q (usock_remove (ftr), EXIT_FAILURE);
+
+	return EXIT_SUCCESS;
 }

@@ -9,59 +9,32 @@
 #define SERVICE_NAME "pong"
 
 #define PRINTERR(ret,msg) {\
-	const char * err = ipc_errors_get (ret);\
+	const char * err = ipc_errors_get (ret.error_code);\
 	fprintf(stderr, "error while %s: %s\n", msg, err);\
 }
 
 void non_interactive (char *env[])
 {
-	enum ipc_errors ret;
     struct ipc_message m;
     memset (&m, 0, sizeof (struct ipc_message));
 	SECURE_DECLARATION(struct ipc_connection_info, srv);
 
     // init service
-	ret = ipc_connection (env, &srv, SERVICE_NAME);
-    if (ret != IPC_ERROR_NONE) {
-		PRINTERR(ret, "application connection");
-        exit (EXIT_FAILURE);
-    }
+	TEST_IPC_Q(ipc_connection (env, &srv, SERVICE_NAME), EXIT_FAILURE);
 
     printf ("msg to send (%ld): %.*s\n", (ssize_t) strlen(MSG) +1, (int) strlen(MSG), MSG);
-    ret = ipc_message_format_data (&m, /* type */ 'a', MSG, (ssize_t) strlen(MSG) +1);
-	if (ret != IPC_ERROR_NONE) {
-		PRINTERR(ret, "message format data");
-		exit (EXIT_FAILURE);
-	}
-
-    // printf ("msg to send in the client: ");
-    // ipc_message_print (&m);
-	ret = ipc_write (&srv, &m);
-    if (ret != IPC_ERROR_NONE) {
-		PRINTERR(ret, "application write");
-        exit (EXIT_FAILURE);
-    }
-    ipc_message_empty (&m);
-
-	ret = ipc_read (&srv, &m);
-    if (ret != IPC_ERROR_NONE) {
-		PRINTERR(ret, "application read");
-        exit (EXIT_FAILURE);
-    }
+    TEST_IPC_Q(ipc_message_format_data (&m, /* type */ 'a', MSG, (ssize_t) strlen(MSG) +1), EXIT_FAILURE);
+	TEST_IPC_Q(ipc_write (&srv, &m), EXIT_FAILURE);
+	TEST_IPC_Q(ipc_read (&srv, &m), EXIT_FAILURE);
 
     printf ("msg recv: %s\n", m.payload);
     ipc_message_empty (&m);
 
-	ret = ipc_close (&srv);
-    if (ret != IPC_ERROR_NONE) {
-		PRINTERR(ret, "application close");
-        exit (EXIT_FAILURE);
-    }
+	TEST_IPC_Q(ipc_close (&srv), EXIT_FAILURE);
 }
 
 void interactive (char *env[])
 {
-	enum ipc_errors ret;
 	SECURE_DECLARATION(struct ipc_connection_info, srv);
 
     // index and version should be filled
@@ -69,28 +42,27 @@ void interactive (char *env[])
     srv.version = 0;
 
     // init service
-	ret = ipc_connection (env, &srv, SERVICE_NAME);
-    if (ret != IPC_ERROR_NONE) {
-		PRINTERR(ret, "application connection");
-        exit (EXIT_FAILURE);
-    }
+	TEST_IPC_Q(ipc_connection (env, &srv, SERVICE_NAME), EXIT_FAILURE);
 
 	SECURE_DECLARATION(struct ipc_event, event);
 	SECURE_DECLARATION(struct ipc_connection_infos, services);
 
-	ipc_add (&services, &srv);
+	TEST_IPC_Q(ipc_add (&services, &srv), EXIT_FAILURE);
+
+	long timer = 10;
 
     while (1) {
         printf ("msg to send: ");
         fflush (stdout);
-		ret = ipc_wait_event (&services, NULL, &event);
-
-		if (ret != IPC_ERROR_NONE) {
-			PRINTERR(ret, "application peek event");
-			exit (EXIT_FAILURE);
-		}
+		TEST_IPC_Q(ipc_wait_event (&services, NULL, &event, &timer), EXIT_FAILURE);
 
 		switch (event.type) {
+			case IPC_EVENT_TYPE_TIMER: {
+					printf("time up!\n");
+
+					timer = 10;
+				};
+				break;
 			case IPC_EVENT_TYPE_EXTRA_SOCKET:
 				{
 					struct ipc_message *m = event.m;
@@ -101,20 +73,12 @@ void interactive (char *env[])
 
 						ipc_connections_free (&services);
 
-						ret = ipc_close (&srv);
-						if (ret != IPC_ERROR_NONE) {
-							PRINTERR(ret, "application close");
-							exit (EXIT_FAILURE);
-						}
+						TEST_IPC_Q(ipc_close (&srv), EXIT_FAILURE);
 
 						exit (EXIT_SUCCESS);
 					}
 
-					ret = ipc_write (&srv, m);
-					if (ret != IPC_ERROR_NONE) {
-						PRINTERR(ret, "application write");
-						exit (EXIT_FAILURE);
-					}
+					TEST_IPC_Q(ipc_write (&srv, m), EXIT_FAILURE);
 				}
 				break;
 			case IPC_EVENT_TYPE_MESSAGE:

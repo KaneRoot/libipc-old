@@ -57,9 +57,9 @@ man/libipc.7.uninstall:
 	@echo '[01;37m  RM >    [01;37m$(MANDIR)/man7/libipc.7[00m'
 	$(Q)rm -f '$(DESTDIR)$(MANDIR)/man7/libipc.7'
 
-libipc.so: src/communication.o src/error.o src/logger.o src/message.o src/network.o src/usocket.o src/utils.o  
+libipc.so: src/communication.o src/error.o src/fs.o src/message.o src/network.o src/print.o src/usocket.o src/utils.o  
 	@echo '[01;32m  LD >    [01;37mlibipc.so[00m'
-	$(Q)$(CC) -o libipc.so -shared $(LDFLAGS) src/communication.o src/error.o src/logger.o src/message.o src/network.o src/usocket.o src/utils.o 
+	$(Q)$(CC) -o libipc.so -shared $(LDFLAGS) src/communication.o src/error.o src/fs.o src/message.o src/network.o src/print.o src/usocket.o src/utils.o 
 
 libipc.so.install: libipc.so
 	@echo '[01;31m  IN >    [01;37m$(LIBDIR)/libipc.so.0.4.0[00m'
@@ -86,9 +86,9 @@ libipc.so.uninstall:
 	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so[00m'
 	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so'
 
-libipc.a: src/communication.o src/error.o src/logger.o src/message.o src/network.o src/usocket.o src/utils.o  
+libipc.a: src/communication.o src/error.o src/fs.o src/message.o src/network.o src/print.o src/usocket.o src/utils.o  
 	@echo '[01;32m  LD >    [01;37mlibipc.a[00m'
-	$(Q)$(AR) rc 'libipc.a' src/communication.o src/error.o src/logger.o src/message.o src/network.o src/usocket.o src/utils.o
+	$(Q)$(AR) rc 'libipc.a' src/communication.o src/error.o src/fs.o src/message.o src/network.o src/print.o src/usocket.o src/utils.o
 
 libipc.a.install: libipc.a
 	@echo '[01;31m  IN >    [01;37m$(LIBDIR)/libipc.a[00m'
@@ -127,17 +127,17 @@ src/error.o.clean:
 
 src/error.o.uninstall:
 
-src/logger.o: src/logger.c  src/logger.h src/ipc.h
-	@echo '[01;34m  CC >    [01;37msrc/logger.o[00m'
-	$(Q)$(CC) $(CFLAGS) -fPIC -std=c11 -c src/logger.c  -fPIC -std=c11 -o src/logger.o
+src/fs.o: src/fs.c  src/utils.h src/fs.h
+	@echo '[01;34m  CC >    [01;37msrc/fs.o[00m'
+	$(Q)$(CC) $(CFLAGS) -fPIC -std=c11 -c src/fs.c  -fPIC -std=c11 -o src/fs.o
 
-src/logger.o.install:
+src/fs.o.install:
 
-src/logger.o.clean:
-	@echo '[01;37m  RM >    [01;37msrc/logger.o[00m'
-	$(Q)rm -f src/logger.o
+src/fs.o.clean:
+	@echo '[01;37m  RM >    [01;37msrc/fs.o[00m'
+	$(Q)rm -f src/fs.o
 
-src/logger.o.uninstall:
+src/fs.o.uninstall:
 
 src/message.o: src/message.c  src/message.h src/usocket.h
 	@echo '[01;34m  CC >    [01;37msrc/message.o[00m'
@@ -163,7 +163,19 @@ src/network.o.clean:
 
 src/network.o.uninstall:
 
-src/usocket.o: src/usocket.c  src/usocket.h src/utils.h
+src/print.o: src/print.c  src/ipc.h
+	@echo '[01;34m  CC >    [01;37msrc/print.o[00m'
+	$(Q)$(CC) $(CFLAGS) -fPIC -std=c11 -c src/print.c  -fPIC -std=c11 -o src/print.o
+
+src/print.o.install:
+
+src/print.o.clean:
+	@echo '[01;37m  RM >    [01;37msrc/print.o[00m'
+	$(Q)rm -f src/print.o
+
+src/print.o.uninstall:
+
+src/usocket.o: src/usocket.c  src/usocket.h src/utils.h src/fs.h
 	@echo '[01;34m  CC >    [01;37msrc/usocket.o[00m'
 	$(Q)$(CC) $(CFLAGS) -fPIC -std=c11 -c src/usocket.c  -fPIC -std=c11 -o src/usocket.o
 
@@ -209,16 +221,13 @@ $(DESTDIR)$(INCLUDEDIR):
 $(DESTDIR)$(MANDIR):
 	@echo '[01;35m  DIR >   [01;37m$(MANDIR)[00m'
 	$(Q)mkdir -p $(DESTDIR)$(MANDIR)
-install: libipc.install src/ipc.h.install man/libipc.7.install libipc.so.install libipc.a.install src/communication.o.install src/error.o.install src/logger.o.install src/message.o.install src/network.o.install src/usocket.o.install src/utils.o.install src/communication.o.install src/error.o.install src/logger.o.install src/message.o.install src/network.o.install src/usocket.o.install src/utils.o.install
+install: libipc.install src/ipc.h.install man/libipc.7.install libipc.so.install libipc.a.install src/communication.o.install src/error.o.install src/fs.o.install src/message.o.install src/network.o.install src/print.o.install src/usocket.o.install src/utils.o.install src/communication.o.install src/error.o.install src/fs.o.install src/message.o.install src/network.o.install src/print.o.install src/usocket.o.install src/utils.o.install
 	@:
 
-uninstall: libipc.uninstall src/ipc.h.uninstall man/libipc.7.uninstall libipc.so.uninstall libipc.a.uninstall src/communication.o.uninstall src/error.o.uninstall src/logger.o.uninstall src/message.o.uninstall src/network.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall src/communication.o.uninstall src/error.o.uninstall src/logger.o.uninstall src/message.o.uninstall src/network.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall
+uninstall: libipc.uninstall src/ipc.h.uninstall man/libipc.7.uninstall libipc.so.uninstall libipc.a.uninstall src/communication.o.uninstall src/error.o.uninstall src/fs.o.uninstall src/message.o.uninstall src/network.o.uninstall src/print.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall src/communication.o.uninstall src/error.o.uninstall src/fs.o.uninstall src/message.o.uninstall src/network.o.uninstall src/print.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall
 	@:
 
-test: all
-	@:
-
-clean: libipc.clean src/ipc.h.clean man/libipc.7.clean libipc.so.clean libipc.a.clean src/communication.o.clean src/error.o.clean src/logger.o.clean src/message.o.clean src/network.o.clean src/usocket.o.clean src/utils.o.clean src/communication.o.clean src/error.o.clean src/logger.o.clean src/message.o.clean src/network.o.clean src/usocket.o.clean src/utils.o.clean
+clean: libipc.clean src/ipc.h.clean man/libipc.7.clean libipc.so.clean libipc.a.clean src/communication.o.clean src/error.o.clean src/fs.o.clean src/message.o.clean src/network.o.clean src/print.o.clean src/usocket.o.clean src/utils.o.clean src/communication.o.clean src/error.o.clean src/fs.o.clean src/message.o.clean src/network.o.clean src/print.o.clean src/usocket.o.clean src/utils.o.clean
 distclean: clean
 dist: dist-gz dist-xz dist-bz2
 	$(Q)rm -- $(PACKAGE)-$(VERSION)
@@ -237,12 +246,13 @@ $(PACKAGE)-$(VERSION).tar.gz: distdir
 		$(PACKAGE)-$(VERSION)/man/libipc.7.scd \
 		$(PACKAGE)-$(VERSION)/src/communication.c \
 		$(PACKAGE)-$(VERSION)/src/error.c \
-		$(PACKAGE)-$(VERSION)/src/logger.c \
+		$(PACKAGE)-$(VERSION)/src/fs.c \
 		$(PACKAGE)-$(VERSION)/src/message.c \
 		$(PACKAGE)-$(VERSION)/src/network.c \
+		$(PACKAGE)-$(VERSION)/src/print.c \
 		$(PACKAGE)-$(VERSION)/src/usocket.c \
 		$(PACKAGE)-$(VERSION)/src/utils.c \
-		$(PACKAGE)-$(VERSION)/src/logger.h \
+		$(PACKAGE)-$(VERSION)/src/fs.h \
 		$(PACKAGE)-$(VERSION)/src/message.h \
 		$(PACKAGE)-$(VERSION)/src/usocket.h \
 		$(PACKAGE)-$(VERSION)/src/utils.h
@@ -257,12 +267,13 @@ $(PACKAGE)-$(VERSION).tar.xz: distdir
 		$(PACKAGE)-$(VERSION)/man/libipc.7.scd \
 		$(PACKAGE)-$(VERSION)/src/communication.c \
 		$(PACKAGE)-$(VERSION)/src/error.c \
-		$(PACKAGE)-$(VERSION)/src/logger.c \
+		$(PACKAGE)-$(VERSION)/src/fs.c \
 		$(PACKAGE)-$(VERSION)/src/message.c \
 		$(PACKAGE)-$(VERSION)/src/network.c \
+		$(PACKAGE)-$(VERSION)/src/print.c \
 		$(PACKAGE)-$(VERSION)/src/usocket.c \
 		$(PACKAGE)-$(VERSION)/src/utils.c \
-		$(PACKAGE)-$(VERSION)/src/logger.h \
+		$(PACKAGE)-$(VERSION)/src/fs.h \
 		$(PACKAGE)-$(VERSION)/src/message.h \
 		$(PACKAGE)-$(VERSION)/src/usocket.h \
 		$(PACKAGE)-$(VERSION)/src/utils.h
@@ -277,12 +288,13 @@ $(PACKAGE)-$(VERSION).tar.bz2: distdir
 		$(PACKAGE)-$(VERSION)/man/libipc.7.scd \
 		$(PACKAGE)-$(VERSION)/src/communication.c \
 		$(PACKAGE)-$(VERSION)/src/error.c \
-		$(PACKAGE)-$(VERSION)/src/logger.c \
+		$(PACKAGE)-$(VERSION)/src/fs.c \
 		$(PACKAGE)-$(VERSION)/src/message.c \
 		$(PACKAGE)-$(VERSION)/src/network.c \
+		$(PACKAGE)-$(VERSION)/src/print.c \
 		$(PACKAGE)-$(VERSION)/src/usocket.c \
 		$(PACKAGE)-$(VERSION)/src/utils.c \
-		$(PACKAGE)-$(VERSION)/src/logger.h \
+		$(PACKAGE)-$(VERSION)/src/fs.h \
 		$(PACKAGE)-$(VERSION)/src/message.h \
 		$(PACKAGE)-$(VERSION)/src/usocket.h \
 		$(PACKAGE)-$(VERSION)/src/utils.h
