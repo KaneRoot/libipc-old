@@ -1,4 +1,4 @@
-#include <strings.h>
+#include <string.h>
 #include <assert.h>
 
 // error_message_format
@@ -46,7 +46,7 @@ int dirname_ (const char *path, char *dname)
 {
 	assert (dname != NULL);
 
-	char *last_slash = rindex (path, '/');
+	char *last_slash = strrchr (path, '/');
 	int pathlen = last_slash - path;
 
 	snprintf (dname, pathlen + 1, "%s", path);
