@@ -158,8 +158,13 @@ struct ipc_error usock_connect (int32_t * fd, const char *path)
 	TEST_IPC_RETURN_ON_ERROR(directory_setup_ (path));
 
 	if (connect (sfd, (struct sockaddr *)&my_addr, peer_addr_size) == -1) {
-		IPC_RETURN_ERROR_FORMAT (IPC_ERROR_USOCK_CONNECT__CONNECT
-			, "unix socket connection to the path %s not possible", path);
+		char *str_error = strerror (errno);
+		SECURE_BUFFER_DECLARATION(char, error_message, BUFSIZ);
+		snprintf (error_message, BUFSIZ
+			, "unix socket connection to the path %s not possible:%s"
+			, path, str_error);
+
+		IPC_RETURN_ERROR_FORMAT (IPC_ERROR_USOCK_CONNECT__CONNECT, "%s", error_message);
 	}
 
 	*fd = sfd;
