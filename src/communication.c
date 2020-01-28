@@ -563,6 +563,7 @@ struct ipc_error ipc_del_fd (struct ipc_connection_infos *cinfos, int fd)
 	size_t i;
 	for (i = 0; i < cinfos->size; i++) {
 		if (cinfos->cinfos[i]->fd == fd) {
+			cinfos->cinfos[i]->fd = -1;
 			free (cinfos->cinfos[i]);
 			cinfos->size--;
 			if (cinfos->size == 0) {
