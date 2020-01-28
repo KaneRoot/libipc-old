@@ -1,5 +1,5 @@
 PACKAGE = 'ipc'
-VERSION = '0.4.0'
+VERSION = '0.5.1'
 
 PREFIX := /usr/local
 BINDIR := $(PREFIX)/bin
@@ -16,7 +16,7 @@ LDFLAGS :=
 
 Q := @
 
-all: libipc src/ipc.h man/libipc.7
+all: libipc src/ipc.h src/usocket.h src/message.h src/fs.h src/utils.h man/libipc.7
 	@:
 
 libipc: libipc.so libipc.a 
@@ -38,6 +38,54 @@ src/ipc.h.clean: src/ipc.h
 src/ipc.h.uninstall:
 	@echo '[01;37m  RM >    [01;37m$(INCLUDEDIR)/ipc.h[00m'
 	$(Q)rm -f '$(DESTDIR)$(INCLUDEDIR)/ipc.h'
+
+src/usocket.h.install: src/usocket.h src
+	@echo '[01;31m  IN >    [01;37m$(INCLUDEDIR)/usocket.h[00m'
+	$(Q)mkdir -p '$(DESTDIR)$(INCLUDEDIR)'
+	$(Q)install -m0644 src/usocket.h $(DESTDIR)$(INCLUDEDIR)/usocket.h
+
+src/usocket.h.clean: src/usocket.h
+	$(Q):
+
+src/usocket.h.uninstall:
+	@echo '[01;37m  RM >    [01;37m$(INCLUDEDIR)/usocket.h[00m'
+	$(Q)rm -f '$(DESTDIR)$(INCLUDEDIR)/usocket.h'
+
+src/message.h.install: src/message.h src
+	@echo '[01;31m  IN >    [01;37m$(INCLUDEDIR)/message.h[00m'
+	$(Q)mkdir -p '$(DESTDIR)$(INCLUDEDIR)'
+	$(Q)install -m0644 src/message.h $(DESTDIR)$(INCLUDEDIR)/message.h
+
+src/message.h.clean: src/message.h
+	$(Q):
+
+src/message.h.uninstall:
+	@echo '[01;37m  RM >    [01;37m$(INCLUDEDIR)/message.h[00m'
+	$(Q)rm -f '$(DESTDIR)$(INCLUDEDIR)/message.h'
+
+src/fs.h.install: src/fs.h src
+	@echo '[01;31m  IN >    [01;37m$(INCLUDEDIR)/fs.h[00m'
+	$(Q)mkdir -p '$(DESTDIR)$(INCLUDEDIR)'
+	$(Q)install -m0644 src/fs.h $(DESTDIR)$(INCLUDEDIR)/fs.h
+
+src/fs.h.clean: src/fs.h
+	$(Q):
+
+src/fs.h.uninstall:
+	@echo '[01;37m  RM >    [01;37m$(INCLUDEDIR)/fs.h[00m'
+	$(Q)rm -f '$(DESTDIR)$(INCLUDEDIR)/fs.h'
+
+src/utils.h.install: src/utils.h src
+	@echo '[01;31m  IN >    [01;37m$(INCLUDEDIR)/utils.h[00m'
+	$(Q)mkdir -p '$(DESTDIR)$(INCLUDEDIR)'
+	$(Q)install -m0644 src/utils.h $(DESTDIR)$(INCLUDEDIR)/utils.h
+
+src/utils.h.clean: src/utils.h
+	$(Q):
+
+src/utils.h.uninstall:
+	@echo '[01;37m  RM >    [01;37m$(INCLUDEDIR)/utils.h[00m'
+	$(Q)rm -f '$(DESTDIR)$(INCLUDEDIR)/utils.h'
 
 man/libipc.7: man/libipc.7.scd man
 	@echo '[01;33m  MAN >   [01;37mman/libipc.7[00m'
@@ -62,25 +110,25 @@ libipc.so: src/communication.o src/error.o src/fs.o src/message.o src/network.o 
 	$(Q)$(CC) -o libipc.so -shared $(LDFLAGS) src/communication.o src/error.o src/fs.o src/message.o src/network.o src/print.o src/usocket.o src/utils.o 
 
 libipc.so.install: libipc.so
-	@echo '[01;31m  IN >    [01;37m$(LIBDIR)/libipc.so.0.4.0[00m'
+	@echo '[01;31m  IN >    [01;37m$(LIBDIR)/libipc.so.0.5.1[00m'
 	$(Q)mkdir -p '$(DESTDIR)$(LIBDIR)'
-	$(Q)install -m0755 libipc.so $(DESTDIR)$(LIBDIR)/libipc.so.0.4.0
-	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so.0.4[00m'
-	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.4.0' '$(DESTDIR)/$(LIBDIR)/libipc.so.0.4'
+	$(Q)install -m0755 libipc.so $(DESTDIR)$(LIBDIR)/libipc.so.0.5.1
+	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so.0.5[00m'
+	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.5.1' '$(DESTDIR)/$(LIBDIR)/libipc.so.0.5'
 	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so.0[00m'
-	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.4.0' '$(DESTDIR)/$(LIBDIR)/libipc.so.0'
+	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.5.1' '$(DESTDIR)/$(LIBDIR)/libipc.so.0'
 	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so[00m'
-	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.4.0' '$(DESTDIR)/$(LIBDIR)/libipc.so'
+	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.5.1' '$(DESTDIR)/$(LIBDIR)/libipc.so'
 
 libipc.so.clean:
 	@echo '[01;37m  RM >    [01;37mlibipc.so[00m'
 	$(Q)rm -f libipc.so
 
 libipc.so.uninstall:
-	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so.0.4.0[00m'
-	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so.0.4.0'
-	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so.0.4[00m'
-	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so.0.4'
+	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so.0.5.1[00m'
+	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so.0.5.1'
+	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so.0.5[00m'
+	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so.0.5'
 	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so.0[00m'
 	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so.0'
 	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so[00m'
@@ -221,13 +269,13 @@ $(DESTDIR)$(INCLUDEDIR):
 $(DESTDIR)$(MANDIR):
 	@echo '[01;35m  DIR >   [01;37m$(MANDIR)[00m'
 	$(Q)mkdir -p $(DESTDIR)$(MANDIR)
-install: libipc.install src/ipc.h.install man/libipc.7.install libipc.so.install libipc.a.install src/communication.o.install src/error.o.install src/fs.o.install src/message.o.install src/network.o.install src/print.o.install src/usocket.o.install src/utils.o.install src/communication.o.install src/error.o.install src/fs.o.install src/message.o.install src/network.o.install src/print.o.install src/usocket.o.install src/utils.o.install
+install: libipc.install src/ipc.h.install src/usocket.h.install src/message.h.install src/fs.h.install src/utils.h.install man/libipc.7.install libipc.so.install libipc.a.install src/communication.o.install src/error.o.install src/fs.o.install src/message.o.install src/network.o.install src/print.o.install src/usocket.o.install src/utils.o.install src/communication.o.install src/error.o.install src/fs.o.install src/message.o.install src/network.o.install src/print.o.install src/usocket.o.install src/utils.o.install
 	@:
 
-uninstall: libipc.uninstall src/ipc.h.uninstall man/libipc.7.uninstall libipc.so.uninstall libipc.a.uninstall src/communication.o.uninstall src/error.o.uninstall src/fs.o.uninstall src/message.o.uninstall src/network.o.uninstall src/print.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall src/communication.o.uninstall src/error.o.uninstall src/fs.o.uninstall src/message.o.uninstall src/network.o.uninstall src/print.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall
+uninstall: libipc.uninstall src/ipc.h.uninstall src/usocket.h.uninstall src/message.h.uninstall src/fs.h.uninstall src/utils.h.uninstall man/libipc.7.uninstall libipc.so.uninstall libipc.a.uninstall src/communication.o.uninstall src/error.o.uninstall src/fs.o.uninstall src/message.o.uninstall src/network.o.uninstall src/print.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall src/communication.o.uninstall src/error.o.uninstall src/fs.o.uninstall src/message.o.uninstall src/network.o.uninstall src/print.o.uninstall src/usocket.o.uninstall src/utils.o.uninstall
 	@:
 
-clean: libipc.clean src/ipc.h.clean man/libipc.7.clean libipc.so.clean libipc.a.clean src/communication.o.clean src/error.o.clean src/fs.o.clean src/message.o.clean src/network.o.clean src/print.o.clean src/usocket.o.clean src/utils.o.clean src/communication.o.clean src/error.o.clean src/fs.o.clean src/message.o.clean src/network.o.clean src/print.o.clean src/usocket.o.clean src/utils.o.clean
+clean: libipc.clean src/ipc.h.clean src/usocket.h.clean src/message.h.clean src/fs.h.clean src/utils.h.clean man/libipc.7.clean libipc.so.clean libipc.a.clean src/communication.o.clean src/error.o.clean src/fs.o.clean src/message.o.clean src/network.o.clean src/print.o.clean src/usocket.o.clean src/utils.o.clean src/communication.o.clean src/error.o.clean src/fs.o.clean src/message.o.clean src/network.o.clean src/print.o.clean src/usocket.o.clean src/utils.o.clean
 distclean: clean
 dist: dist-gz dist-xz dist-bz2
 	$(Q)rm -- $(PACKAGE)-$(VERSION)
@@ -300,7 +348,7 @@ $(PACKAGE)-$(VERSION).tar.bz2: distdir
 		$(PACKAGE)-$(VERSION)/src/utils.h
 
 help:
-	@echo '[01;37m :: ipc-0.4.0[00m'
+	@echo '[01;37m :: ipc-0.5.1[00m'
 	@echo ''
 	@echo '[01;37mGeneric targets:[00m'
 	@echo '[00m    - [01;32mhelp          [37m Prints this help message.[00m'
@@ -327,6 +375,10 @@ help:
 	@echo '[01;37mProject targets: [00m'
 	@echo '    - [01;33mlibipc        [37m library[00m'
 	@echo '    - [01;33msrc/ipc.h     [37m header[00m'
+	@echo '    - [01;33msrc/usocket.h [37m header[00m'
+	@echo '    - [01;33msrc/message.h [37m header[00m'
+	@echo '    - [01;33msrc/fs.h      [37m header[00m'
+	@echo '    - [01;33msrc/utils.h   [37m header[00m'
 	@echo '    - [01;33mman/libipc.7  [37m scdocman[00m'
 	@echo ''
 	@echo '[01;37mMakefile options:[00m'
