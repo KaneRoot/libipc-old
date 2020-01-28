@@ -25,21 +25,28 @@ void chomp (char *str, ssize_t len)
 
 struct ipc_connection_info *srv;
 
-void non_interactive (char *env[])
+void non_interactive (int verbosity, size_t nb_msg, char *msg_str, char *env[])
 {
 	SECURE_DECLARATION (struct ipc_message, m);
 
 	// init service
 	TEST_IPC_QUIT_ON_ERROR (ipc_connection (env, srv, SERVICE_NAME), EXIT_FAILURE);
-	TEST_IPC_QUIT_ON_ERROR (ipc_message_format_data (&m, 42, MSG, (ssize_t) strlen (MSG) + 1), EXIT_FAILURE);
 
-	printf ("msg to send (%ld): %.*s\n", (ssize_t) strlen (MSG) + 1, (int)strlen (MSG), MSG);
-	TEST_IPC_QUIT_ON_ERROR (ipc_write (srv, &m), EXIT_FAILURE);
-	ipc_message_empty (&m);
-	TEST_IPC_QUIT_ON_ERROR (ipc_read (srv, &m), EXIT_FAILURE);
+	if (verbosity > 1) {
+		printf ("msg to send (%ld): %.*s\n", (ssize_t) strlen (MSG) + 1, (int)strlen (MSG), MSG);
+	}
 
-	printf ("msg recv (type: %u): %s\n", m.user_type, m.payload);
-	ipc_message_empty (&m);
+	for (size_t i = 0 ; i < nb_msg ; i++) {
+		TEST_IPC_QUIT_ON_ERROR (ipc_message_format_data (&m, 42, msg_str, (ssize_t) strlen (msg_str) + 1), EXIT_FAILURE);
+		TEST_IPC_QUIT_ON_ERROR (ipc_write (srv, &m), EXIT_FAILURE);
+		ipc_message_empty (&m);
+		TEST_IPC_QUIT_ON_ERROR (ipc_read (srv, &m), EXIT_FAILURE);
+
+		if (verbosity > 1) {
+			printf ("msg recv (type: %u): %s\n", m.user_type, m.payload);
+		}
+		ipc_message_empty (&m);
+	}
 
 	TEST_IPC_QUIT_ON_ERROR (ipc_close (srv), EXIT_FAILURE);
 }
@@ -140,7 +147,9 @@ void interactive (char *env[])
 
 int main (int argc, char *argv[], char *env[])
 {
-	argc = argc;		// warnings
+	printf("usage: %s [verbosity #messages message]", argv[0]);
+
+	// $0: 
 	argv = argv;		// warnings
 
 	srv = malloc (sizeof (struct ipc_connection_info));
@@ -150,8 +159,8 @@ int main (int argc, char *argv[], char *env[])
 	srv->index = 0;
 	srv->version = 0;
 
-	if (argc == 1)
-		non_interactive (env);
+	if (argc == 4)
+		non_interactive (atoi(argv[1]), (size_t) atoi(argv[2]), argv[3], env);
 	else
 		interactive (env);
 

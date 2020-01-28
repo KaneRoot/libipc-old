@@ -14,12 +14,15 @@
 
 int cpt = 0;
 
+int verbosity = 1;
+
 struct ipc_connection_info *srv = NULL;
 struct ipc_connection_infos *clients = NULL;
 
 void main_loop ()
 {
-	long timer = 10;
+	long base_timer = 0;
+	long timer = base_timer;
 	SECURE_DECLARATION (struct ipc_error, ret);
 
 	clients = malloc (sizeof (struct ipc_connection_infos));
@@ -37,17 +40,17 @@ void main_loop ()
 		case IPC_EVENT_TYPE_CONNECTION:
 			{
 				cpt++;
-#ifdef PONGD_VERBOSE
-				printf ("connection: %d clients connected, new client is %d\n", cpt, (event.origin)->fd);
-#endif
+				if (verbosity > 1) {
+					printf ("connection: %d clients connected, new client is %d\n", cpt, (event.origin)->fd);
+				}
 			};
 			break;
 		case IPC_EVENT_TYPE_DISCONNECTION:
 			{
 				cpt--;
-#ifdef PONGD_VERBOSE
-				printf ("disconnection: %d clients remaining\n", cpt);
-#endif
+				if (verbosity > 1) {
+					printf ("disconnection: %d clients remaining\n", cpt);
+				}
 
 				// free the ipc_client structure
 				free (event.origin);
@@ -56,27 +59,28 @@ void main_loop ()
 		case IPC_EVENT_TYPE_MESSAGE:
 			{
 				struct ipc_message *m = event.m;
-#ifdef PONGD_VERBOSE
-				if (m->length > 0) {
-					printf ("message received (type %d, user type %d, size %u bytes): %.*s\n",
-						m->type, m->user_type, m->length, m->length, m->payload);
-				} else {
-					printf ("message with a 0-byte size :(\n");
+				if (verbosity > 1) {
+					if (m->length > 0) {
+						printf ("message received (type %d, user type %d, size %u bytes): %.*s\n",
+							m->type, m->user_type, m->length, m->length, m->payload);
+					} else {
+						printf ("message with a 0-byte size :(\n");
+					}
 				}
-
-#endif
 
 				ret = ipc_write (event.origin, m);
 				if (ret.error_code != IPC_ERROR_NONE) {
 					PRINTERR (ret, "server write");
 				}
-				printf ("message sent\n");
+				if (verbosity > 1) {
+					printf ("message sent\n");
+				}
 			};
 			break;
 		case IPC_EVENT_TYPE_TIMER:{
 				printf ("timer\n");
 
-				timer = 10;
+				timer = base_timer;
 			};
 			break;
 		case IPC_EVENT_TYPE_ERROR:
@@ -135,6 +139,10 @@ int main (int argc, char *argv[], char **env)
 {
 	argc = argc;		// warnings
 	argv = argv;		// warnings
+
+	if (argc > 1) {
+		verbosity = atoi(argv[1]);
+	}
 
 	printf ("pid = %d\n", getpid ());
 
