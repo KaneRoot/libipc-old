@@ -7,16 +7,16 @@ LIBDIR := $(PREFIX)/lib
 SHAREDIR := $(PREFIX)/share
 INCLUDEDIR := $(PREFIX)/include
 MANDIR := $(SHAREDIR)/man
-
-CC := cc
-AR := ar
-RANLIB := ranlib
 CFLAGS := -Wall -Wextra -g
 LDFLAGS := -I../src -L../ ../src/ipc.h -lipc
+CC := cc
+CXX := c++
+LD := ${CC}
+CXXFLAGS :=  
 
 Q := @
 
-all: func_01_connection_establishment func_01_connection_establishmentd func_02_pong func_02_pongd func_03_multiple-communications-client func_03_multiple-communications-server func_04_empty_message unit_01_service-path unit_02_usock-remove unit_03_connection-add-remove
+all: func_01_connection_establishment func_01_connection_establishmentd func_02_pong func_02_pongd func_03_multiple-communications-client func_03_multiple-communications-server func_04_empty_message func_05_read-write-loop unit_01_service-path unit_02_usock-remove unit_03_connection-add-remove
 	@:
 
 func_01_connection_establishment: func_01_connection_establishment.o  
@@ -130,6 +130,22 @@ func_04_empty_message.clean:  func_04_empty_message.o.clean
 func_04_empty_message.uninstall:
 	@echo '[01;37m  RM >    [01;37m$(BINDIR)/func_04_empty_message[00m'
 	$(Q)rm -f '$(DESTDIR)$(BINDIR)/func_04_empty_message'
+
+func_05_read-write-loop: func_05_read-write-loop.o  
+	@echo '[01;32m  LD >    [01;37mfunc_05_read-write-loop[00m'
+	$(Q)$(CC) -o func_05_read-write-loop func_05_read-write-loop.o $(LDFLAGS)
+func_05_read-write-loop.install: func_05_read-write-loop
+	@echo '[01;31m  IN >    [01;37m$(BINDIR)/func_05_read-write-loop[00m'
+	$(Q)mkdir -p '$(DESTDIR)$(BINDIR)'
+	$(Q)install -m0755 func_05_read-write-loop $(DESTDIR)$(BINDIR)/func_05_read-write-loop
+
+func_05_read-write-loop.clean:  func_05_read-write-loop.o.clean
+	@echo '[01;37m  RM >    [01;37mfunc_05_read-write-loop[00m'
+	$(Q)rm -f func_05_read-write-loop
+
+func_05_read-write-loop.uninstall:
+	@echo '[01;37m  RM >    [01;37m$(BINDIR)/func_05_read-write-loop[00m'
+	$(Q)rm -f '$(DESTDIR)$(BINDIR)/func_05_read-write-loop'
 
 unit_01_service-path: unit_01_service-path.o  
 	@echo '[01;32m  LD >    [01;37munit_01_service-path[00m'
@@ -263,6 +279,18 @@ func_04_empty_message.o.clean:
 
 func_04_empty_message.o.uninstall:
 
+func_05_read-write-loop.o: func_05_read-write-loop.c  ./../src/ipc.h
+	@echo '[01;34m  CC >    [01;37mfunc_05_read-write-loop.o[00m'
+	$(Q)$(CC) $(CFLAGS) -std=c11 -c func_05_read-write-loop.c  -std=c11 -o func_05_read-write-loop.o
+
+func_05_read-write-loop.o.install:
+
+func_05_read-write-loop.o.clean:
+	@echo '[01;37m  RM >    [01;37mfunc_05_read-write-loop.o[00m'
+	$(Q)rm -f func_05_read-write-loop.o
+
+func_05_read-write-loop.o.uninstall:
+
 unit_01_service-path.o: unit_01_service-path.c  ./../src/ipc.h
 	@echo '[01;34m  CC >    [01;37munit_01_service-path.o[00m'
 	$(Q)$(CC) $(CFLAGS) -std=c11 -c unit_01_service-path.c  -std=c11 -o unit_01_service-path.o
@@ -317,25 +345,14 @@ $(DESTDIR)$(INCLUDEDIR):
 $(DESTDIR)$(MANDIR):
 	@echo '[01;35m  DIR >   [01;37m$(MANDIR)[00m'
 	$(Q)mkdir -p $(DESTDIR)$(MANDIR)
-install: subdirs.install func_01_connection_establishment.install func_01_connection_establishmentd.install func_02_pong.install func_02_pongd.install func_03_multiple-communications-client.install func_03_multiple-communications-server.install func_04_empty_message.install unit_01_service-path.install unit_02_usock-remove.install unit_03_connection-add-remove.install func_01_connection_establishment.o.install func_01_connection_establishmentd.o.install func_02_pong.o.install func_02_pongd.o.install func_03_multiple-communications-client.o.install func_03_multiple-communications-server.o.install func_04_empty_message.o.install unit_01_service-path.o.install unit_02_usock-remove.o.install unit_03_connection-add-remove.o.install
+install: func_01_connection_establishment.install func_01_connection_establishmentd.install func_02_pong.install func_02_pongd.install func_03_multiple-communications-client.install func_03_multiple-communications-server.install func_04_empty_message.install func_05_read-write-loop.install unit_01_service-path.install unit_02_usock-remove.install unit_03_connection-add-remove.install func_01_connection_establishment.o.install func_01_connection_establishmentd.o.install func_02_pong.o.install func_02_pongd.o.install func_03_multiple-communications-client.o.install func_03_multiple-communications-server.o.install func_04_empty_message.o.install func_05_read-write-loop.o.install unit_01_service-path.o.install unit_02_usock-remove.o.install unit_03_connection-add-remove.o.install
 	@:
 
-subdirs.install:
-
-uninstall: subdirs.uninstall func_01_connection_establishment.uninstall func_01_connection_establishmentd.uninstall func_02_pong.uninstall func_02_pongd.uninstall func_03_multiple-communications-client.uninstall func_03_multiple-communications-server.uninstall func_04_empty_message.uninstall unit_01_service-path.uninstall unit_02_usock-remove.uninstall unit_03_connection-add-remove.uninstall func_01_connection_establishment.o.uninstall func_01_connection_establishmentd.o.uninstall func_02_pong.o.uninstall func_02_pongd.o.uninstall func_03_multiple-communications-client.o.uninstall func_03_multiple-communications-server.o.uninstall func_04_empty_message.o.uninstall unit_01_service-path.o.uninstall unit_02_usock-remove.o.uninstall unit_03_connection-add-remove.o.uninstall
+uninstall: func_01_connection_establishment.uninstall func_01_connection_establishmentd.uninstall func_02_pong.uninstall func_02_pongd.uninstall func_03_multiple-communications-client.uninstall func_03_multiple-communications-server.uninstall func_04_empty_message.uninstall func_05_read-write-loop.uninstall unit_01_service-path.uninstall unit_02_usock-remove.uninstall unit_03_connection-add-remove.uninstall func_01_connection_establishment.o.uninstall func_01_connection_establishmentd.o.uninstall func_02_pong.o.uninstall func_02_pongd.o.uninstall func_03_multiple-communications-client.o.uninstall func_03_multiple-communications-server.o.uninstall func_04_empty_message.o.uninstall func_05_read-write-loop.o.uninstall unit_01_service-path.o.uninstall unit_02_usock-remove.o.uninstall unit_03_connection-add-remove.o.uninstall
 	@:
 
-subdirs.uninstall:
-
-test: all subdirs subdirs.test
-	@:
-
-subdirs.test:
-
-clean: func_01_connection_establishment.clean func_01_connection_establishmentd.clean func_02_pong.clean func_02_pongd.clean func_03_multiple-communications-client.clean func_03_multiple-communications-server.clean func_04_empty_message.clean unit_01_service-path.clean unit_02_usock-remove.clean unit_03_connection-add-remove.clean func_01_connection_establishment.o.clean func_01_connection_establishmentd.o.clean func_02_pong.o.clean func_02_pongd.o.clean func_03_multiple-communications-client.o.clean func_03_multiple-communications-server.o.clean func_04_empty_message.o.clean unit_01_service-path.o.clean unit_02_usock-remove.o.clean unit_03_connection-add-remove.o.clean
-
+clean: func_01_connection_establishment.clean func_01_connection_establishmentd.clean func_02_pong.clean func_02_pongd.clean func_03_multiple-communications-client.clean func_03_multiple-communications-server.clean func_04_empty_message.clean func_05_read-write-loop.clean unit_01_service-path.clean unit_02_usock-remove.clean unit_03_connection-add-remove.clean func_01_connection_establishment.o.clean func_01_connection_establishmentd.o.clean func_02_pong.o.clean func_02_pongd.o.clean func_03_multiple-communications-client.o.clean func_03_multiple-communications-server.o.clean func_04_empty_message.o.clean func_05_read-write-loop.o.clean unit_01_service-path.o.clean unit_02_usock-remove.o.clean unit_03_connection-add-remove.o.clean
 distclean: clean
-
 dist: dist-gz dist-xz dist-bz2
 	$(Q)rm -- $(PACKAGE)-$(VERSION)
 
@@ -356,6 +373,7 @@ $(PACKAGE)-$(VERSION).tar.gz: distdir
 		$(PACKAGE)-$(VERSION)/func_01_connection_establishment.c \
 		$(PACKAGE)-$(VERSION)/func_03_multiple-communications-server.c \
 		$(PACKAGE)-$(VERSION)/unit_03_connection-add-remove.c \
+		$(PACKAGE)-$(VERSION)/func_05_read-write-loop.c \
 		$(PACKAGE)-$(VERSION)/func_03_multiple-communications-client.c \
 		$(PACKAGE)-$(VERSION)/unit_02_usock-remove.c \
 		$(PACKAGE)-$(VERSION)/func_01_connection_establishmentd.c
@@ -373,6 +391,7 @@ $(PACKAGE)-$(VERSION).tar.xz: distdir
 		$(PACKAGE)-$(VERSION)/func_01_connection_establishment.c \
 		$(PACKAGE)-$(VERSION)/func_03_multiple-communications-server.c \
 		$(PACKAGE)-$(VERSION)/unit_03_connection-add-remove.c \
+		$(PACKAGE)-$(VERSION)/func_05_read-write-loop.c \
 		$(PACKAGE)-$(VERSION)/func_03_multiple-communications-client.c \
 		$(PACKAGE)-$(VERSION)/unit_02_usock-remove.c \
 		$(PACKAGE)-$(VERSION)/func_01_connection_establishmentd.c
@@ -390,6 +409,7 @@ $(PACKAGE)-$(VERSION).tar.bz2: distdir
 		$(PACKAGE)-$(VERSION)/func_01_connection_establishment.c \
 		$(PACKAGE)-$(VERSION)/func_03_multiple-communications-server.c \
 		$(PACKAGE)-$(VERSION)/unit_03_connection-add-remove.c \
+		$(PACKAGE)-$(VERSION)/func_05_read-write-loop.c \
 		$(PACKAGE)-$(VERSION)/func_03_multiple-communications-client.c \
 		$(PACKAGE)-$(VERSION)/unit_02_usock-remove.c \
 		$(PACKAGE)-$(VERSION)/func_01_connection_establishmentd.c
@@ -406,10 +426,12 @@ help:
 	@echo '[00m    - [01;32muninstall     [37m Deinstalls the project.[00m'
 	@echo ''
 	@echo '[01;37mCLI-modifiable variables:[00m'
-	@echo '    - [01;34mCC            [37m ${CC}[00m'
 	@echo '    - [01;34mCFLAGS        [37m ${CFLAGS}[00m'
 	@echo '    - [01;34mLDFLAGS       [37m ${LDFLAGS}[00m'
-	@echo '    - [01;34mDESTDIR       [37m ${DESTDIR}[00m'
+	@echo '    - [01;34mCC            [37m ${CC}[00m'
+	@echo '    - [01;34mCXX           [37m ${CXX}[00m'
+	@echo '    - [01;34mLD            [37m ${LD}[00m'
+	@echo '    - [01;34mCXXFLAGS      [37m ${CXXFLAGS}[00m'
 	@echo '    - [01;34mPREFIX        [37m ${PREFIX}[00m'
 	@echo '    - [01;34mBINDIR        [37m ${BINDIR}[00m'
 	@echo '    - [01;34mLIBDIR        [37m ${LIBDIR}[00m'
@@ -420,14 +442,15 @@ help:
 	@echo '[01;37mProject targets: [00m'
 	@echo '    - [01;33mfunc_01_connection_establishment[37m binary[00m'
 	@echo '    - [01;33mfunc_01_connection_establishmentd[37m binary[00m'
-	@echo '    - [01;33mfunc_02_pong  [37m binary[00m'
-	@echo '    - [01;33mfunc_02_pongd [37m binary[00m'
+	@echo '    - [01;33mfunc_02_pong                  [37m binary[00m'
+	@echo '    - [01;33mfunc_02_pongd                 [37m binary[00m'
 	@echo '    - [01;33mfunc_03_multiple-communications-client[37m binary[00m'
 	@echo '    - [01;33mfunc_03_multiple-communications-server[37m binary[00m'
-	@echo '    - [01;33mfunc_04_empty_message[37m binary[00m'
-	@echo '    - [01;33munit_01_service-path[37m binary[00m'
-	@echo '    - [01;33munit_02_usock-remove[37m binary[00m'
-	@echo '    - [01;33munit_03_connection-add-remove[37m binary[00m'
+	@echo '    - [01;33mfunc_04_empty_message         [37m binary[00m'
+	@echo '    - [01;33mfunc_05_read-write-loop       [37m binary[00m'
+	@echo '    - [01;33munit_01_service-path          [37m binary[00m'
+	@echo '    - [01;33munit_02_usock-remove          [37m binary[00m'
+	@echo '    - [01;33munit_03_connection-add-remove [37m binary[00m'
 	@echo ''
 	@echo '[01;37mMakefile options:[00m'
 	@echo '    - gnu:           false'
@@ -435,5 +458,5 @@ help:
 	@echo ''
 	@echo '[01;37mRebuild the Makefile with:[00m'
 	@echo '    zsh ./build.zsh -c'
-.PHONY: all subdirs clean distclean dist install uninstall help
+.PHONY: all  clean distclean dist install uninstall help
 
