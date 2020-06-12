@@ -251,7 +251,7 @@ struct ipc_error ipc_write (const struct ipc_connection_info *, const struct ipc
 
 struct ipc_error ipc_wait_event (struct ipc_connection_infos *clients
 	, struct ipc_connection_info *srv
-	, struct ipc_event *event, long *timer);
+	, struct ipc_event *event, double *timer);
 
 // store and remove only pointers on allocated structures
 struct ipc_error ipc_add (struct ipc_connection_infos *, struct ipc_connection_info *);
@@ -324,7 +324,7 @@ struct networkd {
 
 struct ipc_error ipc_wait_event_networkd (struct ipc_connection_infos *cinfos
 	, struct ipc_connection_info *cinfo  // cinfo is NULL for clients
-	, struct ipc_event *event, struct ipc_switchings *switchdb, long *timer);
+	, struct ipc_event *event, struct ipc_switchings *switchdb, double *timer);
 
 void ipc_switching_add (struct ipc_switchings *is, int orig, int dest);
 int ipc_switching_del (struct ipc_switchings *is, int fd);

@@ -21,8 +21,8 @@ struct ipc_connection_infos *clients = NULL;
 
 void main_loop ()
 {
-	long base_timer = 0;
-	long timer = base_timer;
+	double base_timer = 0;
+	double timer = base_timer;
 	SECURE_DECLARATION (struct ipc_error, ret);
 
 	clients = malloc (sizeof (struct ipc_connection_infos));

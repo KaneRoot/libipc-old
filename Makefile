@@ -1,5 +1,5 @@
 PACKAGE = 'libipc'
-VERSION = '0.5.1'
+VERSION = '0.6.0'
 
 PREFIX := /usr/local
 BINDIR := $(PREFIX)/bin
@@ -50,25 +50,25 @@ libipc.so: src/communication.o src/error.o src/fs.o src/message.o src/network.o 
 	$(Q)$(CC) -o libipc.so -shared $(LDFLAGS) src/communication.o src/error.o src/fs.o src/message.o src/network.o src/print.o src/usocket.o src/utils.o 
 
 libipc.so.install: libipc.so
-	@echo '[01;31m  IN >    [01;37m$(LIBDIR)/libipc.so.0.5.1[00m'
+	@echo '[01;31m  IN >    [01;37m$(LIBDIR)/libipc.so.0.6.0[00m'
 	$(Q)mkdir -p '$(DESTDIR)$(LIBDIR)'
-	$(Q)install -m0755 libipc.so $(DESTDIR)$(LIBDIR)/libipc.so.0.5.1
-	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so.0.5[00m'
-	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.5.1' '$(DESTDIR)/$(LIBDIR)/libipc.so.0.5'
+	$(Q)install -m0755 libipc.so $(DESTDIR)$(LIBDIR)/libipc.so.0.6.0
+	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so.0.6[00m'
+	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.6.0' '$(DESTDIR)/$(LIBDIR)/libipc.so.0.6'
 	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so.0[00m'
-	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.5.1' '$(DESTDIR)/$(LIBDIR)/libipc.so.0'
+	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.6.0' '$(DESTDIR)/$(LIBDIR)/libipc.so.0'
 	@echo '[01;35m  LN >    [01;37m$(LIBDIR)/libipc.so[00m'
-	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.5.1' '$(DESTDIR)/$(LIBDIR)/libipc.so'
+	$(Q)ln -sf '$(LIBDIR)/libipc.so.0.6.0' '$(DESTDIR)/$(LIBDIR)/libipc.so'
 
 libipc.so.clean:
 	@echo '[01;37m  RM >    [01;37mlibipc.so[00m'
 	$(Q)rm -f libipc.so
 
 libipc.so.uninstall:
-	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so.0.5.1[00m'
-	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so.0.5.1'
-	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so.0.5[00m'
-	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so.0.5'
+	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so.0.6.0[00m'
+	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so.0.6.0'
+	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so.0.6[00m'
+	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so.0.6'
 	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so.0[00m'
 	$(Q)rm -f '$(DESTDIR)$(LIBDIR)/libipc.so.0'
 	@echo '[01;37m  RM >    [01;37m$(LIBDIR)/libipc.so[00m'
@@ -297,7 +297,7 @@ $(PACKAGE)-$(VERSION).tar.bz2: distdir
 		$(PACKAGE)-$(VERSION)/src/utils.h
 
 help:
-	@echo '[01;37m :: libipc-0.5.1[00m'
+	@echo '[01;37m :: libipc-0.6.0[00m'
 	@echo ''
 	@echo '[01;37mGeneric targets:[00m'
 	@echo '[00m    - [01;32mhelp          [37m Prints this help message.[00m'

@@ -368,7 +368,7 @@ struct ipc_error handle_message (struct ipc_event *event, struct ipc_connection_
 struct ipc_error ipc_wait_event_networkd (struct ipc_connection_infos *cinfos
 	, struct ipc_connection_info *cinfo	// NULL for clients
 	, struct ipc_event *event, struct ipc_switchings *switchdb
-	, long *timer)
+	, double *timer)
 {
 	T_R ((cinfos == NULL), IPC_ERROR_WAIT_EVENT__NO_CLIENTS_PARAM);
 	T_R ((event == NULL), IPC_ERROR_WAIT_EVENT__NO_EVENT_PARAM);
@@ -410,15 +410,16 @@ struct ipc_error ipc_wait_event_networkd (struct ipc_connection_infos *cinfos
 	struct timeval *ptimeout = NULL;
 	SECURE_DECLARATION (struct timeval, timeout);
 
-	if (timer != NULL && *timer > 0) {
-		timeout.tv_sec = *timer;
+	if (timer != NULL && *timer > 0.0) {
+		timeout.tv_sec  = (long) *timer;
+		timeout.tv_usec = (long) ((long)((*timer) * 1000000) % 1000000);
 		ptimeout = &timeout;
 	}
 
 	T_PERROR_RIPC ((select (fdmax + 1, &readf, NULL, NULL, ptimeout) == -1), "select", IPC_ERROR_WAIT_EVENT__SELECT);
 
 	if (ptimeout != NULL) {
-		*timer = timeout.tv_sec;
+		*timer = (double) timeout.tv_sec + (timeout.tv_usec / 1000000.0);
 		if (*timer == 0) {
 			IPC_EVENT_SET (event, IPC_EVENT_TYPE_TIMER, NULL, NULL);
 			IPC_RETURN_NO_ERROR;
@@ -444,7 +445,7 @@ struct ipc_error ipc_wait_event_networkd (struct ipc_connection_infos *cinfos
 
 struct ipc_error ipc_wait_event (struct ipc_connection_infos *cinfos
 	, struct ipc_connection_info *cinfo	// NULL for clients
-	, struct ipc_event *event, long *timer)
+	, struct ipc_event *event, double *timer)
 {
 	return ipc_wait_event_networkd (cinfos, cinfo, event, NULL, timer);
 }
