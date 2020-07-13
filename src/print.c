@@ -1,20 +1,51 @@
 #include "ipc.h"
 
-void ipc_connection_print (struct ipc_connection_info *cinfo)
+void ipc_ctx_print (struct ipc_ctx *ctx)
 {
-	T_R_NOTHING ((cinfo == NULL));
+	printf ("Context contains:\n");
+	for (size_t i = 0; i < ctx->size; i++) {
+		printf ("- fd %d\t", ctx->pollfd[i].fd);
 
-#if 0
-	LOG_DEBUG ("fd %d: index %d, version %d, type %c, path %s"
-		, cinfo->fd , cinfo->index, cinfo->version, cinfo->type
-		, (cinfo->spath == NULL) ? "-" : cinfo->spath);
-#endif
-}
+		switch (ctx->cinfos[i].type) {
+		case IPC_CONNECTION_TYPE_IPC: {
+				printf ("- ipc\n");
+				break;
+			}
+		case IPC_CONNECTION_TYPE_EXTERNAL: {
+				printf ("- external\n");
+				break;
+			}
+		case IPC_CONNECTION_TYPE_SERVER: {
+				printf ("- external\n");
+				break;
+			}
+		case IPC_CONNECTION_TYPE_SWITCHED: {
+				printf ("- switched\n");
+				break;
+			}
+		}
+	}
 
-void ipc_connections_print (struct ipc_connection_infos *cinfos)
-{
-	for (size_t i = 0; i < cinfos->size; i++) {
-		ipc_connection_print (cinfos->cinfos[i]);
+	if (ctx->switchdb.size > 0) {
+		printf ("Context.switchdb contains:\n");
+		for (size_t i = 0; i < ctx->switchdb.size; i++) {
+			printf ("- %d <-> %d\n"
+				, ctx->switchdb.collection[i].orig
+				, ctx->switchdb.collection[i].dest);
+		}
+	}
+	else {
+		printf ("Context.switchdb is empty\n");
+	}
+
+	if (ctx->tx.size > 0) {
+		printf ("Context.tx contains:\n");
+		for (size_t i = 0; i < ctx->tx.size; i++) {
+			printf ("- message to %d\n", ctx->tx.messages[i].fd);
+		}
+	}
+	else {
+		printf ("Context.tx is empty\n");
 	}
 }
 

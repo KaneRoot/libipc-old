@@ -13,48 +13,50 @@
 	fprintf(stderr, "error while %s: %s\n", msg, err);\
 }
 
-void non_interactive (char *env[])
+void non_interactive ()
 {
-    struct ipc_message m;
-    memset (&m, 0, sizeof (struct ipc_message));
-	SECURE_DECLARATION(struct ipc_connection_info, srv);
+	SECURE_DECLARATION(struct ipc_message, m);
+	SECURE_DECLARATION(struct ipc_ctx, ctx);
 
     // init service
-	TEST_IPC_Q(ipc_connection (env, &srv, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q(ipc_connection (&ctx, SERVICE_NAME), EXIT_FAILURE);
 
-    printf ("msg to send (%ld): %.*s\n", (ssize_t) strlen(MSG) +1, (int) strlen(MSG), MSG);
+	int server_fd = ctx.pollfd[0].fd;
+
+    printf ("msg for fd %d to send (%ld): %.*s\n"
+    	, server_fd
+    	, (ssize_t) strlen(MSG) +1, (int) strlen(MSG), MSG);
     TEST_IPC_Q(ipc_message_format_data (&m, /* type */ 'a', MSG, (ssize_t) strlen(MSG) +1), EXIT_FAILURE);
-	TEST_IPC_Q(ipc_write (&srv, &m), EXIT_FAILURE);
-	TEST_IPC_Q(ipc_read (&srv, &m), EXIT_FAILURE);
+
+    m.fd = server_fd;
+	TEST_IPC_Q(ipc_write_fd (server_fd, &m), EXIT_FAILURE);
+	TEST_IPC_Q(ipc_read (&ctx, 0 /* only one option */, &m), EXIT_FAILURE);
 
     printf ("msg recv: %s\n", m.payload);
     ipc_message_empty (&m);
 
-	TEST_IPC_Q(ipc_close (&srv), EXIT_FAILURE);
+	TEST_IPC_Q(ipc_close_all (&ctx), EXIT_FAILURE);
+	ipc_ctx_free (&ctx);
 }
 
-void interactive (char *env[])
+#if 0
+void interactive ()
 {
-	SECURE_DECLARATION(struct ipc_connection_info, srv);
-
-    // index and version should be filled
-    srv.index = 0;
-    srv.version = 0;
+	SECURE_DECLARATION(struct ipc_ctx, ctx);
 
     // init service
-	TEST_IPC_Q(ipc_connection (env, &srv, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q(ipc_connection (&ctx, SERVICE_NAME), EXIT_FAILURE);
+
+	int server_fd = ctx.pollfd[0].fd;
 
 	SECURE_DECLARATION(struct ipc_event, event);
-	SECURE_DECLARATION(struct ipc_connection_infos, services);
-
-	TEST_IPC_Q(ipc_add (&services, &srv), EXIT_FAILURE);
 
 	long timer = 10;
 
     while (1) {
         printf ("msg to send: ");
         fflush (stdout);
-		TEST_IPC_Q(ipc_wait_event (&services, NULL, &event, &timer), EXIT_FAILURE);
+		TEST_IPC_Q(ipc_wait_event (&ctx, &event, &timer), EXIT_FAILURE);
 
 		switch (event.type) {
 			case IPC_EVENT_TYPE_TIMER: {
@@ -71,14 +73,16 @@ void interactive (char *env[])
 						ipc_message_empty (m);
 						free (m);
 
-						ipc_connections_free (&services);
+						TEST_IPC_Q(ipc_close_all (&ctx), EXIT_FAILURE);
 
-						TEST_IPC_Q(ipc_close (&srv), EXIT_FAILURE);
+						ipc_ctx_free (&ctx);
 
 						exit (EXIT_SUCCESS);
 					}
 
-					TEST_IPC_Q(ipc_write (&srv, m), EXIT_FAILURE);
+					m->fd = server_fd;
+
+					TEST_IPC_Q(ipc_write (&ctx, m), EXIT_FAILURE);
 				}
 				break;
 			case IPC_EVENT_TYPE_MESSAGE:
@@ -96,16 +100,19 @@ void interactive (char *env[])
 		}
     }
 }
+#endif
 
-int main (int argc, char *argv[], char *env[])
+//int main (int argc, char *argv[])
+int main (void)
 {
-	argc = argc; // warnings
-	argv = argv; // warnings
+	non_interactive ();
 
+#if 0
     if (argc == 1)
-        non_interactive (env);
+        non_interactive ();
     else
-        interactive (env);
+        interactive ();
+#endif
 
     return EXIT_SUCCESS;
 }

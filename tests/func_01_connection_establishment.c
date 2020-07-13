@@ -6,28 +6,30 @@
 
 #define SERVICE_NAME "pong"
 
-int main(int argc, char * argv[], char **env)
+int main(int argc, char * argv[])
 {
 	argc = (int) argc;
 	argv = (char **) argv;
 
 	SECURE_DECLARATION(struct ipc_error, ret);
-	SECURE_DECLARATION(struct ipc_connection_info,service);
+	SECURE_DECLARATION(struct ipc_ctx,   ctx);
 	SECURE_DECLARATION(struct ipc_event, event);
-	
-	ret = ipc_connection (env, &service, SERVICE_NAME);
+
+	ret = ipc_connection (&ctx, SERVICE_NAME);
 	if (ret.error_code != IPC_ERROR_NONE) {
+		printf ("error: %s\n", ipc_errors_get(ret.error_code));
 		return EXIT_FAILURE;
 	}
 
-	// long timer = 10;
+	// int timer = 10000; // 10 seconds
 	// ret = ipc_wait_event (services, struct ipc_event *event, &timer);
 	// if (ret.error_code != IPC_ERROR_NONE) {
 	// 	return EXIT_FAILURE;
 	// }
 
-	ret = ipc_close (&service);
+	ret = ipc_close_all (&ctx);
 	if (ret.error_code != IPC_ERROR_NONE) {
+		printf ("error: %s\n", ipc_errors_get(ret.error_code));
 		return EXIT_FAILURE;
 	}
 

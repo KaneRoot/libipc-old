@@ -42,7 +42,7 @@ void chomp (char *str, size_t len)
 					else
 						connection from the client:
 							1. client sends service name
-							2. networkd establishes a connection to the service
+							2. ipcd establishes a connection to the service
 							3. ack
 				else
 					lolwat shouldn't happen :(
@@ -52,26 +52,26 @@ void chomp (char *str, size_t len)
 
 #define SERVICE_NAME "simpletcp"
 
-struct networkd *ctx;
+struct ipc_ctx *ctx = NULL;
 
 void handle_disconnection (int fd)
 {
 	int delfd;
 
-	delfd = ipc_switching_del (ctx->TCP_TO_IPC, fd);
+	delfd = ipc_switching_del (&ctx->switchdb, fd);
 	if (delfd >= 0) {
 		close (delfd);
-		ipc_del_fd (ctx->clients, delfd);
+		ipc_del_fd (ctx, delfd);
 	}
 
 	close (fd);
-	ipc_del_fd (ctx->clients, fd);
+	ipc_del_fd (ctx, fd);
 
-	// printf ("TCP_TO_IPC\n");
-	ipc_switching_print (ctx->TCP_TO_IPC);
+	// printf ("ctx.switchdb\n");
+	ipc_switching_print (&ctx->switchdb);
 }
 
-void tcp_connection (char **env, int fd)
+void tcp_connection (int fd)
 {
 	SECURE_BUFFER_DECLARATION (char, buf, BUFSIZ);
 
@@ -89,16 +89,15 @@ void tcp_connection (char **env, int fd)
 	// TODO: tests
 	T_PERROR_Q ((send (fd, "OK", 2, 0) <= 0), "sending a message", EXIT_FAILURE);
 
-	SECURE_DECLARATION (struct ipc_connection_info, tcp_to_ipc_ci);
-
-	struct ipc_error ret = ipc_connection (env, &tcp_to_ipc_ci, buf);
+	printf ("connection to %s\n", buf);
+	struct ipc_error ret = ipc_connection_switched (ctx, buf);
 	if (ret.error_code != IPC_ERROR_NONE) {
 		fprintf (stderr, "%s\n", ret.error_message);
 		exit (EXIT_FAILURE);
 	}
 
-	ipc_switching_add (ctx->TCP_TO_IPC, fd, tcp_to_ipc_ci.fd);
-	ipc_add_fd (ctx->clients, tcp_to_ipc_ci.fd);
+	ipc_switching_add (&ctx->switchdb, fd, ctx->pollfd[ctx->size-1].fd);
+	ipc_ctx_fd_type (ctx, fd, IPC_CONNECTION_TYPE_SWITCHED);
 }
 
 int accept_new_client (int serverfd)
@@ -111,13 +110,14 @@ int accept_new_client (int serverfd)
 		accept (serverfd, (struct sockaddr *)&client, &addrlen)) == -1), "accept new client",
 		EXIT_FAILURE);
 
-	// adding a client
-	ipc_add_fd (ctx->clients, sock_fd_client);
+	// adding a client, for now not switched:
+	// tcpd should handle the first message (getting the service name)
+	ipc_add_fd (ctx, sock_fd_client);
 
 	return sock_fd_client;
 }
 
-void main_loop (int argc, char **argv, char **env)
+void main_loop (int argc, char **argv)
 {
 	argc = argc;		// FIXME: useless
 	int serverfd;
@@ -155,80 +155,89 @@ void main_loop (int argc, char **argv, char **env)
 		return;
 	}
 
-	SECURE_BUFFER_HEAP_ALLOCATION_Q (ctx->clients, sizeof (struct ipc_connection_infos),, EXIT_FAILURE);
 	SECURE_DECLARATION (struct ipc_event, event);
 
-	ipc_add_fd (ctx->clients, serverfd);
+	ipc_add_fd (ctx, serverfd);
 
+	int cpt = 0;
+
+	int timer = 10000;
 	while (1) {
 		// ipc_wait_event provides one event at a time
 		// warning: event->m is free'ed if not NULL
-		long timer = 10;
 
-		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event_networkd (ctx->clients, ctx->srv, &event, ctx->TCP_TO_IPC, &timer)
-				, EXIT_FAILURE);
+		ipc_ctx_print (ctx);
+		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (ctx, &event, &timer), EXIT_FAILURE);
 
 		switch (event.type) {
 		case IPC_EVENT_TYPE_TIMER:{
 				printf ("timed out!\n");
-
-				timer = 10;
+				timer = 10000;
 			}
 			break;
+
 		case IPC_EVENT_TYPE_SWITCH:{
-				printf ("switch happened\n");
+				printf ("switch happened, from %d\n", event.origin);
 			}
 			break;
 
 		case IPC_EVENT_TYPE_EXTRA_SOCKET:
 			{
 				// NEW CLIENT
-				if (event.origin->fd == serverfd) {
+				if (event.origin == serverfd) {
 					int sock_fd_client = accept_new_client (serverfd);
-					ctx->cpt++;
-					printf ("TCP connection: %d clients connected\n", ctx->cpt);
+					cpt++;
+					printf ("TCP connection: %d ctx connected\n", cpt);
 					printf ("new TCP client has the fd %d\n", sock_fd_client);
 				}
 				// CLIENT IS TALKING
 				else {
-					tcp_connection (env, event.origin->fd);
+					// Test: if the socket already is in the switch, this means we can just switch the packet.
+					// Is the socket in the switch db?
+					tcp_connection (event.origin);
 				}
 			}
 			break;
 
 		case IPC_EVENT_TYPE_CONNECTION:
 			{
-				ctx->cpt++;
-				printf ("connection: %d clients connected\n", ctx->cpt);
-				printf ("new client has the fd %d\n", (event.origin)->fd);
+				cpt++;
+				printf ("connection: %d ctx connected\n", cpt);
+				printf ("new client has the fd %d\n", event.origin);
 			};
 			break;
 
 		case IPC_EVENT_TYPE_DISCONNECTION:
 			{
-				ctx->cpt--;
-				printf ("disconnection: %d clients remaining\n", ctx->cpt);
-
-				// free the ipc_client structure
-				// if (event.origin != NULL)
-				//      free (event.origin);
+				cpt--;
+				printf ("disconnection: %d ctx remaining\n", cpt);
 			};
 			break;
+
 		case IPC_EVENT_TYPE_MESSAGE:
 			{
 				struct ipc_message *m = event.m;
 				if (m->length > 0) {
 					printf ("message received (type %d): %.*s\n", m->type, m->length, m->payload);
 				}
-
-				TEST_IPC_P (ipc_write (event.origin, m), "server write");
+				// m->fd = 3;
+				TEST_IPC_P (ipc_write (ctx, m), "server write");
 			};
 			break;
-		case IPC_EVENT_TYPE_ERROR:
-			fprintf (stderr, "a problem happened with client %d\n", (event.origin)->fd);
+
+		case IPC_EVENT_TYPE_TX:
+			{
+				printf ("a message was sent\n");
+			}
 			break;
+
+		case IPC_EVENT_TYPE_ERROR:
+			fprintf (stderr, "a problem happened with client %d\n", event.origin);
+			break;
+
 		default:
-			fprintf (stderr, "there must be a problem, event not set\n");
+			fprintf (stderr, "there must be a problem, event not set: %d\n", event.type);
+			exit(1);
 		}
 	}
 
@@ -240,36 +249,22 @@ void exit_program (int signal)
 {
 	printf ("Quitting, signal: %d\n", signal);
 
-	// free remaining clients
-	for (size_t i = 0; i < ctx->clients->size; i++) {
-		struct ipc_connection_info *cli = ctx->clients->cinfos[i];
-		if (cli != NULL) {
-			free (cli);
-		}
-		ctx->clients->cinfos[i] = NULL;
-	}
-
-	ipc_connections_free (ctx->clients);
-
-	// the application will shut down, and close the service
-	TEST_IPC_P (ipc_server_close (ctx->srv), "server close");
+	// Close then free remaining ctx.
+	ipc_close_all (ctx);
+	ipc_ctx_free  (ctx);
 
 	// free, free everything!
-	free (ctx->clients);
-	free (ctx->srv);
-	free (ctx->TCP_TO_IPC->collection);
-	free (ctx->TCP_TO_IPC);
 	free (ctx);
 
 	exit (EXIT_SUCCESS);
 }
 
 /*
- * service ping-pong: send back everything sent by the clients
+ * service ping-pong: send back everything sent by the ctx
  * stop the program on SIG{TERM,INT,ALRM,USR{1,2},HUP} signals
  */
 
-int main (int argc, char *argv[], char **env)
+int main (int argc, char *argv[])
 {
 	// check the number of args on command line
 	if (argc != 2) {
@@ -279,17 +274,15 @@ int main (int argc, char *argv[], char **env)
 
 	printf ("pid = %d\n", getpid ());
 
-	SECURE_BUFFER_HEAP_ALLOCATION_Q (ctx,                         sizeof (struct networkd)           ,, EXIT_FAILURE);
-	SECURE_BUFFER_HEAP_ALLOCATION_Q (ctx->TCP_TO_IPC,             sizeof (struct ipc_switchings)     ,, EXIT_FAILURE);
-	SECURE_BUFFER_HEAP_ALLOCATION_Q (ctx->TCP_TO_IPC->collection, sizeof (struct ipc_switching)      ,, EXIT_FAILURE);
-	SECURE_BUFFER_HEAP_ALLOCATION_Q (ctx->srv,                    sizeof (struct ipc_connection_info),, EXIT_FAILURE);
+	ctx = malloc (sizeof (struct ipc_ctx));
+	memset(ctx, 0, sizeof (struct ipc_ctx));
 
-	struct ipc_error ret = ipc_server_init (env, ctx->srv, SERVICE_NAME);
+	struct ipc_error ret = ipc_server_init (ctx, SERVICE_NAME);
 	if (ret.error_code != IPC_ERROR_NONE) {
 		fprintf (stderr, "%s\n", ret.error_message);
 		return EXIT_FAILURE;
 	}
-	printf ("Listening on [%s].\n", ctx->srv->spath);
+	printf ("Listening on [%s].\n", ctx->cinfos[0].spath);
 
 	printf ("MAIN: server created\n");
 
@@ -301,7 +294,7 @@ int main (int argc, char *argv[], char **env)
 	signal (SIGINT  , exit_program);
 
 	// the service will loop until the end of time, or a signal
-	main_loop (argc, argv, env);
+	main_loop (argc, argv);
 
 	// main_loop should not return
 	return EXIT_FAILURE;

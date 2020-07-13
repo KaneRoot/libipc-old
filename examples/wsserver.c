@@ -19,12 +19,13 @@ void chomp (char *str, ssize_t len)
 	}
 }
 
-struct ipc_connection_info *srv;
+struct ipc_ctx *ctx;
 
-void interactive (char *env[])
+void interactive ()
 {
-	long timer = 10;
+	int timer = 10000; // 10 seconds
 
+	SECURE_DECLARATION (struct ipc_event, event);
 	SECURE_BUFFER_DECLARATION (char, service_name, 100);
 
 	char *sn = getenv ("PATH_TRANSLATED");
@@ -37,21 +38,17 @@ void interactive (char *env[])
 	}
 
 	// init service
-	TEST_IPC_Q (ipc_connection (env, srv, service_name), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (ctx, service_name), EXIT_FAILURE);
 
-	SECURE_DECLARATION (struct ipc_event, event);
-	SECURE_DECLARATION (struct ipc_connection_infos, services);
-
-	ipc_add (&services, srv);
-	ipc_add_fd (&services, 0);	// add STDIN
+	ipc_add_fd (ctx, 0); // add STDIN
 
 	while (1) {
-		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (&services, NULL, &event, &timer), EXIT_FAILURE);
+		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (ctx, &event, &timer), EXIT_FAILURE);
 
 		switch (event.type) {
 		case IPC_EVENT_TYPE_TIMER:{
 				fprintf (stderr, "time up!\n");
-				timer = 10;
+				timer = 10000;
 			};
 			break;
 		case IPC_EVENT_TYPE_EXTRA_SOCKET:
@@ -60,19 +57,19 @@ void interactive (char *env[])
 				SECURE_BUFFER_DECLARATION (char, buf, 4096);
 				ssize_t len;
 
-				len = read (event.origin->fd, buf, 4096);
+				len = read (event.origin, buf, 4096);
 
 				// in case we want to quit the program
 				if (len == 0 || strncmp (buf, "quit", 4) == 0 || strncmp (buf, "exit", 4) == 0) {
 
-					TEST_IPC_Q (ipc_close (srv), EXIT_FAILURE);
+					TEST_IPC_Q (ipc_close_all (ctx), EXIT_FAILURE);
 
-					ipc_connections_free (&services);
+					ipc_ctx_free (ctx);
 
 					exit (EXIT_SUCCESS);
 				}
 				// send the message read on STDIN
-				ssize_t len_sent = write (srv->fd, buf, len);
+				ssize_t len_sent = write (ctx->pollfd[0].fd, buf, len);
 				if (len_sent != len) {
 					fprintf (stderr, "cannot send the message %lu-byte message, sent %lu bytes",
 						 len, len_sent);
@@ -94,6 +91,10 @@ void interactive (char *env[])
 				fflush (stdout);
 			};
 			break;
+		case IPC_EVENT_TYPE_TX: {
+				printf ("Message sent\n");
+			}
+			break;
 		ERROR_CASE (IPC_EVENT_TYPE_DISCONNECTION, "main loop", "disconnection: should not happen");
 		ERROR_CASE (IPC_EVENT_TYPE_NOT_SET      , "main loop", "not set: should not happen");
 		ERROR_CASE (IPC_EVENT_TYPE_CONNECTION   , "main loop", "connection: should not happen");
@@ -104,19 +105,12 @@ void interactive (char *env[])
 	}
 }
 
-int main (int argc, char *argv[], char *env[])
+int main (void)
 {
-	argc = argc;		// warnings
-	argv = argv;		// warnings
+	ctx = malloc (sizeof (struct ipc_ctx));
+	memset (ctx, 0, sizeof (struct ipc_ctx));
 
-	srv = malloc (sizeof (struct ipc_connection_info));
-	memset (srv, 0, sizeof (struct ipc_connection_info));
-
-	// index and version should be filled
-	srv->index = 0;
-	srv->version = 0;
-
-	interactive (env);
+	interactive ();
 
 	return EXIT_SUCCESS;
 }

@@ -12,21 +12,14 @@ static struct ipc_errors_verbose ipc_errors_verbose[] = {
 	{IPC_ERROR_NONE, "no error"}
 	, {IPC_ERROR_CLOSED_RECIPIENT, "closed recipient"}
 
-	, {IPC_ERROR_SERVER_INIT__NO_DIR_CANNOT_CREATE_IT,
-		"ipc_server_init: no directory for ipc and cannot to create it"}
-	, {IPC_ERROR_SERVER_INIT__NON_WRITABLE_DIR, "ipc_server_init: non writable directory for ipc"}
-
 	, {IPC_ERROR_SERVER_INIT__NO_ENVIRONMENT_PARAM, "ipc_server_init: no environment param"}
 	, {IPC_ERROR_SERVER_INIT__NO_SERVICE_PARAM    , "ipc_server_init: no service param"}
 	, {IPC_ERROR_SERVER_INIT__NO_SERVER_NAME_PARAM, "ipc_server_init: no server name param"}
 	, {IPC_ERROR_SERVER_INIT__MALLOC              , "ipc_server_init: error on malloc function"}
 
-	, {IPC_ERROR_CONNECTION__NO_SERVER, "ipc_connection: no server parameter"}
 	, {IPC_ERROR_CONNECTION__NO_SERVICE_NAME, "ipc_connection: no service name parameter"}
 	, {IPC_ERROR_CONNECTION__NO_ENVIRONMENT_PARAM, "ipc_connection: no environment param"}
 	, {IPC_ERROR_USOCK_CONNECT__CONNECT, "ipc_connection: error on the connect function"}
-
-	, {IPC_ERROR_CONNECTION_GEN__NO_CINFO, "ipc_connection_gen: no cinfo"}
 
 	, {IPC_ERROR_ACCEPT__NO_SERVICE_PARAM, "ipc_accept: no service param"}
 	, {IPC_ERROR_ACCEPT__NO_CLIENT_PARAM , "ipc_accept: no client param"}
@@ -36,7 +29,7 @@ static struct ipc_errors_verbose ipc_errors_verbose[] = {
 	, {IPC_ERROR_PROVIDE_FD__SENDMSG    , "ipc_provide_fd: sendmsg function"}
 
 	, {IPC_ERROR_WRITE__NO_MESSAGE_PARAM, "ipc_write: no message param"}
-	, {IPC_ERROR_WRITE__NOT_ENOUGH_DATA , "ipc_write: no enough data sent"}
+	, {IPC_ERROR_WRITE_FD__NOT_ENOUGH_DATA , "ipc_write: no enough data sent"}
 	, {IPC_ERROR_READ__NO_MESSAGE_PARAM , "ipc_read: no message param"}
 
 	, {IPC_ERROR_HANDLE_MESSAGE__NOT_ENOUGH_MEMORY     , "handle_message: not enough memory"}
@@ -47,8 +40,8 @@ static struct ipc_errors_verbose ipc_errors_verbose[] = {
 	, {IPC_ERROR_WAIT_EVENT__NO_CLIENTS_PARAM, "ipc_wait_event: no clients param"}
 	, {IPC_ERROR_WAIT_EVENT__NO_EVENT_PARAM  , "ipc_wait_event: no event param"}
 
-	, {IPC_ERROR_CONTACT_NETWORKD__NO_SERVICE_NAME_PARAM, "ipc_contact_networkd: no service name param"}
-	, {IPC_ERROR_CONTACT_NETWORKD__NO_SERVER_PARAM      , "ipc_contact_networkd: no server param"}
+	, {IPC_ERROR_CONTACT_IPCD__NO_SERVICE_NAME_PARAM, "ipc_contact_ipcd: no service name param"}
+	, {IPC_ERROR_CONTACT_IPCD__NO_SERVER_PARAM      , "ipc_contact_ipcd: no server param"}
 
 	, {IPC_ERROR_HANDLE_NEW_CONNECTION__MALLOC, "ipc_handle_new_connection: error on malloc function"}
 
@@ -127,6 +120,29 @@ static struct ipc_errors_verbose ipc_errors_verbose[] = {
 
 	, {IPC_ERROR_DIR_SETUP__DIRECTORY_NOT_WRITABLE, "directory_setup_: directory not writable"}
 	, {IPC_ERROR_DIRECTORY_SETUP__PATH_PARAM      , "directory_setup_: no path param"}
+
+	, {IPC_ERROR_SERVER_INIT__NOT_ENOUGH_MEMORY,            "IPC_ERROR_SERVER_INIT__NOT_ENOUGH_MEMORY"}
+	, {IPC_ERROR_CONNECTION__NOT_ENOUGH_MEMORY,             "IPC_ERROR_CONNECTION__NOT_ENOUGH_MEMORY"}
+	, {IPC_ERROR_CTX_INIT__NO_CONTEXT_PARAM,                "IPC_ERROR_CTX_INIT__NO_CONTEXT_PARAM"}
+	, {IPC_ERROR_CTX_INIT__CONTEXT_ALREADY_INIT,            "IPC_ERROR_CTX_INIT__CONTEXT_ALREADY_INIT"}
+	, {IPC_ERROR_ADD__MALLOC_POLLFD,                        "IPC_ERROR_ADD__MALLOC_POLLFD"}
+	, {IPC_ERROR_ADD_MESSAGE_TO_SEND__EMPTY_LIST,           "IPC_ERROR_ADD_MESSAGE_TO_SEND__EMPTY_LIST"}
+	, {IPC_ERROR_ADD_MESSAGE_TO_SEND__MALLOC,               "IPC_ERROR_ADD_MESSAGE_TO_SEND__MALLOC"}
+	, {IPC_ERROR_ADD_MESSAGE_TO_SEND__NO_PARAM_MESSAGE,     "IPC_ERROR_ADD_MESSAGE_TO_SEND__NO_PARAM_MESSAGE"}
+	, {IPC_ERROR_ADD_MESSAGE_TO_SEND__NO_PARAM_MESSAGES,    "IPC_ERROR_ADD_MESSAGE_TO_SEND__NO_PARAM_MESSAGES"}
+	, {IPC_ERROR_CONNECTION__NO_CTX,                        "IPC_ERROR_CONNECTION__NO_CTX"}
+	, {IPC_ERROR_CTX_INIT__MALLOC_CTX,                      "IPC_ERROR_CTX_INIT__MALLOC_CTX"}
+	, {IPC_ERROR_CTX_INIT__MALLOC_POLLFD,                   "IPC_ERROR_CTX_INIT__MALLOC_POLLFD"}
+	, {IPC_ERROR_CONTACT_IPCD__NO_FD_PARAM,             "IPC_ERROR_CONTACT_IPCD__NO_FD_PARAM"}
+	, {IPC_ERROR_HANDLE_NEW_CONNECTION__INCONSISTENT_INDEX, "IPC_ERROR_HANDLE_NEW_CONNECTION__INCONSISTENT_INDEX"}
+	, {IPC_ERROR_DEL_MESSAGE_TO_SEND__NO_PARAM_MESSAGES,    "IPC_ERROR_DEL_MESSAGE_TO_SEND__NO_PARAM_MESSAGES"}
+	, {IPC_ERROR_MESSAGE_DEL__INDEX_ERROR,                  "IPC_ERROR_MESSAGE_DEL__INDEX_ERROR"}
+	, {IPC_ERROR_MESSAGE_DEL__EMPTY_LIST,                   "IPC_ERROR_MESSAGE_DEL__EMPTY_LIST"}
+	, {IPC_ERROR_ADD__NO_PARAM_POLLFD, "IPC_ERROR_ADD__NO_PARAM_POLLFD"}
+	, {IPC_ERROR_WRITE__FD_NOT_FOUND, "IPC_ERROR_WRITE__FD_NOT_FOUND"}
+	, {IPC_ERROR_FD_SWITCHING__NO_FD_RECORD, "IPC_ERROR_FD_SWITCHING__NO_FD_RECORD"}
+	, {IPC_ERROR_CLOSE_ALL__NO_CTX_PARAM, "IPC_ERROR_CLOSE_ALL__NO_CTX_PARAM" }
+	, {IPC_ERROR_CLOSE__NO_CTX_PARAM, "IPC_ERROR_CLOSE__NO_CTX_PARAM"}
 };
 
 const char *ipc_errors_get (enum ipc_error_code e)

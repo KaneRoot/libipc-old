@@ -9,6 +9,8 @@
 #include <errno.h>		// error numbers
 #include <time.h>
 
+#include <poll.h>
+
 /***
  * global defaults
  **/
@@ -73,13 +75,23 @@ enum msg_types {
 enum ipc_event_type {
 	IPC_EVENT_TYPE_NOT_SET         = 0
 	, IPC_EVENT_TYPE_ERROR         = 1
-	, IPC_EVENT_TYPE_EXTRA_SOCKET  = 2
-	, IPC_EVENT_TYPE_SWITCH        = 3
-	, IPC_EVENT_TYPE_CONNECTION    = 4
-	, IPC_EVENT_TYPE_DISCONNECTION = 5
-	, IPC_EVENT_TYPE_MESSAGE       = 6
-	, IPC_EVENT_TYPE_LOOKUP        = 7
-	, IPC_EVENT_TYPE_TIMER         = 8
+	, IPC_EVENT_TYPE_EXTRA_SOCKET  = 2 // Message received from a non IPC socket.
+	, IPC_EVENT_TYPE_SWITCH        = 3 // Message to send to a corresponding fd.
+	, IPC_EVENT_TYPE_CONNECTION    = 4 // New user.
+	, IPC_EVENT_TYPE_DISCONNECTION = 5 // User disconnected.
+	, IPC_EVENT_TYPE_MESSAGE       = 6 // New message.
+	, IPC_EVENT_TYPE_LOOKUP        = 7 // Client asking for a service through ipcd.
+	, IPC_EVENT_TYPE_TIMER         = 8 // Timeout in the poll(2) function.
+	, IPC_EVENT_TYPE_TX            = 9 // Message sent.
+};
+
+// For IO callbacks (switching).
+enum ipccb {
+	  IPC_CB_NO_ERROR         = 0 // No error. A message was generated.
+	, IPC_CB_FD_CLOSING       = 1 // The fd is closing.
+	, IPC_CB_FD_ERROR         = 2 // Generic error.
+	, IPC_CB_PARSING_ERROR    = 3 // The message was read but with errors.
+	, IPC_CB_IGNORE           = 4 // The message should be ignored (protocol specific).
 };
 
 /**
@@ -88,8 +100,6 @@ enum ipc_event_type {
  */
 enum ipc_error_code {
 	IPC_ERROR_NONE                                      = 0
-	, IPC_ERROR_SERVER_INIT__NON_WRITABLE_DIR           = 1
-	, IPC_ERROR_SERVER_INIT__NO_DIR_CANNOT_CREATE_IT    = 2
 	, IPC_ERROR_HANDLE_MESSAGE__NOT_ENOUGH_MEMORY       = 3
 	, IPC_ERROR_CLOSED_RECIPIENT                        = 4
 	, IPC_ERROR_SERVICE_PATH__NO_PATH                   = 5
@@ -99,12 +109,10 @@ enum ipc_error_code {
 	, IPC_ERROR_SERVER_INIT__NO_SERVER_NAME_PARAM       = 9
 	, IPC_ERROR_SERVER_INIT__MALLOC                     = 10
 	, IPC_ERROR_WRITE__NO_MESSAGE_PARAM                 = 11
-	, IPC_ERROR_WRITE__NOT_ENOUGH_DATA                  = 12
+	, IPC_ERROR_WRITE_FD__NOT_ENOUGH_DATA               = 12
 	, IPC_ERROR_READ__NO_MESSAGE_PARAM                  = 13
-	, IPC_ERROR_CONNECTION__NO_SERVER                   = 14
 	, IPC_ERROR_CONNECTION__NO_SERVICE_NAME             = 15
 	, IPC_ERROR_CONNECTION__NO_ENVIRONMENT_PARAM        = 16
-	, IPC_ERROR_CONNECTION_GEN__NO_CINFO                = 17
 	, IPC_ERROR_ACCEPT__NO_SERVICE_PARAM                = 18
 	, IPC_ERROR_ACCEPT__NO_CLIENT_PARAM                 = 19
 	, IPC_ERROR_HANDLE_NEW_CONNECTION__NO_CINFO_PARAM   = 20
@@ -123,8 +131,8 @@ enum ipc_error_code {
 	, IPC_ERROR_DEL_FD__EMPTIED_LIST                    = 33
 	, IPC_ERROR_DEL_FD__EMPTY_LIST                      = 34
 	, IPC_ERROR_DEL_FD__CANNOT_FIND_CLIENT              = 35
-	, IPC_ERROR_CONTACT_NETWORKD__NO_SERVICE_NAME_PARAM = 36
-	, IPC_ERROR_CONTACT_NETWORKD__NO_SERVER_PARAM       = 37
+	, IPC_ERROR_CONTACT_IPCD__NO_SERVICE_NAME_PARAM = 36
+	, IPC_ERROR_CONTACT_IPCD__NO_SERVER_PARAM       = 37
 	, IPC_ERROR_DEL__EMPTY_LIST                         = 38
 	, IPC_ERROR_DEL__EMPTIED_LIST                       = 39
 	, IPC_ERROR_DEL__CANNOT_FIND_CLIENT                 = 40
@@ -173,6 +181,31 @@ enum ipc_error_code {
 	, IPC_ERROR_DIR_SETUP__NOT_A_DIRECTORY              = 83
 	, IPC_ERROR_DIR_SETUP__DIRECTORY_NOT_WRITABLE       = 84
 	, IPC_ERROR_DIRECTORY_SETUP__PATH_PARAM             = 85
+
+	, IPC_ERROR_SERVER_INIT__NOT_ENOUGH_MEMORY            = 86
+	, IPC_ERROR_CONNECTION__NOT_ENOUGH_MEMORY             = 87
+	, IPC_ERROR_CTX_INIT__NO_CONTEXT_PARAM                = 88
+	, IPC_ERROR_CTX_INIT__CONTEXT_ALREADY_INIT            = 89
+	, IPC_ERROR_ADD__MALLOC_POLLFD                        = 90
+	, IPC_ERROR_ADD_MESSAGE_TO_SEND__EMPTY_LIST           = 91
+	, IPC_ERROR_ADD_MESSAGE_TO_SEND__MALLOC               = 92
+	, IPC_ERROR_ADD_MESSAGE_TO_SEND__NO_PARAM_MESSAGE     = 93
+	, IPC_ERROR_ADD_MESSAGE_TO_SEND__NO_PARAM_MESSAGES    = 94
+	, IPC_ERROR_CONNECTION__NO_CTX                        = 95
+	, IPC_ERROR_CTX_INIT__MALLOC_CTX                      = 96
+	, IPC_ERROR_CTX_INIT__MALLOC_POLLFD                   = 97
+	, IPC_ERROR_CONTACT_IPCD__NO_FD_PARAM                 = 98
+	, IPC_ERROR_HANDLE_NEW_CONNECTION__INCONSISTENT_INDEX = 99
+	, IPC_ERROR_DEL_MESSAGE_TO_SEND__NO_PARAM_MESSAGES    = 100
+	, IPC_ERROR_MESSAGE_DEL__INDEX_ERROR                  = 101
+	, IPC_ERROR_MESSAGE_DEL__EMPTY_LIST                   = 102
+	, IPC_ERROR_ADD__NO_PARAM_POLLFD                      = 103
+	, IPC_ERROR_WRITE__FD_NOT_FOUND                       = 104
+	, IPC_ERROR_ADD__NOT_ENOUGH_MEMORY                    = 105
+	, IPC_ERROR_WAIT_EVENT__POLL                          = 106
+	, IPC_ERROR_FD_SWITCHING__NO_FD_RECORD                = 107
+	, IPC_ERROR_CLOSE_ALL__NO_CTX_PARAM                   = 108
+	, IPC_ERROR_CLOSE__NO_CTX_PARAM                       = 109
 };
 
 struct ipc_error {
@@ -186,45 +219,98 @@ struct ipc_error {
 // with the error_message string in the ipc_error structure.
 const char *ipc_errors_get (enum ipc_error_code e);
 
+
+enum ipc_connection_type {
+	IPC_CONNECTION_TYPE_IPC        = 0
+	, IPC_CONNECTION_TYPE_EXTERNAL = 1
+	  /** Messages received = new connections. */
+	, IPC_CONNECTION_TYPE_SERVER   = 2
+	  /** IO operations should go through registered callbacks. */
+	, IPC_CONNECTION_TYPE_SWITCHED = 3
+};
+
 struct ipc_connection_info {
-	uint32_t version;
-	uint32_t index;
-	int32_t fd;
-	char type;   // server, client, arbitrary fd
+	enum ipc_connection_type type;
 	char *spath; // max size: PATH_MAX
 };
 
-struct ipc_connection_infos {
-	struct ipc_connection_info **cinfos;
+struct ipc_message {
+	char type;        // Internal message type.
+	char user_type;   // User-defined message type.
+	int fd;           // File descriptor concerned about this message.
+	uint32_t length;  // Payload length.
+	char *payload;
+};
+
+struct ipc_messages {
+	struct ipc_message *messages;
 	size_t size;
 };
 
-struct ipc_message {
-	char type;
-	char user_type;
-	uint32_t length;
-	char *payload;
+struct ipc_switching {
+	int orig;
+	int dest;
+	enum ipccb (*orig_in)  (int origin_fd, struct ipc_message *m);
+	enum ipccb (*orig_out) (int origin_fd, struct ipc_message *m);
+	enum ipccb (*dest_in)  (int origin_fd, struct ipc_message *m);
+	enum ipccb (*dest_out) (int origin_fd, struct ipc_message *m);
+};
+
+struct ipc_switchings {
+	struct ipc_switching *collection;
+	size_t size;
+};
+
+void ipc_message_copy (struct ipc_message *m
+	, uint32_t fd
+	, uint8_t type
+	, uint8_t utype
+	, char *payload
+	, uint32_t paylen);
+struct ipc_error ipc_messages_del  (struct ipc_messages *messages, uint32_t index);
+
+/**
+ * Context of the whole networking state.
+ */
+struct ipc_ctx {
+	/**
+	 * Keep track of connections.
+	 */
+	struct ipc_connection_info *cinfos;
+	/**
+	 * List of "pollfd" structures within cinfos, so we can pass it to poll(2).
+	 */
+	struct pollfd              *pollfd;
+	/**
+	 * Size of the connection list.
+	 */
+	size_t size;
+	/**
+	 * List of messages to send, once the fd are available.
+	 */
+	struct ipc_messages tx;
+	/**
+	 * Relations between fd.
+	 */
+	struct ipc_switchings switchdb;
 };
 
 struct ipc_event {
 	enum ipc_event_type type;
-	struct ipc_connection_info *origin;
-	void *m;  // message pointer
+	uint32_t index;
+	int      origin;
+	void     *m;  // message pointer
 };
 
 /***
  * ipc event macros
  **/
 
-#define IPC_EVENT_SET(pevent,type_,message_,origin_) {\
+#define IPC_EVENT_SET(pevent,type_,index_, origin_fd_,message_) {\
 	pevent->type = type_; \
+	pevent->index = index_; \
+	pevent->origin = origin_fd_; \
 	pevent->m = message_; \
-	pevent->origin = origin_; \
-};
-
-enum ipc_connection_types {
-	IPC_CONNECTION_TYPE_IPC        = 0
-	, IPC_CONNECTION_TYPE_EXTERNAL = 1
 };
 
 #define IPC_EVENT_CLEAN(pevent) {\
@@ -240,35 +326,32 @@ enum ipc_connection_types {
  * main public functions
  **/
 
-struct ipc_error ipc_server_init (char **env, struct ipc_connection_info *srv, const char *sname);
-struct ipc_error ipc_connection  (char **env, struct ipc_connection_info *srv, const char *sname);
+struct ipc_error ipc_wait_event (struct ipc_ctx *, struct ipc_event *, int *timer);
 
-struct ipc_error ipc_server_close (struct ipc_connection_info *srv);
-struct ipc_error ipc_close        (struct ipc_connection_info *p);
+struct ipc_error ipc_server_init (struct ipc_ctx *ctx, const char *sname);
+struct ipc_error ipc_connection  (struct ipc_ctx *ctx, const char *sname);
+struct ipc_error ipc_connection_switched (struct ipc_ctx *ctx, const char *sname, int clientfd, int *serverfd);
 
-struct ipc_error ipc_read  (const struct ipc_connection_info *, struct ipc_message *m);
-struct ipc_error ipc_write (const struct ipc_connection_info *, const struct ipc_message *m);
+struct ipc_error ipc_close     (struct ipc_ctx *ctx, uint32_t index);
+struct ipc_error ipc_close_all (struct ipc_ctx *ctx);
 
-struct ipc_error ipc_wait_event (struct ipc_connection_infos *clients
-	, struct ipc_connection_info *srv
-	, struct ipc_event *event, double *timer);
+void ipc_ctx_free (struct ipc_ctx *ctx);
+
+struct ipc_error ipc_read  (const struct ipc_ctx *, uint32_t index, struct ipc_message *m);
+struct ipc_error ipc_write (struct ipc_ctx *, const struct ipc_message *m);
+
+struct ipc_error fd_switching_read  (struct ipc_event *event, struct ipc_ctx *ctx, int index);
+struct ipc_error fd_switching_write (struct ipc_event *event, struct ipc_ctx *ctx, int index);
 
 // store and remove only pointers on allocated structures
-struct ipc_error ipc_add (struct ipc_connection_infos *, struct ipc_connection_info *);
-struct ipc_error ipc_del (struct ipc_connection_infos *, struct ipc_connection_info *);
+struct ipc_error ipc_add (struct ipc_ctx *, struct ipc_connection_info *, struct pollfd *);
+struct ipc_error ipc_del (struct ipc_ctx *, uint32_t index);
 
 // add an arbitrary file descriptor to read
-struct ipc_error ipc_add_fd (struct ipc_connection_infos *cinfos, int fd);
-struct ipc_error ipc_del_fd (struct ipc_connection_infos *cinfos, int fd);
-
-void ipc_connections_free (struct ipc_connection_infos *);
-
-// create the client service structure
-struct ipc_error ipc_connection_gen (struct ipc_connection_info *cinfo
-	, uint32_t index, uint32_t version
-	, int fd, char type);
-
-void ipc_connections_close (struct ipc_connection_infos *cinfos);
+struct ipc_error ipc_add_fd (struct ipc_ctx *ctx, int fd);
+// add a switched file descriptor to read
+struct ipc_error ipc_add_fd_switched (struct ipc_ctx *ctx, int fd);
+struct ipc_error ipc_del_fd (struct ipc_ctx *ctx, int fd);
 
 /***
  * message functions
@@ -286,6 +369,9 @@ struct ipc_error ipc_message_format_data (struct ipc_message *m, char utype, con
 struct ipc_error ipc_message_format_server_close (struct ipc_message *m);
 struct ipc_error ipc_message_empty (struct ipc_message *m);
 
+struct ipc_error ipc_messages_add (struct ipc_messages *, const struct ipc_message *);
+void ipc_messages_free (struct ipc_messages *);
+
 // Switch cases macros
 // print on error
 #define ERROR_CASE(e,f,m) case e : { fprintf (stderr, "function %s: %s", f, m); } break;
@@ -294,42 +380,37 @@ struct ipc_error ipc_message_empty (struct ipc_message *m);
  * non public functions
  **/
 
-void ipc_connection_print  (struct ipc_connection_info  *cinfo);
-void ipc_connections_print (struct ipc_connection_infos *cinfos);
+struct ipc_error ipc_write_fd (int fd, const struct ipc_message *m);
+struct ipc_error ipc_ctx_init (struct ipc_ctx **);
+struct ipc_error ipc_ctx_new_alloc (struct ipc_ctx *ctx);
+struct ipc_error service_path (char *path, const char *sname);
+struct ipc_error handle_writing_message (struct ipc_event *event, struct ipc_ctx *ctx, uint32_t index);
 
-struct ipc_error ipc_accept           (struct ipc_connection_info *srv, struct ipc_connection_info *p);
-struct ipc_error ipc_contact_networkd (struct ipc_connection_info *srv, const char *sname);
-struct ipc_error service_path         (char *path, const char *sname, int32_t index, int32_t version);
+void ipc_ctx_print (struct ipc_ctx *ctx);
+
+// Last parameter is the index for the server fd in the context structure.
+struct ipc_error ipc_accept_add       (struct ipc_event *event, struct ipc_ctx *ctx, uint32_t index);
+struct ipc_error ipc_contact_ipcd (int *pfd, const char *sname);
+struct ipc_error service_path         (char *path, const char *sname);
 
 /***
- * networkd enumerations, structures and functions
+ * ipcd enumerations, structures and functions
  **/
 
-struct ipc_switching {
-	int orig;
-	int dest;
-};
-
-struct ipc_switchings {
-	struct ipc_switching *collection;
-	size_t size;
-};
-
-struct networkd {
-	int cpt;
-	struct ipc_connection_info *srv;
-	struct ipc_connection_infos *clients;
-	struct ipc_switchings *TCP_TO_IPC;
-};
-
-struct ipc_error ipc_wait_event_networkd (struct ipc_connection_infos *cinfos
-	, struct ipc_connection_info *cinfo  // cinfo is NULL for clients
-	, struct ipc_event *event, struct ipc_switchings *switchdb, double *timer);
-
+void ipc_ctx_switching_add (struct ipc_ctx *ctx, int orig, int dest);
 void ipc_switching_add (struct ipc_switchings *is, int orig, int dest);
 int ipc_switching_del (struct ipc_switchings *is, int fd);
 int ipc_switching_get (struct ipc_switchings *is, int fd);
 void ipc_switching_free (struct ipc_switchings *is);
+void ipc_switching_callbacks_ (struct ipc_ctx *ctx, int fd
+	, enum ipccb (*cb_in )(int fd, struct ipc_message *m));
+void ipc_switching_callbacks (
+	  struct ipc_ctx *ctx
+	, int fd
+	, enum ipccb (*cb_in )(int fd, struct ipc_message *m)
+	, enum ipccb (*cb_out)(int fd, struct ipc_message *m));
+
+int ipc_ctx_fd_type (struct ipc_ctx *ctx, int fd, enum ipc_connection_type type);
 
 void ipc_switching_print (struct ipc_switchings *is);
 

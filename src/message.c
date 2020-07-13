@@ -145,3 +145,87 @@ struct ipc_error ipc_message_empty (struct ipc_message *m)
 
 	IPC_RETURN_NO_ERROR;
 }
+
+// store and remove only pointers on allocated structures
+struct ipc_error ipc_messages_add  (struct ipc_messages *messages, const struct ipc_message *message)
+{
+	T_R ((messages == NULL), IPC_ERROR_ADD_MESSAGE_TO_SEND__NO_PARAM_MESSAGES);
+	T_R ((message  == NULL), IPC_ERROR_ADD_MESSAGE_TO_SEND__NO_PARAM_MESSAGE);
+
+	messages->size++;
+	if (messages->size == 1 && messages->messages == NULL) {
+		// first allocation
+		SECURE_BUFFER_HEAP_ALLOCATION_R (messages->messages, sizeof (struct ipc_message),,
+						IPC_ERROR_ADD_MESSAGE_TO_SEND__MALLOC);
+	} else {
+		messages->messages = realloc (messages->messages, sizeof (struct ipc_message) * messages->size);
+	}
+
+	T_R ((messages->messages == NULL), IPC_ERROR_ADD_MESSAGE_TO_SEND__EMPTY_LIST);
+
+	// DEEP COPY.
+	messages->messages[messages->size -1] = *message;
+	if (message->length > 0 && message->payload != NULL) {
+		messages->messages[messages->size -1].payload = malloc(message->length * sizeof (char));
+		strncpy(messages->messages[messages->size -1].payload, message->payload, message->length);
+	}
+	else {
+		messages->messages[messages->size -1].payload = NULL;
+	}
+
+	IPC_RETURN_NO_ERROR;
+}
+
+// Remove only pointers on allocated structures.
+struct ipc_error ipc_messages_del  (struct ipc_messages *messages, uint32_t index)
+{
+	T_R ((messages == NULL), IPC_ERROR_DEL_MESSAGE_TO_SEND__NO_PARAM_MESSAGES);
+	T_R ((messages->size == 0 || index >= messages->size), IPC_ERROR_MESSAGE_DEL__INDEX_ERROR);
+
+	// NOT A DEEP COPY.
+	messages->size--;
+	if (messages->size == 0) {
+		free (messages->messages);
+		messages->messages = NULL;
+	}
+	else {
+		messages->messages[index] = messages->messages[messages->size];
+		messages->messages = realloc (messages->messages, sizeof (struct ipc_message) * messages->size);
+		T_R ((messages->messages == NULL), IPC_ERROR_MESSAGE_DEL__EMPTY_LIST);
+	}
+
+	IPC_RETURN_NO_ERROR;
+}
+
+void ipc_message_copy (struct ipc_message *m
+	, uint32_t fd
+	, uint8_t type
+	, uint8_t utype
+	, char *payload
+	, uint32_t paylen)
+{
+	// printf("starting the message copy\n");
+	m->fd = fd;
+	m->type = type;
+	m->user_type = utype;
+	m->length = paylen;
+	if (m->payload != NULL) {
+		free(m->payload);
+	}
+	// printf("BEFORE THE PAYLOAD COPY\n");
+	m->payload = malloc(sizeof(char) * paylen);
+	memcpy(m->payload, payload, paylen);
+	// printf("PAYLOAD COPY DONE\n");
+}
+
+void ipc_messages_free (struct ipc_messages *messages)
+{
+	if (messages != NULL)
+	{
+		if (messages->messages != NULL)
+		{
+			free(messages->messages);
+			messages->messages = 0;
+		}
+	}
+}

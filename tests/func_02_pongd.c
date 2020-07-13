@@ -14,71 +14,67 @@
 
 int cpt = 0;
 
-struct ipc_connection_info *srv = 0;
-struct ipc_connection_infos *clients;
+struct ipc_ctx *ctx;
 
 
 void main_loop ()
 {
 	SECURE_DECLARATION(struct ipc_error, ret);
+	SECURE_DECLARATION(struct ipc_event, event);
 
-	clients = malloc (sizeof (struct ipc_connection_infos));
-	memset(clients, 0, sizeof(struct ipc_connection_infos));
-
-	SECURE_DECLARATION(struct ipc_event,event);
-
-	long timer = 10;
+	int timer = 10000;
 
     while(1) {
 		// ipc_wait_event provides one event at a time
 		// warning: event->m is free'ed if not NULL
-		ret = ipc_wait_event (clients, srv, &event, &timer);
+		ret = ipc_wait_event (ctx, &event, &timer);
 		if (ret.error_code != IPC_ERROR_NONE && ret.error_code != IPC_ERROR_CLOSED_RECIPIENT) {
 			PRINTERR(ret,"service poll event");
 
 			// the application will shut down, and close the service
-			TEST_IPC_Q(ipc_server_close (srv), EXIT_FAILURE);
+			TEST_IPC_Q(ipc_close_all (ctx), EXIT_FAILURE);
 			exit (EXIT_FAILURE);
 		}
 
 		switch (event.type) {
 			case IPC_EVENT_TYPE_TIMER: {
 					fprintf(stderr, "time up!\n");
-					timer = 10;
+					timer = 10000;
 				};
 				break;
 			case IPC_EVENT_TYPE_CONNECTION: {
 					cpt++;
-					printf ("connection: %d clients connected\n", cpt);
-					printf ("new client has the fd %d\n", ((struct ipc_connection_info*) event.origin)->fd);
+					// printf ("new connection (fd %d): %d ctx connected\n", event.origin, cpt);
 				};
 				break;
 			case IPC_EVENT_TYPE_DISCONNECTION:
 				{
 					cpt--;
-					printf ("disconnection: %d clients remaining\n", cpt);
-
-					// free the ipc_connection_info structure
-					free (event.origin);
+					// printf ("disconnection (fd %d): %d clients remaining\n", event.origin, cpt);
 				};
 				break;
 			case IPC_EVENT_TYPE_MESSAGE:
 			   	{
 					struct ipc_message *m = event.m;
 					if (m->length > 0) {
-						printf ("message received (type %d): %.*s\n", m->type, m->length, m->payload);
+						// printf ("message received (type %d): %.*s\n", m->type, m->length, m->payload);
 					}
 
-					ret = ipc_write (event.origin, m);
+					m->fd = event.origin;
+					ret = ipc_write (ctx, m);
 					if (ret.error_code != IPC_ERROR_NONE) {
 						PRINTERR(ret,"server write");
 					}
 				};
 				break;
+			case IPC_EVENT_TYPE_TX:
+				{
+					// printf ("a message was sent\n");
+				}
+				break;
 			case IPC_EVENT_TYPE_ERROR:
 			   	{
-					fprintf (stderr, "a problem happened with client %d\n"
-							, ((struct ipc_connection_info*) event.origin)->fd);
+					fprintf (stderr, "a problem happened with client %d\n", event.origin);
 				};
 				break;
 			default :
@@ -97,48 +93,34 @@ void exit_program(int signal)
 {
 	printf("Quitting, signal: %d\n", signal);
 
-	// free remaining clients
-	for (size_t i = 0; i < clients->size ; i++) {
-		struct ipc_connection_info *cli = clients->cinfos[i];
-		if (cli != NULL) {
-			free (cli);
-		}
-		clients->cinfos[i] = NULL;
-	}
-
-	ipc_connections_free (clients);
-	free (clients);
-
-
     // the application will shut down, and close the service
-	TEST_IPC_Q(ipc_server_close (srv), EXIT_FAILURE);
-	free (srv);
+	TEST_IPC_Q(ipc_close_all (ctx), EXIT_FAILURE);
+
+	// free remaining ctx
+	ipc_ctx_free (ctx);
+	free (ctx);
 
 	exit(EXIT_SUCCESS);
 }
 
 /*
- * service ping-pong: send back everything sent by the clients
+ * service ping-pong: send back everything sent by the ctx
  * stop the program on SIG{TERM,INT,ALRM,USR{1,2},HUP} signals
  */
 
-int main(int argc, char * argv[], char **env)
+int main(void)
 {
-	argc = argc; // warnings
-	argv = argv; // warnings
-
 	printf ("pid = %d\n", getpid ());
 
-	srv = malloc (sizeof (struct ipc_connection_info));
-	if (srv == NULL) {
+	ctx = malloc (sizeof (struct ipc_ctx));
+	if (ctx == NULL) {
 		exit (1);
 	}
-    memset (srv, 0, sizeof (struct ipc_connection_info));
-    srv->index = 0;
-    srv->version = 0;
+    memset (ctx, 0, sizeof (struct ipc_ctx));
 
-	TEST_IPC_Q(ipc_server_init (env, srv, PONGD_SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q(ipc_server_init (ctx, PONGD_SERVICE_NAME), EXIT_FAILURE);
 
+	struct ipc_connection_info * srv = &ctx->cinfos[0];
     printf ("Listening on %s.\n", srv->spath);
 
     printf("MAIN: server created\n" );

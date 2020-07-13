@@ -34,17 +34,17 @@ _enum ipc_errors_ **ipc_accept** (*struct ipc_connection_info* \*srv, *struct ip
 
 _enum ipc_errors_ **ipc_read** (*const struct ipc_connection_info* \*, *struct ipc_message* \*m);++
 _enum ipc_errors_ **ipc_write** (*const struct ipc_connection_info* \*, *const struct ipc_message* \*m);++
-_enum ipc_errors_ **ipc_wait_event** (*struct ipc_connection_infos* \*clients, *struct ipc_connection_info* \*srv, *struct ipc_event* \*event);
+_enum ipc_errors_ **ipc_wait_event** (*struct ipc_ctx* \*clients, *struct ipc_connection_info* \*srv, *struct ipc_event* \*event);
 
 
 // store and remove only pointers on allocated structures
 
-_enum ipc_errors_ **ipc_add** (*struct ipc_connection_infos* \*cinfos, *struct ipc_connection_info* \*cinfo);++
-_enum ipc_errors_ **ipc_del** (*struct ipc_connection_infos* \*cinfos, *struct ipc_connection_info* \*cinfo);
+_enum ipc_errors_ **ipc_add** (*struct ipc_ctx* \*cinfos, *struct ipc_connection_info* \*cinfo);++
+_enum ipc_errors_ **ipc_del** (*struct ipc_ctx* \*cinfos, *struct ipc_connection_info* \*cinfo);
 
 // add an arbitrary file descriptor to read
 
-_enum ipc_errors_ **ipc_add_fd** (*struct ipc_connection_infos* \*cinfos, *int* fd);
+_enum ipc_errors_ **ipc_add_fd** (*struct ipc_ctx* \*cinfos, *int* fd);
 
 
 ## Message functions
@@ -75,7 +75,7 @@ _enum ipc_errors_ **ipc_message_empty** (*struct ipc_message* \*m);
 		char *spath; // max size: PATH_MAX, used to store unix socket path
 	};
 
-	struct ipc_connection_infos {
+	struct ipc_ctx {
 		struct ipc_connection_info ** cinfos;
 		int32_t size;
 	};
@@ -106,7 +106,7 @@ _enum ipc_errors_ **ipc_message_empty** (*struct ipc_message* \*m);
 
 Function **ipc_wait_event** returns an *event type* structure.\
 The event may be a (dis)connection, received data or an error.\
-It also can be *IPC_EVENT_TYPE_EXTRA_SOCKET* since an arbitrary file descriptor can be added to the *ipc_connection_infos* structure with **ipc_add_fd**.
+It also can be *IPC_EVENT_TYPE_EXTRA_SOCKET* since an arbitrary file descriptor can be added to the *ipc_ctx* structure with **ipc_add_fd**.
 
 ```
 	enum ipc_event_type {

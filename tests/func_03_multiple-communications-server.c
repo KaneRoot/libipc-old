@@ -7,43 +7,46 @@
 
 #define SERVICE_NAME "pong"
 
-int main_loop(int argc, char * argv[], char **env)
+int main_loop(int argc, char * argv[])
 {
 	argc = argc;
 	argv = argv;
 
-	SECURE_DECLARATION (struct ipc_connection_info, srv);
-	long timer = 10;
+	SECURE_DECLARATION (struct ipc_ctx, ctx);
+	int timer = 10000; // in ms
 
 	printf ("func 03 - server init...\n");
-	TEST_IPC_Q (ipc_server_init (env, &srv, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_server_init (&ctx, SERVICE_NAME), EXIT_FAILURE);
 	printf ("func 03 - server init ok\n");
 
-	SECURE_DECLARATION (struct ipc_connection_infos, clients);
 	SECURE_DECLARATION (struct ipc_event, event);
 
 	printf ("func 01 - service polling...\n");
 	// listen only for a single client
 	while (1) {
-		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (&clients, &srv, &event, &timer), EXIT_FAILURE);
+		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (&ctx, &event, &timer), EXIT_FAILURE);
 
 		switch (event.type) {
 			case IPC_EVENT_TYPE_TIMER : {
-					fprintf (stderr, "time up!");
-					timer = 10;
+					fprintf (stderr, "time up!\n");
+					timer = 10000;
 				}
 				break;
 			case IPC_EVENT_TYPE_CONNECTION : {
-					printf ("connection establishment: %d \n", event.origin->fd);
+					printf ("connection establishment: %d \n", event.origin);
 				}
 				break;
 			case IPC_EVENT_TYPE_DISCONNECTION : {
-					printf ("client %d disconnecting\n", event.origin->fd);
+					printf ("client %d disconnecting\n", event.origin);
 				};
 				break;
 			case IPC_EVENT_TYPE_MESSAGE : {
 					printf ("received message: %s\n", ((struct ipc_message*) event.m)->payload);
-					ipc_write (event.origin, (struct ipc_message*) event.m);
+					ipc_write (&ctx, (struct ipc_message*) event.m);
+				}
+				break;
+			case IPC_EVENT_TYPE_TX : {
+					printf ("message sent to fd %d\n", event.origin);
 				}
 				break;
 			case IPC_EVENT_TYPE_NOT_SET :
@@ -56,10 +59,11 @@ int main_loop(int argc, char * argv[], char **env)
 		}
 	}
 
-	printf ("func 03 - closing clients...\n");
-	ipc_connections_free (&clients);
 	printf ("func 03 - closing server...\n");
-	TEST_IPC_Q (ipc_server_close(&srv), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_close_all(&ctx), EXIT_FAILURE);
+
+	printf ("func 03 - freeing the context\n");
+	ipc_ctx_free (&ctx);
 
 	return 0;
 }
@@ -71,7 +75,7 @@ void exit_program(int signal)
 }
 
 
-int main(int argc, char * argv[], char **env)
+int main(int argc, char * argv[])
 {
 	signal (SIGHUP, exit_program);
 	signal (SIGALRM, exit_program);
@@ -79,6 +83,6 @@ int main(int argc, char * argv[], char **env)
 	signal (SIGUSR2, exit_program);
 	signal (SIGTERM, exit_program);
 	signal (SIGINT, exit_program);
-	main_loop (argc, argv, env);
+	main_loop (argc, argv);
     return EXIT_SUCCESS;
 }

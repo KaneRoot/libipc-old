@@ -1,6 +1,6 @@
 
 package=libipc    # Package name.
-version=0.6.0     # Package version.
+version=0.7.0     # Package version.
 
 # Our targets are the library and its documentation.
 targets=(libipc man/libipc.7)

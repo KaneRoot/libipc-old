@@ -64,7 +64,9 @@ void send_receive (int sockfd)
 	// 2    | 6    | 0 | "coucou"
 	// 1 B  | 4 B  | 1 | 6 B
 	ipc_message_raw_serialize ((char *)buf, MSG_TYPE_DATA, 42, "coucou", 6);
-	print_hexa ("WAITING 10 seconds then message to send", buf, 12);
+	printf("\n");
+	print_hexa ("message to send", buf, 12);
+	printf("\n");
 	// sleep (1);
 	T_PERROR_Q ((send (sockfd, buf, 12, 0) == -1), "sending a message", EXIT_FAILURE);
 	printf ("message 'coucou' sent\n");
@@ -72,6 +74,7 @@ void send_receive (int sockfd)
 
 	// receiving a message
 	T_PERROR_Q (((paylen = recv (sockfd, buf, BUFSIZ, 0)) < 0), "receiving a message", EXIT_FAILURE);
+	printf("\n");
 
 	if (paylen == 0) {
 		fprintf (stderr, "error: disconnection from the server\n");
@@ -96,7 +99,7 @@ int main (int argc, char *argv[])
 
 	send_receive (sockfd);
 
-	printf ("Disconnection\n");
+	printf ("\nDisconnection\n");
 
 	// close the socket
 	close (sockfd);

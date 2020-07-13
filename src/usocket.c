@@ -40,15 +40,6 @@ struct ipc_error usock_recv (const int32_t fd, char **buf, size_t * len)
 	if (*len == 0)
 		*len = IPC_MAX_MESSAGE_SIZE;
 
-	if (*buf == NULL) {
-		// do not allocate too much memory
-		if (*len > IPC_MAX_MESSAGE_SIZE) {
-			*len = IPC_MAX_MESSAGE_SIZE;
-		}
-		SECURE_BUFFER_HEAP_ALLOCATION (*buf, *len + IPC_HEADER_SIZE,,
-					IPC_RETURN_ERROR (IPC_ERROR_USOCK_RECV__HEAP_ALLOCATION));
-	}
-
 	uint32_t msize = 0;
 	uint32_t msize_read = 0;
 
@@ -76,10 +67,6 @@ struct ipc_error usock_recv (const int32_t fd, char **buf, size_t * len)
 			T_R ((msize > IPC_MAX_MESSAGE_SIZE), IPC_ERROR_USOCK_RECV__MESSAGE_SIZE);
 			msize_read += ret_recv - IPC_HEADER_SIZE;
 		} else if (ret_recv < 0) {
-			if (*buf != NULL) {
-				free (*buf);
-				*buf = NULL;
-			}
 			*len = 0;
 
 			switch (errno) {
@@ -130,10 +117,6 @@ struct ipc_error usock_recv (const int32_t fd, char **buf, size_t * len)
 
 	// 1 on none byte received, indicates a closed recipient
 	if (ret_recv == 0) {
-		if (*buf != NULL) {
-			free (*buf);
-			*buf = NULL;
-		}
 		*len = 0;
 		IPC_RETURN_ERROR (IPC_ERROR_CLOSED_RECIPIENT);
 	}

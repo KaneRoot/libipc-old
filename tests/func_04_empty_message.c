@@ -9,7 +9,7 @@
 
 // test the behavior of the server when the client never read its messages
 
-void send_message (struct ipc_connection_info *ci)
+void send_message (struct ipc_ctx *ctx)
 {
 	SECURE_DECLARATION (struct ipc_message, m);
 	SECURE_MALLOC (m.payload, 1, exit(EXIT_FAILURE));
@@ -17,18 +17,20 @@ void send_message (struct ipc_connection_info *ci)
 	m.type = MSG_TYPE_DATA;
 	m.user_type = 42;
 	m.length = 0;
+	m.fd = ctx->pollfd[0].fd;
 
-	ipc_write (ci, &m);
+	// ipc_write_fd = write now, without waiting the fd to become available
+	ipc_write_fd (ctx->pollfd[0].fd, &m);
 
 	ipc_message_empty (&m);
 }
 
 
-void read_message (struct ipc_connection_info *ci)
+void read_message (struct ipc_ctx *ctx)
 {
 	SECURE_DECLARATION (struct ipc_message, m);
 
-	ipc_read (ci, &m);
+	ipc_read (ctx, 0 /* there is only one valid index */, &m);
 	if (m.length > 0) {
 		printf ("received message: %*.s\n", m.length, m.payload);
 	}
@@ -41,19 +43,16 @@ void read_message (struct ipc_connection_info *ci)
 	free (m.payload);
 }
 
-int main(int argc, char * argv[], char **env)
+int main(void)
 {
-	argc = argc;
-	argv = argv;
+	SECURE_DECLARATION(struct ipc_ctx, ctx);
 
-	SECURE_DECLARATION(struct ipc_connection_info,srv1);
+	TEST_IPC_Q(ipc_connection (&ctx, SERVICE_NAME), EXIT_FAILURE);
 
-	TEST_IPC_Q(ipc_connection (env, &srv1, SERVICE_NAME), EXIT_FAILURE);
+	send_message (&ctx);
+	read_message (&ctx);
 
-	send_message (&srv1);
-	read_message (&srv1);
-
-	TEST_IPC_Q(ipc_close (&srv1), EXIT_FAILURE);
+	TEST_IPC_Q(ipc_close_all (&ctx), EXIT_FAILURE);
 
     return EXIT_SUCCESS;
 }

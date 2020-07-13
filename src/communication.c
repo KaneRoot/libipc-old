@@ -1,4 +1,5 @@
 #include <sys/select.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <stdio.h>
@@ -13,86 +14,53 @@
 // print structures
 #include "message.h"
 
-struct ipc_error service_path (char *path, const char *sname, int32_t index, int32_t version)
+#include <fcntl.h>
+
+int fd_is_valid(int fd)
 {
-	T_R ((path == NULL), IPC_ERROR_SERVICE_PATH__NO_PATH);
-	T_R ((sname == NULL), IPC_ERROR_SERVICE_PATH__NO_SERVICE_NAME);
-
-	memset (path, 0, PATH_MAX);
-
-	char *rundir = getenv ("IPC_RUNDIR");
-	if (rundir == NULL)
-		rundir = RUNDIR;
-
-	snprintf (path, PATH_MAX - 1, "%s/%s-%d-%d", rundir, sname, index, version);
-
-	IPC_RETURN_NO_ERROR;
+	return fcntl(fd, F_GETFD) != -1 || errno != EBADF;
 }
 
-static int32_t get_max_fd (struct ipc_connection_infos *cinfos)
+
+struct ipc_error ipc_server_init (struct ipc_ctx *ctx, const char *sname)
 {
-	size_t i;
-	int32_t max = 0;
-
-	for (i = 0; i < cinfos->size; i++) {
-		if (cinfos->cinfos[i]->fd > max) {
-			max = cinfos->cinfos[i]->fd;
-		}
-	}
-
-	return max;
-}
-
-struct ipc_error ipc_server_init (char **env, struct ipc_connection_info *srv, const char *sname)
-{
-	T_R ((env == NULL), IPC_ERROR_SERVER_INIT__NO_ENVIRONMENT_PARAM);
-	T_R ((srv == NULL), IPC_ERROR_SERVER_INIT__NO_SERVICE_PARAM);
 	T_R ((sname == NULL), IPC_ERROR_SERVER_INIT__NO_SERVER_NAME_PARAM);
 
-#if 0
-	// For server init, no need for networkd evaluation
+	// Declaration and instanciation of the new connection (ipc_connection_info + pollfd).
+	SECURE_DECLARATION (struct ipc_connection_info, srv);
+	srv.type = IPC_CONNECTION_TYPE_SERVER;
+	SECURE_DECLARATION(struct pollfd, pollfd);
+	pollfd.events = POLLIN;
 
-	// TODO: loop over environment variables
-	// any IPC_NETWORK_* should be shared with the network service
-	// in order to route requests over any chosen protocol stack
-	// ex: IPC_NETWORK_AUDIO="tor://some.example.com/"
-	for (size_t i = 0; env[i] != NULL; i++) {
-		// TODO: check for every IPC_NETWORK_* environment variable
-	}
-#endif
-
-	// gets the service path
+	// Get the service path.
 	SECURE_BUFFER_DECLARATION (char, buf, PATH_MAX);
-	TEST_IPC_RR (service_path (buf, sname, srv->index, srv->version), "cannot get server path");
-
-	// gets the service path
-	if (srv->spath != NULL) {
-		free (srv->spath);
-		srv->spath = NULL;
-	}
-
+	TEST_IPC_RR (service_path (buf, sname), "cannot get server path");
 	size_t s = strlen (buf);
+	if (s > PATH_MAX)
+		s = PATH_MAX;
+	SECURE_BUFFER_HEAP_ALLOCATION_R (srv.spath, s + 1,, IPC_ERROR_SERVER_INIT__MALLOC);
+	memcpy (srv.spath, buf, s);
+	srv.spath[s] = '\0';	// to be sure
 
-	SECURE_BUFFER_HEAP_ALLOCATION_R (srv->spath, s + 1,, IPC_ERROR_SERVER_INIT__MALLOC);
-	memcpy (srv->spath, buf, s);
-	srv->spath[s] = '\0';	// to be sure
+	// Socket initialisation for the service.
+	TEST_IPC_RETURN_ON_ERROR (usock_init (&pollfd.fd, srv.spath));
 
-	TEST_IPC_RETURN_ON_ERROR (usock_init (&srv->fd, srv->spath));
+	// Add the server to the listened file descriptors.
+	// ipc_add allocate memory then copy the data of srv and pollfd in ctx.
+	TEST_IPC_RR (ipc_add (ctx, &srv, &pollfd), "cannot add the server in the context");
 
 	IPC_RETURN_NO_ERROR;
 }
 
-struct ipc_error ipc_write_fd (int fd, const struct ipc_message *m);
-
-// when networkd is not working properly (or do not retrieve the service): srv->fd = 0
-struct ipc_error ipc_contact_networkd (struct ipc_connection_info *srv, const char *sname)
+// when ipcd is not working properly (or do not retrieve the service): srv->fd = 0
+struct ipc_error ipc_contact_ipcd (int *pfd, const char *sname)
 {
-	T_R ((srv == NULL), IPC_ERROR_CONTACT_NETWORKD__NO_SERVER_PARAM);
-	T_R ((sname == NULL), IPC_ERROR_CONTACT_NETWORKD__NO_SERVICE_NAME_PARAM);
+	T_R ((pfd == NULL),   IPC_ERROR_CONTACT_IPCD__NO_FD_PARAM);
+	T_R ((sname == NULL), IPC_ERROR_CONTACT_IPCD__NO_SERVICE_NAME_PARAM);
 
-	char *networkvar = getenv ("IPC_NETWORK");
-	if (networkvar == NULL) {
-		srv->fd = 0;
+	char *ipcd_var = getenv ("IPC_NETWORK");
+	if (ipcd_var == NULL) {
+		*pfd = 0;
 		IPC_RETURN_NO_ERROR;
 	}
 	// TODO: is there another, more interesting way to do this?
@@ -100,488 +68,524 @@ struct ipc_error ipc_contact_networkd (struct ipc_connection_info *srv, const ch
 	// in order to route requests over any chosen protocol stack
 	// ex: IPC_NETWORK="audio tor://some.example.com/audio ;pong tls://pong.example.com/pong"
 
-	// printf ("IPC_NETWORK: %s\n", networkvar);
-
 	SECURE_BUFFER_DECLARATION (char, columnthensname, BUFSIZ);
 	columnthensname[0] = ';';
 	memcpy (columnthensname + 1, sname, strlen (sname));
 
-	if (strncmp (networkvar, sname, strlen (sname)) != 0 && strstr (networkvar, columnthensname) == NULL) {
-		// printf ("sname %s not found\n", sname);
-		srv->fd = 0;
+	if (strncmp (ipcd_var, sname, strlen (sname)) != 0 && strstr (ipcd_var, columnthensname) == NULL) {
+		*pfd = 0;
 		IPC_RETURN_NO_ERROR;
 	}
-	// printf ("(;)sname %s found\n", sname);
 
-	// gets the service path
+	// Get the service path.
 	SECURE_BUFFER_DECLARATION (char, buf, PATH_MAX);
-	TEST_IPC_RR (service_path (buf, "network", 0, 0), "cannot get network service path");
+	TEST_IPC_RR (service_path (buf, "network"), "cannot get network service path");
 
-	int networkdfd = 0;
+	int ipcd_fd = 0;
 
-	TEST_IPC_RETURN_ON_ERROR (usock_connect (&networkdfd, buf));
+	TEST_IPC_RETURN_ON_ERROR (usock_connect (&ipcd_fd, buf));
 
 	SECURE_DECLARATION (struct ipc_message, msg);
 	msg.type = MSG_TYPE_NETWORK_LOOKUP;
 	msg.user_type = MSG_TYPE_NETWORK_LOOKUP;
 
 	SECURE_BUFFER_DECLARATION (char, content, BUFSIZ);
-	snprintf (content, BUFSIZ, "%s;%s", sname, networkvar);
+	snprintf (content, BUFSIZ, "%s;%s", sname, ipcd_var);
 
 	msg.length = strlen (content);
 	msg.payload = content;
 
-	TEST_IPC_RR (ipc_write_fd (networkdfd, &msg), "cannot send a message to networkd");
+	TEST_IPC_RR (ipc_write_fd (ipcd_fd, &msg), "cannot send a message to networkd");
 
-	struct ipc_error ret = ipc_receive_fd (networkdfd, &srv->fd);
+	struct ipc_error ret = ipc_receive_fd (ipcd_fd, pfd);
 	if (ret.error_code == IPC_ERROR_NONE) {
-		usock_close (networkdfd);
+		usock_close (ipcd_fd);
 	}
 
 	return ret;
 }
 
-struct ipc_error ipc_connection (char **env, struct ipc_connection_info *srv, const char *sname)
+// Create context, contact ipcd, connects to the service.
+struct ipc_error ipc_connection_ (struct ipc_ctx *ctx, const char *sname, enum ipc_connection_type type, int *serverfd)
 {
-	T_R ((env == NULL), IPC_ERROR_CONNECTION__NO_ENVIRONMENT_PARAM);
-	T_R ((srv == NULL), IPC_ERROR_CONNECTION__NO_SERVER);
+	T_R ((ctx == NULL),   IPC_ERROR_CONNECTION__NO_CTX);
 	T_R ((sname == NULL), IPC_ERROR_CONNECTION__NO_SERVICE_NAME);
 
-	TEST_IPC_P (ipc_contact_networkd (srv, sname), "error during networkd connection");
+	SECURE_DECLARATION(struct ipc_connection_info, srv);
+	srv.type = type;
+	SECURE_DECLARATION(struct pollfd, pollfd);
+	pollfd.events = POLLIN;
 
-	// if networkd did not initiate the connection
-	if (srv->fd <= 0) {
+	TEST_IPC_P (ipc_contact_ipcd (&pollfd.fd, sname), "error during networkd connection");
+
+	// if ipcd did not initiate the connection
+	if (pollfd.fd <= 0) {
 		// gets the service path
 		SECURE_BUFFER_DECLARATION (char, buf, PATH_MAX);
-		TEST_IPC_RR (service_path (buf, sname, srv->index, srv->version), "cannot get server path");
-		TEST_IPC_RETURN_ON_ERROR (usock_connect (&srv->fd, buf));
+		TEST_IPC_RR (service_path (buf, sname), "cannot get server path");
+		TEST_IPC_RETURN_ON_ERROR (usock_connect (&pollfd.fd, buf));
+	}
+
+	// Add the server to the listened file descriptors.
+	TEST_IPC_RR (ipc_add (ctx, &srv, &pollfd), "cannot add the server in the context");
+
+	if (serverfd != NULL) {
+		*serverfd = pollfd.fd;
 	}
 
 	IPC_RETURN_NO_ERROR;
 }
 
-struct ipc_error ipc_server_close (struct ipc_connection_info *srv)
+int ipc_ctx_fd_type (struct ipc_ctx *ctx, int fd, enum ipc_connection_type type)
 {
-	usock_close (srv->fd);
-	struct ipc_error ret = usock_remove (srv->spath);
-	if (srv->spath != NULL) {
-		free (srv->spath);
-		srv->spath = NULL;
+	if (ctx == NULL) {
+		return -1;
 	}
+
+	for (size_t i = 0; i < ctx->size; i++) {
+		if (ctx->pollfd[i].fd == fd) {
+			ctx->cinfos[i].type = type;
+			return 0;
+		}
+	}
+	return -1;
+}
+
+struct ipc_error ipc_connection (struct ipc_ctx *ctx, const char *sname)
+{
+	// Data received on the socket = messages, not new clients, and not switched (no callbacks).
+	return ipc_connection_ (ctx, sname, IPC_CONNECTION_TYPE_IPC, NULL);
+}
+
+struct ipc_error ipc_connection_switched (struct ipc_ctx *ctx, const char *sname, int clientfd, int *serverfd)
+{
+	int sfd = 0;
+	// Data received are for switched fd (callbacks should be used).
+	struct ipc_error ret = ipc_connection_ (ctx
+		, sname
+		, IPC_CONNECTION_TYPE_SWITCHED
+		, &sfd);
+
+	if (ret.error_code != IPC_ERROR_NONE) {
+		return ret;
+	}
+
+	if (serverfd != NULL) {
+		*serverfd = sfd;
+	}
+
+	ipc_add_fd_switched (ctx, clientfd);
+	// ipc_ctx_fd_type (ctx, clientfd, IPC_CONNECTION_TYPE_SWITCHED);
+	ipc_ctx_switching_add (ctx, clientfd, sfd);
+
 	return ret;
 }
 
-struct ipc_error ipc_close (struct ipc_connection_info *p)
+struct ipc_error ipc_close_all (struct ipc_ctx *ctx)
 {
-	return usock_close (p->fd);
+	T_R ((ctx == NULL), IPC_ERROR_CLOSE_ALL__NO_CTX_PARAM);
+
+	for (size_t i = 0 ; i < ctx->size ; i++) {
+		TEST_IPC_P (ipc_close (ctx, i), "cannot close a connection in handle_message");
+	}
+
+	IPC_RETURN_NO_ERROR;
 }
 
-struct ipc_error ipc_accept (struct ipc_connection_info *srv, struct ipc_connection_info *p)
+struct ipc_error ipc_close (struct ipc_ctx *ctx, uint32_t index)
 {
-	T_R ((srv == NULL), IPC_ERROR_ACCEPT__NO_SERVICE_PARAM);
-	T_R ((p == NULL), IPC_ERROR_ACCEPT__NO_CLIENT_PARAM);
+	T_R ((ctx == NULL), IPC_ERROR_CLOSE__NO_CTX_PARAM);
 
-	TEST_IPC_RR (usock_accept (srv->fd, &p->fd), "cannot accept IPC connection");
-	p->type = IPC_CONNECTION_TYPE_IPC;
+	SECURE_DECLARATION (struct ipc_error, ret);
+	int fd = ctx->pollfd[index].fd;
+
+#if 0
+	if (fd_is_valid (fd)) {
+		printf ("ipc_close: fd is valid ==> %d\n", fd);
+
+		if (ctx->cinfos[index].type == IPC_CONNECTION_TYPE_EXTERNAL) {
+			printf ("=== === === external fd: not closing %d\n", fd);
+		}
+		else {
+			ret = usock_close (fd);
+		}
+	}
+	else {
+		printf ("!!!!!!!!!!! !! !! !! IPC_CLOSE: fd is not valid!! ==> %d\n", fd);
+	}
+#else
+	// Closing the file descriptor only if it is not an external connection,
+	// this should be handled by the libipc user application.
+	if (ctx->cinfos[index].type != IPC_CONNECTION_TYPE_EXTERNAL) {
+		ret = usock_close (fd);
+	}
+#endif
+
+	// Verify that the close was OK.
+	if (ret.error_code != IPC_ERROR_NONE) {
+		return ret;
+	}
+
+	if (ctx->cinfos[index].type == IPC_CONNECTION_TYPE_SERVER) {
+		ret = usock_remove (ctx->cinfos[index].spath);
+		if (ctx->cinfos[index].spath != NULL) {
+			free (ctx->cinfos[index].spath);
+			ctx->cinfos[index].spath = NULL;
+		}
+	}
+
+	return ret;
+}
+
+// New connection from a client.
+struct ipc_error ipc_accept_add (struct ipc_event *event, struct ipc_ctx *ctx, uint32_t index)
+{
+	T_R ((ctx == NULL),        IPC_ERROR_HANDLE_NEW_CONNECTION__NO_CINFOS_PARAM);
+	T_R ((index >= ctx->size), IPC_ERROR_HANDLE_NEW_CONNECTION__INCONSISTENT_INDEX);
+
+	// Memory reallocation.
+	ipc_ctx_new_alloc (ctx);
+
+	int server_fd  = ctx->pollfd[index].fd;
+	int *client_fd = &ctx->pollfd[ctx->size -1].fd;
+
+	TEST_IPC_RR (usock_accept (server_fd, client_fd), "cannot accept IPC connection");
+	ctx->pollfd[ctx->size -1].events = POLLIN; // Tell to poll(2) to watch for incoming data from this fd.
+	ctx->cinfos[ctx->size -1].type = IPC_CONNECTION_TYPE_IPC;
+
+	// Set the event structure.
+	uint32_t client_index = ctx->size - 1;
+	IPC_EVENT_SET (event, IPC_EVENT_TYPE_CONNECTION, client_index, *client_fd, NULL);
 
 	IPC_RETURN_NO_ERROR;
 }
 
 // receive then format in an ipc_message structure
-struct ipc_error ipc_read (const struct ipc_connection_info *p, struct ipc_message *m)
+struct ipc_error ipc_read (const struct ipc_ctx *ctx, uint32_t index, struct ipc_message *m)
 {
 	T_R ((m == NULL), IPC_ERROR_READ__NO_MESSAGE_PARAM);
 
-	char *buf = NULL;
 	size_t msize = IPC_MAX_MESSAGE_SIZE;
+	SECURE_BUFFER_DECLARATION (char, buf, msize);
+	char *pbuf = buf;
 
-	// on error or closed recipient, the buffer already freed
-	TEST_IPC_RETURN_ON_ERROR (usock_recv (p->fd, &buf, &msize));
-	TEST_IPC_RETURN_ON_ERROR_FREE (ipc_message_format_read (m, buf, msize), buf);
-
-	free (buf);
+	// On error or closed recipient, the buffer already freed.
+	TEST_IPC_RETURN_ON_ERROR (usock_recv (ctx->pollfd[index].fd, &pbuf, &msize));
+	TEST_IPC_RETURN_ON_ERROR (ipc_message_format_read (m, buf, msize));
 
 	IPC_RETURN_NO_ERROR;	// propagates ipc_message_format return
 }
 
 struct ipc_error ipc_write_fd (int fd, const struct ipc_message *m)
 {
-	T_R ((m == NULL), IPC_ERROR_WRITE__NO_MESSAGE_PARAM);
-
-	char *buf = NULL;
 	size_t msize = 0;
-	ipc_message_format_write (m, &buf, &msize);
+	SECURE_BUFFER_DECLARATION (char, buf, IPC_MAX_MESSAGE_SIZE);
+	char *pbuf = buf;
+
+	ipc_message_format_write (m, &pbuf, &msize);
 
 	size_t nbytes_sent = 0;
-	TEST_IPC_RETURN_ON_ERROR_FREE (usock_send (fd, buf, msize, &nbytes_sent), buf);
+	TEST_IPC_RETURN_ON_ERROR (usock_send (fd, buf, msize, &nbytes_sent));
 
-	if (buf != NULL) {
-		free (buf);
-	}
 	// what was sent != what should have been sent
-	T_R ((nbytes_sent != msize), IPC_ERROR_WRITE__NOT_ENOUGH_DATA);
+	T_R ((nbytes_sent != msize), IPC_ERROR_WRITE_FD__NOT_ENOUGH_DATA);
 
 	IPC_RETURN_NO_ERROR;
 }
 
-struct ipc_error ipc_write (const struct ipc_connection_info *p, const struct ipc_message *m)
+// Put the message in the list of messages to send.
+struct ipc_error ipc_write (struct ipc_ctx *ctx, const struct ipc_message *m)
 {
-	return ipc_write_fd (p->fd, m);
-}
-
-struct ipc_error handle_new_connection (struct ipc_connection_info *cinfo, struct ipc_connection_infos *cinfos
-	, struct ipc_connection_info **new_client)
-{
-	T_R ((cinfo == NULL), IPC_ERROR_HANDLE_NEW_CONNECTION__NO_CINFO_PARAM);
-	T_R ((cinfos == NULL), IPC_ERROR_HANDLE_NEW_CONNECTION__NO_CINFOS_PARAM);
-
-	SECURE_BUFFER_HEAP_ALLOCATION_R (*new_client, sizeof (struct ipc_connection_info),,
-		IPC_ERROR_HANDLE_NEW_CONNECTION__MALLOC);
-
-	TEST_IPC_RR (ipc_accept (cinfo, *new_client), "cannot accept the client during handle_new_connection");
-	TEST_IPC_RR (ipc_add (cinfos, *new_client), "cannot add the new accepted client");
-
-	IPC_RETURN_NO_ERROR;
-}
-
-// new connection from a client
-struct ipc_error handle_connection (struct ipc_event *event, struct ipc_connection_infos *cinfos
-	, struct ipc_connection_info *cinfo)
-{
-	// connection
-	struct ipc_connection_info *new_client = NULL;
-
-	TEST_IPC_RR (handle_new_connection (cinfo, cinfos, &new_client), "cannot add new client");
-
-	IPC_EVENT_SET (event, IPC_EVENT_TYPE_CONNECTION, NULL, new_client);
-	IPC_RETURN_NO_ERROR;
-}
-
-// new message
-struct ipc_error handle_message (struct ipc_event *event, struct ipc_connection_infos *cinfos
-	, struct ipc_connection_info *pc, struct ipc_switchings *switchdb)
-{
-	// if the socket is associated to another one for networkd
-	// read and write automatically and provide a new IPC_EVENT_TYPE indicating the switch
-	if (switchdb != NULL) {
-		int talkingfd = pc->fd;
-		int correspondingfd = ipc_switching_get (switchdb, talkingfd);
-		if (correspondingfd != -1) {
-			char *buf = NULL;
-			size_t msize = 0;
-
-			TEST_IPC_T_P_I_R (
-						/* function to test */ usock_recv (talkingfd, &buf, &msize)
-						, /* error condition */ ret.error_code != IPC_ERROR_NONE
-						&& ret.error_code != IPC_ERROR_CLOSED_RECIPIENT
-						, /* to do on error */ if (buf != NULL) free (buf);
-						IPC_EVENT_SET (event, IPC_EVENT_TYPE_ERROR, NULL, pc)
-						, /* return function */ return (ret)) ;
-
-			/** TODO: there is a message, send it to the corresponding fd **/
-			if (msize > 0) {
-				size_t nbytes_sent = 0;
-				TEST_IPC_RETURN_ON_ERROR_FREE (usock_send (correspondingfd, buf, msize, &nbytes_sent), buf);
-
-				if (nbytes_sent != msize) {
-					// LOG_ERROR ("wrote not enough data from %d to fd %d", talkingfd, correspondingfd);
-					IPC_EVENT_SET (event, IPC_EVENT_TYPE_ERROR, NULL, pc);
-					IPC_RETURN_NO_ERROR;	// FIXME: return something else, maybe?
-				}
-				// LOG_DEBUG ("received a message on fd %d => switch to fd %d", talkingfd, correspondingfd);
-
-				if (buf != NULL)
-					free (buf);
-
-				// everything is OK: inform networkd of a successful transfer
-				IPC_EVENT_SET (event, IPC_EVENT_TYPE_SWITCH, NULL, pc);
-				IPC_RETURN_NO_ERROR;
-			} else if (msize == 0) {
-				int delfd;
-
-				delfd = ipc_switching_del (switchdb, talkingfd);
-				if (delfd >= 0) {
-					close (delfd);
-					ipc_del_fd (cinfos, delfd);
-				}
-
-				close (talkingfd);
-				ipc_del_fd (cinfos, talkingfd);
-
-#if 0
-				if (delfd >= 0) {
-					LOG_DEBUG ("disconnection of %d (and related fd %d)", talkingfd, delfd);
-				} else {
-					LOG_DEBUG ("disconnection of %d", talkingfd);
-				}
-#endif
-
-				IPC_EVENT_SET (event, IPC_EVENT_TYPE_DISCONNECTION, NULL, pc);
-				IPC_RETURN_ERROR (IPC_ERROR_CLOSED_RECIPIENT);
-			}
+	int found = 0;
+	for (size_t i = 0; i < ctx->size; i++) {
+		if (ctx->pollfd[i].fd == m->fd) {
+			ctx->pollfd[i].events |= POLLOUT;
+			found = 1;
 		}
 	}
-	// no treatment of the socket if external socket
-	if (pc->type == IPC_CONNECTION_TYPE_EXTERNAL) {
-		IPC_EVENT_SET (event, IPC_EVENT_TYPE_EXTRA_SOCKET, NULL, pc);
+
+	T_R ((found == 0), IPC_ERROR_WRITE__FD_NOT_FOUND);
+
+	// Performs a deep copy of the structure.
+	return ipc_messages_add (&ctx->tx, m);
+}
+
+/**
+ * Allocate memory then add a new connection to the context.
+ */
+struct ipc_error ipc_add (struct ipc_ctx *ctx, struct ipc_connection_info *p, struct pollfd *pollfd)
+{
+	T_R ((ctx    == NULL), IPC_ERROR_ADD__NO_PARAM_CLIENTS);
+	T_R ((p      == NULL), IPC_ERROR_ADD__NO_PARAM_CLIENT);
+	T_R ((pollfd == NULL), IPC_ERROR_ADD__NO_PARAM_POLLFD);
+
+	// Memory reallocation.
+	ipc_ctx_new_alloc (ctx);
+
+	T_R ((ctx->size <= 0), IPC_ERROR_ADD__NOT_ENOUGH_MEMORY);
+
+	ctx->cinfos[ctx->size - 1] = *p;
+	ctx->pollfd[ctx->size - 1] = *pollfd;
+
+	IPC_RETURN_NO_ERROR;
+}
+
+struct ipc_error ipc_del (struct ipc_ctx *ctx, uint32_t index)
+{
+	T_R ((ctx == NULL),                                IPC_ERROR_DEL__NO_CLIENTS_PARAM);
+	T_R ((ctx->cinfos == NULL || ctx->pollfd == NULL), IPC_ERROR_DEL__EMPTY_LIST);
+	T_R ((index >= ctx->size), IPC_ERROR_DEL__CANNOT_FIND_CLIENT);
+
+	if (ctx->cinfos[index].spath != NULL) {
+		free (ctx->cinfos[index].spath);
+		ctx->cinfos[index].spath = NULL;
+	}
+
+	ctx->size--;
+
+	if (ctx->size == 0) {
+		// free ctx->cinfos and ctx->pollfd
+		ipc_ctx_free (ctx);
 		IPC_RETURN_NO_ERROR;
 	}
-	// listen to what they have to say (disconnection or message)
-	// then add a client to `event`, the ipc_event structure
-	SECURE_DECLARATION (struct ipc_error, ret);
-	struct ipc_message *m = NULL;
 
+	// The last element in the array replaces the removed one.
+	ctx->cinfos[index] = ctx->cinfos[ctx->size];
+	ctx->pollfd[index] = ctx->pollfd[ctx->size];
+
+	// Reallocation of the arrays. TODO: should be optimised someday.
+	ctx->cinfos = realloc (ctx->cinfos, sizeof (struct ipc_connection_info) * ctx->size);
+	ctx->pollfd = realloc (ctx->pollfd, sizeof (struct pollfd             ) * ctx->size);
+
+	if (ctx->cinfos == NULL || ctx->pollfd == NULL) {
+		IPC_RETURN_ERROR (IPC_ERROR_DEL__EMPTIED_LIST);
+	}
+
+	IPC_RETURN_NO_ERROR;
+}
+
+struct ipc_error ipc_add_fd_ (struct ipc_ctx *ctx, int fd, enum ipc_connection_type type)
+{
+	T_R ((ctx == NULL), IPC_ERROR_ADD_FD__NO_PARAM_CINFOS);
+
+	SECURE_DECLARATION (struct ipc_connection_info, cinfo);
+	cinfo.type = type;
+
+	SECURE_DECLARATION (struct pollfd, pollfd);
+	pollfd.fd = fd;
+	pollfd.events = POLLIN;
+
+	return ipc_add (ctx, &cinfo, &pollfd);
+}
+
+// add a switched file descriptor to read
+struct ipc_error ipc_add_fd_switched (struct ipc_ctx *ctx, int fd)
+{
+	return ipc_add_fd_ (ctx, fd, IPC_CONNECTION_TYPE_SWITCHED);
+}
+
+// add an arbitrary file descriptor to read
+struct ipc_error ipc_add_fd (struct ipc_ctx *ctx, int fd)
+{
+	return ipc_add_fd_ (ctx, fd, IPC_CONNECTION_TYPE_EXTERNAL);
+}
+
+// remove a connection from its file descriptor
+struct ipc_error ipc_del_fd (struct ipc_ctx *ctx, int fd)
+{
+	T_R ((ctx == NULL),                                IPC_ERROR_DEL_FD__NO_PARAM_CINFOS);
+	T_R ((ctx->cinfos == NULL || ctx->pollfd == NULL), IPC_ERROR_DEL_FD__EMPTY_LIST);
+
+	for (size_t i = 0; i < ctx->size; i++) {
+		if (ctx->pollfd[i].fd == fd) {
+			return ipc_del (ctx, i);
+		}
+	}
+
+	IPC_RETURN_ERROR (IPC_ERROR_DEL_FD__CANNOT_FIND_CLIENT);
+}
+
+struct ipc_error handle_writing_message (struct ipc_event *event, struct ipc_ctx *ctx, uint32_t index)
+{
+	int txfd = ctx->pollfd[index].fd;
+	int mfd;
+	struct ipc_message *m;
+	for (size_t i = 0; ctx->tx.size ; i++) {
+		m = &ctx->tx.messages[i];
+		mfd = m->fd;
+		if (txfd == mfd) {
+			TEST_IPC_RR (ipc_write_fd (txfd, m), "cannot send a message to the client");
+
+			// Freeing the message structure.
+			ipc_message_empty (m);
+			// Removing the message from the context.
+			ipc_messages_del (&ctx->tx, i); // remove the message indexed by i
+
+			break; // The message has been sent
+		}
+	}
+
+	IPC_EVENT_SET (event, IPC_EVENT_TYPE_TX, index, ctx->pollfd[index].fd, NULL);
+	IPC_RETURN_NO_ERROR;
+}
+
+struct ipc_error handle_new_message (struct ipc_event *event, struct ipc_ctx *ctx, int index)
+{
+	SECURE_DECLARATION (struct ipc_error, ret);
+
+	// Listen to what they have to say (disconnection or message)
+	// then add a client to `event`, the ipc_event structure.
+	struct ipc_message *m = NULL;
 	SECURE_BUFFER_HEAP_ALLOCATION_R (m, sizeof (struct ipc_message),, IPC_ERROR_HANDLE_MESSAGE__NOT_ENOUGH_MEMORY);
 
 	// current talking client
-	ret = ipc_read (pc, m);
+	ret = ipc_read (ctx, index, m);
 	if (ret.error_code != IPC_ERROR_NONE && ret.error_code != IPC_ERROR_CLOSED_RECIPIENT) {
 		struct ipc_error rvalue = ret;	// store the final return value
 		ipc_message_empty (m);
 		free (m);
 
 		// if there is a problem, just remove the client
-		TEST_IPC_P (ipc_close (pc), "cannot close a connection in handle_message");
-		TEST_IPC_P (ipc_del (cinfos, pc), "cannot delete a connection in handle_message");
+		TEST_IPC_P (ipc_close (ctx, index), "cannot close a connection in handle_message");
+		TEST_IPC_P (ipc_del   (ctx, index), "cannot delete a connection in handle_message");
 
-		IPC_EVENT_SET (event, IPC_EVENT_TYPE_ERROR, NULL, pc);
+		IPC_EVENT_SET (event, IPC_EVENT_TYPE_ERROR, index, ctx->pollfd[index].fd, NULL);
 		return rvalue;
 	}
-	// disconnection: close the client then delete it from cinfos
+
+	// disconnection: close the client then delete it from ctx
 	if (ret.error_code == IPC_ERROR_CLOSED_RECIPIENT) {
-		TEST_IPC_P (ipc_close (pc), "cannot close a connection on closed recipient in handle_message");
-		TEST_IPC_P (ipc_del (cinfos, pc), "cannot delete a connection on closed recipient in handle_message");
+
+		IPC_EVENT_SET (event, IPC_EVENT_TYPE_DISCONNECTION, index, ctx->pollfd[index].fd, NULL);
+
+		TEST_IPC_P (ipc_close (ctx, index), "cannot close a connection on closed recipient in handle_message");
+		TEST_IPC_P (ipc_del   (ctx, index), "cannot delete a connection on closed recipient in handle_message");
 
 		ipc_message_empty (m);
 		free (m);
-
-		IPC_EVENT_SET (event, IPC_EVENT_TYPE_DISCONNECTION, NULL, pc);
 
 		// warning: do not forget to free the ipc_client structure
 		IPC_RETURN_NO_ERROR;
 	}
 
-	IPC_EVENT_SET (event, IPC_EVENT_TYPE_MESSAGE, m, pc);
+	// The message carries the fd it was received on.
+	m->fd = ctx->pollfd[index].fd;
+	IPC_EVENT_SET (event, IPC_EVENT_TYPE_MESSAGE, index, ctx->pollfd[index].fd, m);
 	IPC_RETURN_NO_ERROR;
 }
 
-struct ipc_error ipc_wait_event_networkd (struct ipc_connection_infos *cinfos
-	, struct ipc_connection_info *cinfo	// NULL for clients
-	, struct ipc_event *event, struct ipc_switchings *switchdb
-	, double *timer)
+struct ipc_error
+handle_writing_switched_message (struct ipc_event *event, struct ipc_ctx *ctx, uint32_t index)
 {
-	T_R ((cinfos == NULL), IPC_ERROR_WAIT_EVENT__NO_CLIENTS_PARAM);
-	T_R ((event == NULL), IPC_ERROR_WAIT_EVENT__NO_EVENT_PARAM);
+	return fd_switching_write (event, ctx, index);
+}
+
+struct ipc_error
+handle_switched_message(struct ipc_event *event, struct ipc_ctx *ctx, uint32_t index)
+{
+	return fd_switching_read (event, ctx, index);
+}
+
+/* timer is in ms */
+struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, int *timer)
+{
+	T_R ((ctx == NULL), IPC_ERROR_WAIT_EVENT__NO_CLIENTS_PARAM);
+	T_R ((event  == NULL), IPC_ERROR_WAIT_EVENT__NO_EVENT_PARAM);
 
 	IPC_EVENT_CLEAN (event);
 
-	size_t i, j;
-	/* master file descriptor list */
-	fd_set master;
-	fd_set readf;
+	int32_t n;
 
-	/* clear the master and temp sets */
-	FD_ZERO (&master);
-	FD_ZERO (&readf);
-
-	/* maximum file descriptor number */
-	/* keep track of the biggest file descriptor */
-	int32_t fdmax = get_max_fd (cinfos);
-
-	/* listening socket descriptor */
-	int32_t listener;
-	if (cinfo != NULL) {
-		listener = cinfo->fd;
-
-		/* add the listener to the master set */
-		FD_SET (listener, &master);
-
-		/* if listener is max fd */
-		if (fdmax < listener)
-			fdmax = listener;
-	}
-
-	for (i = 0; i < cinfos->size; i++) {
-		FD_SET (cinfos->cinfos[i]->fd, &master);
-	}
-
-	readf = master;
-
-	struct timeval *ptimeout = NULL;
-	SECURE_DECLARATION (struct timeval, timeout);
-
-	if (timer != NULL && *timer > 0.0) {
-		timeout.tv_sec  = (long) *timer;
-		timeout.tv_usec = (long) ((long)((*timer) * 1000000) % 1000000);
-		ptimeout = &timeout;
-	}
-
-	T_PERROR_RIPC ((select (fdmax + 1, &readf, NULL, NULL, ptimeout) == -1), "select", IPC_ERROR_WAIT_EVENT__SELECT);
-
-	if (ptimeout != NULL) {
-		*timer = (double) timeout.tv_sec + (timeout.tv_usec / 1000000.0);
-		if (*timer == 0) {
-			IPC_EVENT_SET (event, IPC_EVENT_TYPE_TIMER, NULL, NULL);
-			IPC_RETURN_NO_ERROR;
-		}
-	}
-
-	for (i = 0; i <= (size_t) fdmax; i++) {
-		if (FD_ISSET (i, &readf)) {
-			if (cinfo != NULL && i == (size_t) listener) {
-				return handle_connection (event, cinfos, cinfo);
-			} else {
-				for (j = 0; j < cinfos->size; j++) {
-					if (i == (size_t) cinfos->cinfos[j]->fd) {
-						return handle_message (event, cinfos, cinfos->cinfos[j], switchdb);
-					}
-				}
+	for (size_t i = 0; i < ctx->tx.size; i++) {
+		for (size_t y = 0; y < ctx->size; y++) {
+			if (ctx->pollfd[y].fd == ctx->tx.messages[i].fd) {
+				ctx->pollfd[y].events |= POLLOUT;
+				break;
 			}
 		}
 	}
 
-	IPC_RETURN_NO_ERROR;
-}
+	struct timeval tv_1;
+	memset (&tv_1, 0, sizeof(struct timeval));
 
-struct ipc_error ipc_wait_event (struct ipc_connection_infos *cinfos
-	, struct ipc_connection_info *cinfo	// NULL for clients
-	, struct ipc_event *event, double *timer)
-{
-	return ipc_wait_event_networkd (cinfos, cinfo, event, NULL, timer);
-}
+	struct timeval tv_2;
+	memset (&tv_2, 0, sizeof(struct timeval));
 
-// store and remove only pointers on allocated structures
-struct ipc_error ipc_add (struct ipc_connection_infos *cinfos, struct ipc_connection_info *p)
-{
-	T_R ((cinfos == NULL), IPC_ERROR_ADD__NO_PARAM_CLIENTS);
-	T_R ((p == NULL), IPC_ERROR_ADD__NO_PARAM_CLIENT);
+	gettimeofday(&tv_1, NULL);
 
-	cinfos->size++;
-	if (cinfos->size == 1 && cinfos->cinfos == NULL) {
-		// first allocation
-		SECURE_BUFFER_HEAP_ALLOCATION_R (cinfos->cinfos, sizeof (struct ipc_connection_info),,
-						IPC_ERROR_ADD__MALLOC);
-	} else {
-		cinfos->cinfos = realloc (cinfos->cinfos, sizeof (struct ipc_connection_info) * cinfos->size);
+	if ((n = poll(ctx->pollfd, ctx->size, *timer)) < 0) {
+		IPC_RETURN_ERROR (IPC_ERROR_WAIT_EVENT__POLL);
 	}
 
-	T_R ((cinfos->cinfos == NULL), IPC_ERROR_ADD__EMPTY_LIST);
+	gettimeofday(&tv_2, NULL);
 
-	cinfos->cinfos[cinfos->size - 1] = p;
-	IPC_RETURN_NO_ERROR;
-}
+	int nb_sec_ms       = (tv_2.tv_sec  - tv_1.tv_sec) * 1000;
+	int nb_usec_ms      = (tv_2.tv_usec - tv_1.tv_usec) / 1000;
+	int time_elapsed_ms = (nb_sec_ms + nb_usec_ms);
 
-struct ipc_error ipc_del (struct ipc_connection_infos *cinfos, struct ipc_connection_info *p)
-{
-	T_R ((cinfos == NULL), IPC_ERROR_DEL__NO_CLIENTS_PARAM);
-	T_R ((p == NULL), IPC_ERROR_DEL__NO_CLIENT_PARAM);
-	T_R ((cinfos->cinfos == NULL), IPC_ERROR_DEL__EMPTY_LIST);
+	// Handle memory fuckery, 'cause low level programming is fun.
+	if (time_elapsed_ms >= *timer) {
+		*timer = 0;
+	}
+	else {
+		*timer -= time_elapsed_ms;
+	}
 
-	size_t i;
-	for (i = 0; i < cinfos->size; i++) {
-		if (cinfos->cinfos[i] == p) {
-			// TODO: possible memory leak if the ipc_connection_info is not free'ed
-			cinfos->cinfos[i] = cinfos->cinfos[cinfos->size - 1];
-			cinfos->size--;
-			if (cinfos->size == 0) {
-				ipc_connections_free (cinfos);
-			} else {
-				cinfos->cinfos = realloc (cinfos->cinfos, sizeof (struct ipc_connection_info) * cinfos->size);
+	// Timeout.
+	if (n == 0) {
+		IPC_EVENT_SET (event, IPC_EVENT_TYPE_TIMER, 0, 0, NULL);
+		IPC_RETURN_NO_ERROR;
+	}
 
-				if (cinfos->cinfos == NULL) {
-					IPC_RETURN_ERROR (IPC_ERROR_DEL__EMPTIED_LIST);
-				}
+	for (size_t i = 0; i <= ctx->size; i++) {
+		// Something to read or connection.
+		if (ctx->pollfd[i].revents & POLLIN) {
+			// In case there is something to read for the server socket: new client.
+			if (ctx->cinfos[i].type == IPC_CONNECTION_TYPE_SERVER) {
+				return ipc_accept_add (event, ctx, i);
 			}
 
-			IPC_RETURN_NO_ERROR;
-		}
-	}
-
-	IPC_RETURN_ERROR (IPC_ERROR_DEL__CANNOT_FIND_CLIENT);
-}
-
-void ipc_connections_close (struct ipc_connection_infos *cinfos)
-{
-	if (cinfos->cinfos != NULL) {
-		for (size_t i = 0; i < cinfos->size; i++) {
-			ipc_close (cinfos->cinfos[i]);
-			free (cinfos->cinfos[i]);
-		}
-		free (cinfos->cinfos);
-		cinfos->cinfos = NULL;
-	}
-	cinfos->size = 0;
-}
-
-void ipc_connections_free (struct ipc_connection_infos *cinfos)
-{
-	if (cinfos->cinfos != NULL) {
-		for (size_t i = 0; i < cinfos->size; i++) {
-			free (cinfos->cinfos[i]);
-		}
-		free (cinfos->cinfos);
-		cinfos->cinfos = NULL;
-	}
-	cinfos->size = 0;
-}
-
-// create the client service structure
-struct ipc_error ipc_connection_gen (struct ipc_connection_info *cinfo
-	, uint32_t index, uint32_t version
-	, int fd, char type)
-{
-	T_R ((cinfo == NULL), IPC_ERROR_CONNECTION_GEN__NO_CINFO);
-
-	cinfo->type = type;
-	cinfo->version = version;
-	cinfo->index = index;
-	cinfo->fd = fd;
-
-	IPC_RETURN_NO_ERROR;
-}
-
-// add an arbitrary file descriptor to read
-struct ipc_error ipc_add_fd (struct ipc_connection_infos *cinfos, int fd)
-{
-	T_R ((cinfos == NULL), IPC_ERROR_ADD_FD__NO_PARAM_CINFOS);
-
-	struct ipc_connection_info *cinfo = NULL;
-
-	SECURE_BUFFER_HEAP_ALLOCATION_R (cinfo, sizeof (struct ipc_connection_info),,
-					IPC_ERROR_ADD_FD__NOT_ENOUGH_MEMORY);
-
-	ipc_connection_gen (cinfo, 0, 0, fd, IPC_CONNECTION_TYPE_EXTERNAL);
-
-	return ipc_add (cinfos, cinfo);
-}
-
-// remove a connection from its file descriptor
-struct ipc_error ipc_del_fd (struct ipc_connection_infos *cinfos, int fd)
-{
-	T_R ((cinfos == NULL), IPC_ERROR_DEL_FD__NO_PARAM_CINFOS);
-	T_R ((cinfos->cinfos == NULL), IPC_ERROR_DEL_FD__EMPTY_LIST);
-
-	size_t i;
-	for (i = 0; i < cinfos->size; i++) {
-		if (cinfos->cinfos[i]->fd == fd) {
-			cinfos->cinfos[i]->fd = -1;
-			free (cinfos->cinfos[i]);
-			cinfos->size--;
-			if (cinfos->size == 0) {
-				// free cinfos->cinfos
-				ipc_connections_free (cinfos);
-			} else {
-				cinfos->cinfos[i] = cinfos->cinfos[cinfos->size];
-				cinfos->cinfos = realloc (cinfos->cinfos, sizeof (struct ipc_connection_info) * cinfos->size);
-
-				if (cinfos->cinfos == NULL) {
-					IPC_RETURN_ERROR (IPC_ERROR_DEL_FD__EMPTIED_LIST);
+			// fd is switched: using callbacks for IO operations.
+			if (ctx->cinfos[i].type == IPC_CONNECTION_TYPE_SWITCHED) {
+#if 0
+				int fd_validity = fd_is_valid (ctx->pollfd[i].fd);
+				if (! fd_validity) {
+					printf ("switch happening in C: %d FD IS INVALID:::::::::: IM BROKEN INSIIIIIIIDE\n", ctx->pollfd[i].fd);
 				}
+#endif
+
+				return handle_switched_message (event, ctx, i);
 			}
 
-			IPC_RETURN_NO_ERROR;
-		}
-	}
+			// No treatment of the socket if external socket: the libipc user should handle IO operations.
+			if (ctx->cinfos[i].type == IPC_CONNECTION_TYPE_EXTERNAL) {
+				IPC_EVENT_SET (event, IPC_EVENT_TYPE_EXTRA_SOCKET, i, ctx->pollfd[i].fd, NULL);
+				IPC_RETURN_NO_ERROR;
+			}
 
-	IPC_RETURN_ERROR (IPC_ERROR_DEL_FD__CANNOT_FIND_CLIENT);
+			return handle_new_message (event, ctx, i);
+		}
+
+		// Something can be sent.
+		if (ctx->pollfd[i].revents & POLLOUT) {
+			ctx->pollfd[i].events &= ~POLLOUT;
+
+			// fd is switched: using callbacks for IO operations.
+			if (ctx->cinfos[i].type == IPC_CONNECTION_TYPE_SWITCHED) {
+				return handle_writing_switched_message (event, ctx, i);
+			}
+
+			return handle_writing_message (event, ctx, i);
+		}
+
+		// Disconnection.
+		if (ctx->pollfd[i].revents & POLLHUP) {
+			/** IPC_EVENT_SET: event, type, index, fd, message */
+			IPC_EVENT_SET (event, IPC_EVENT_TYPE_DISCONNECTION, i, ctx->pollfd[i].fd, NULL);
+			return ipc_close (ctx, i);
+		}
+
+	} /** for loop: end of the message handling */
+
+	IPC_RETURN_NO_ERROR;
 }

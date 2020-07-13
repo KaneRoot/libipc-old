@@ -23,52 +23,51 @@ void chomp (char *str, ssize_t len)
 	}
 }
 
-struct ipc_connection_info *srv;
+struct ipc_ctx *ctx = NULL;
 
-void non_interactive (char *env[])
+void non_interactive ()
 {
 	SECURE_DECLARATION (struct ipc_message, m);
 
 	// init service
-	TEST_IPC_Q (ipc_connection (env, srv, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (ctx, SERVICE_NAME), EXIT_FAILURE);
 	TEST_IPC_Q (ipc_message_format_data (&m, 42, MSG, (ssize_t) strlen (MSG) + 1), EXIT_FAILURE);
 
 	printf ("msg to send (%ld): %.*s\n", (ssize_t) strlen (MSG) + 1, (int)strlen (MSG), MSG);
-	TEST_IPC_Q (ipc_write (srv, &m), EXIT_FAILURE);
+	// ipc_write fd: write a message without fd availability check.
+	TEST_IPC_Q (ipc_write_fd (ctx->pollfd[0].fd, &m), EXIT_FAILURE);
 	ipc_message_empty (&m);
-	TEST_IPC_Q (ipc_read (srv, &m), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_read (ctx, 0 /* only valid index */, &m), EXIT_FAILURE);
 
 	printf ("msg recv (type: %u): %s\n", m.user_type, m.payload);
 	ipc_message_empty (&m);
 
-	TEST_IPC_Q (ipc_close (srv), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_close_all (ctx), EXIT_FAILURE);
 }
 
-void interactive (char *env[])
+void interactive ()
 {
 	// init service
-	TEST_IPC_Q (ipc_connection (env, srv, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (ctx, SERVICE_NAME), EXIT_FAILURE);
 
 	SECURE_DECLARATION (struct ipc_event, event);
-	SECURE_DECLARATION (struct ipc_connection_infos, services);
 
-	ipc_add (&services, srv);
-	ipc_add_fd (&services, 0);	// add STDIN
+	ipc_add_fd (ctx, 0);	// add STDIN
 
-	ipc_connections_print (&services);
+	ipc_ctx_print (ctx);
 
-	long timer = 10;
+	int timer = 10000;
 
 	while (1) {
 		printf ("msg to send: ");
 		fflush (stdout);
 
-		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (&services, NULL, &event, &timer), EXIT_FAILURE);
+		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (ctx, &event, &timer), EXIT_FAILURE);
 
 		switch (event.type) {
 		case IPC_EVENT_TYPE_TIMER:{
 				printf ("time up!\n");
-				timer = 10;
+				timer = 10000;
 			};
 			break;
 		case IPC_EVENT_TYPE_EXTRA_SOCKET:
@@ -78,7 +77,7 @@ void interactive (char *env[])
 				char buf[4096];
 				memset (buf, 0, 4096);
 
-				len = read (event.origin->fd, buf, 4096);
+				len = read (event.origin, buf, 4096);
 
 				buf[len - 1] = '\0';
 				chomp (buf, len);
@@ -91,9 +90,9 @@ void interactive (char *env[])
 				// in case we want to quit the program
 				if (len == 0 || strncmp (buf, "quit", 4) == 0 || strncmp (buf, "exit", 4) == 0) {
 
-					TEST_IPC_Q (ipc_close (srv), EXIT_FAILURE);
+					TEST_IPC_Q (ipc_close_all (ctx), EXIT_FAILURE);
 
-					ipc_connections_free (&services);
+					ipc_ctx_free (ctx);
 
 					exit (EXIT_SUCCESS);
 				}
@@ -107,6 +106,7 @@ void interactive (char *env[])
 					len = strlen (buf);
 					printf ("message %lu, buffer %.*s\n", i, (int)len, buf);
 					TEST_IPC_Q (ipc_message_format_data (m, 42, buf, len), EXIT_FAILURE);
+					m->fd = ctx->pollfd[0].fd;
 
 					printf ("message from structure: %.*s\n", m->length, m->payload);
 
@@ -114,7 +114,7 @@ void interactive (char *env[])
 					printf ("\n");
 					printf ("right before sending a message\n");
 #endif
-					TEST_IPC_Q (ipc_write (srv, m), EXIT_FAILURE);
+					TEST_IPC_Q (ipc_write (ctx, m), EXIT_FAILURE);
 #if 0
 					printf ("right after sending a message\n");
 #endif
@@ -123,6 +123,11 @@ void interactive (char *env[])
 					// sleep (1);
 				}
 				free (m);
+			}
+			break;
+		case IPC_EVENT_TYPE_TX:
+			{
+				printf ("a message was sent\n");
 			}
 			break;
 		case IPC_EVENT_TYPE_MESSAGE:
@@ -141,22 +146,18 @@ void interactive (char *env[])
 	}
 }
 
-int main (int argc, char *argv[], char *env[])
+int main (int argc, char **argv)
 {
-	argc = argc;		// warnings
-	argv = argv;		// warnings
+	// Compilers fuckery.
+	argv = argv;
 
-	srv = malloc (sizeof (struct ipc_connection_info));
-	memset (srv, 0, sizeof (struct ipc_connection_info));
-
-	// index and version should be filled
-	srv->index = 0;
-	srv->version = 0;
+	ctx = malloc (sizeof (struct ipc_ctx));
+	memset (ctx, 0, sizeof (struct ipc_ctx));
 
 	if (argc == 1)
-		non_interactive (env);
+		non_interactive ();
 	else
-		interactive (env);
+		interactive ();
 
 	return EXIT_SUCCESS;
 }
