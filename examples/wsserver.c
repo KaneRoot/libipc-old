@@ -38,7 +38,7 @@ void interactive ()
 	}
 
 	// init service
-	TEST_IPC_Q (ipc_connection (ctx, service_name), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (ctx, service_name, NULL), EXIT_FAILURE);
 
 	ipc_add_fd (ctx, 0); // add STDIN
 

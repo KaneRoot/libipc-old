@@ -26,7 +26,7 @@ int main (void)
 
 	/** TODO: contact the service */
 	printf ("WARNING: currently this program only ask for pong service %d\n", ret.error_code);
-	TEST_IPC_Q (ipc_connection (&ctx, "pong"), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (&ctx, "pong", NULL), EXIT_FAILURE);
 
 	ipc_provide_fd (client_fd, ctx.pollfd[ctx.size-1].fd);
 

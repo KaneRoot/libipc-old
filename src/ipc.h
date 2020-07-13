@@ -329,7 +329,7 @@ struct ipc_event {
 struct ipc_error ipc_wait_event (struct ipc_ctx *, struct ipc_event *, int *timer);
 
 struct ipc_error ipc_server_init (struct ipc_ctx *ctx, const char *sname);
-struct ipc_error ipc_connection  (struct ipc_ctx *ctx, const char *sname);
+struct ipc_error ipc_connection  (struct ipc_ctx *ctx, const char *sname, int *fd);
 struct ipc_error ipc_connection_switched (struct ipc_ctx *ctx, const char *sname, int clientfd, int *serverfd);
 
 struct ipc_error ipc_close     (struct ipc_ctx *ctx, uint32_t index);

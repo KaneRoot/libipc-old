@@ -30,7 +30,7 @@ void non_interactive ()
 	SECURE_DECLARATION (struct ipc_message, m);
 
 	// init service
-	TEST_IPC_Q (ipc_connection (ctx, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (ctx, SERVICE_NAME, NULL), EXIT_FAILURE);
 	TEST_IPC_Q (ipc_message_format_data (&m, 42, MSG, (ssize_t) strlen (MSG) + 1), EXIT_FAILURE);
 
 	printf ("msg to send (%ld): %.*s\n", (ssize_t) strlen (MSG) + 1, (int)strlen (MSG), MSG);
@@ -48,7 +48,7 @@ void non_interactive ()
 void interactive ()
 {
 	// init service
-	TEST_IPC_Q (ipc_connection (ctx, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (ctx, SERVICE_NAME, NULL), EXIT_FAILURE);
 
 	SECURE_DECLARATION (struct ipc_event, event);
 

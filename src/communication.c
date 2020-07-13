@@ -151,10 +151,10 @@ int ipc_ctx_fd_type (struct ipc_ctx *ctx, int fd, enum ipc_connection_type type)
 	return -1;
 }
 
-struct ipc_error ipc_connection (struct ipc_ctx *ctx, const char *sname)
+struct ipc_error ipc_connection (struct ipc_ctx *ctx, const char *sname, int *serverfd)
 {
 	// Data received on the socket = messages, not new clients, and not switched (no callbacks).
-	return ipc_connection_ (ctx, sname, IPC_CONNECTION_TYPE_IPC, NULL);
+	return ipc_connection_ (ctx, sname, IPC_CONNECTION_TYPE_IPC, serverfd);
 }
 
 struct ipc_error ipc_connection_switched (struct ipc_ctx *ctx, const char *sname, int clientfd, int *serverfd)

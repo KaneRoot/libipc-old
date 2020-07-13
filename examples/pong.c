@@ -30,7 +30,7 @@ void non_interactive (int verbosity, size_t nb_msg, char *msg_str)
 	SECURE_DECLARATION (struct ipc_message, m);
 
 	// init service
-	TEST_IPC_QUIT_ON_ERROR (ipc_connection (ctx, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_QUIT_ON_ERROR (ipc_connection (ctx, SERVICE_NAME, NULL), EXIT_FAILURE);
 
 	if (verbosity > 1) {
 		printf ("msg to send (%ld): %.*s\n", (ssize_t) strlen (MSG) + 1, (int)strlen (MSG), MSG);
@@ -54,7 +54,7 @@ void non_interactive (int verbosity, size_t nb_msg, char *msg_str)
 void interactive ()
 {
 	// init service
-	TEST_IPC_QUIT_ON_ERROR (ipc_connection (ctx, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_QUIT_ON_ERROR (ipc_connection (ctx, SERVICE_NAME, NULL), EXIT_FAILURE);
 
 	SECURE_DECLARATION (struct ipc_error, ret);
 	SECURE_DECLARATION (struct ipc_event, event);

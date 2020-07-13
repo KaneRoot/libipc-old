@@ -90,14 +90,11 @@ void tcp_connection (int fd)
 	T_PERROR_Q ((send (fd, "OK", 2, 0) <= 0), "sending a message", EXIT_FAILURE);
 
 	printf ("connection to %s\n", buf);
-	struct ipc_error ret = ipc_connection_switched (ctx, buf);
+	struct ipc_error ret = ipc_connection_switched (ctx, buf, fd, NULL);
 	if (ret.error_code != IPC_ERROR_NONE) {
 		fprintf (stderr, "%s\n", ret.error_message);
 		exit (EXIT_FAILURE);
 	}
-
-	ipc_switching_add (&ctx->switchdb, fd, ctx->pollfd[ctx->size-1].fd);
-	ipc_ctx_fd_type (ctx, fd, IPC_CONNECTION_TYPE_SWITCHED);
 }
 
 int accept_new_client (int serverfd)
