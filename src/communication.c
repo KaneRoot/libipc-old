@@ -261,7 +261,7 @@ struct ipc_error ipc_accept_add (struct ipc_event *event, struct ipc_ctx *ctx, u
 }
 
 // receive then format in an ipc_message structure
-struct ipc_error ipc_read (const struct ipc_ctx *ctx, uint32_t index, struct ipc_message *m)
+struct ipc_error ipc_read_fd (int32_t fd, struct ipc_message *m)
 {
 	T_R ((m == NULL), IPC_ERROR_READ__NO_MESSAGE_PARAM);
 
@@ -270,10 +270,15 @@ struct ipc_error ipc_read (const struct ipc_ctx *ctx, uint32_t index, struct ipc
 	char *pbuf = buf;
 
 	// On error or closed recipient, the buffer already freed.
-	TEST_IPC_RETURN_ON_ERROR (usock_recv (ctx->pollfd[index].fd, &pbuf, &msize));
+	TEST_IPC_RETURN_ON_ERROR (usock_recv (fd, &pbuf, &msize));
 	TEST_IPC_RETURN_ON_ERROR (ipc_message_format_read (m, buf, msize));
 
 	IPC_RETURN_NO_ERROR;	// propagates ipc_message_format return
+}
+
+struct ipc_error ipc_read (const struct ipc_ctx *ctx, uint32_t index, struct ipc_message *m)
+{
+	return ipc_read_fd (ctx->pollfd[index].fd, m);
 }
 
 struct ipc_error ipc_write_fd (int fd, const struct ipc_message *m)

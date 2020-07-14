@@ -337,7 +337,8 @@ struct ipc_error ipc_close_all (struct ipc_ctx *ctx);
 
 void ipc_ctx_free (struct ipc_ctx *ctx);
 
-struct ipc_error ipc_read  (const struct ipc_ctx *, uint32_t index, struct ipc_message *m);
+struct ipc_error ipc_read     (const struct ipc_ctx *, uint32_t index, struct ipc_message *m);
+struct ipc_error ipc_read_fd  (int32_t fd, struct ipc_message *m);
 struct ipc_error ipc_write (struct ipc_ctx *, const struct ipc_message *m);
 
 struct ipc_error fd_switching_read  (struct ipc_event *event, struct ipc_ctx *ctx, int index);
