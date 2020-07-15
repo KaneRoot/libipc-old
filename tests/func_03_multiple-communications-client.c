@@ -69,8 +69,8 @@ int main(void)
 	SECURE_DECLARATION(struct ipc_ctx, ctx2);
 	SECURE_DECLARATION(struct ipc_event, event);
 
-	TEST_IPC_Q (ipc_connection (&ctx1, SERVICE_NAME), EXIT_FAILURE);
-	TEST_IPC_Q (ipc_connection (&ctx2, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (&ctx1, SERVICE_NAME, NULL), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (&ctx2, SERVICE_NAME, NULL), EXIT_FAILURE);
 
 	send_message (&ctx1);
 	read_message (&ctx1);

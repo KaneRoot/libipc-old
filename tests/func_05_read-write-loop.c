@@ -47,7 +47,7 @@ int main(int argc, char * argv[])
 		memcpy(message_str, DEFAULT_MSG, strlen(DEFAULT_MSG));
 	}
 
-	TEST_IPC_Q (ipc_connection (&ctx, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q (ipc_connection (&ctx, SERVICE_NAME, NULL), EXIT_FAILURE);
 
 	SECURE_MALLOC (write_m.payload, strlen(message_str), exit(EXIT_FAILURE));
 	memcpy (write_m.payload, message_str, strlen(message_str));

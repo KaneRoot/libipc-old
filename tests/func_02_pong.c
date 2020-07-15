@@ -19,7 +19,7 @@ void non_interactive ()
 	SECURE_DECLARATION(struct ipc_ctx, ctx);
 
     // init service
-	TEST_IPC_Q(ipc_connection (&ctx, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q(ipc_connection (&ctx, SERVICE_NAME, NULL), EXIT_FAILURE);
 
 	int server_fd = ctx.pollfd[0].fd;
 

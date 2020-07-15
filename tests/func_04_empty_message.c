@@ -47,7 +47,7 @@ int main(void)
 {
 	SECURE_DECLARATION(struct ipc_ctx, ctx);
 
-	TEST_IPC_Q(ipc_connection (&ctx, SERVICE_NAME), EXIT_FAILURE);
+	TEST_IPC_Q(ipc_connection (&ctx, SERVICE_NAME, NULL), EXIT_FAILURE);
 
 	send_message (&ctx);
 	read_message (&ctx);

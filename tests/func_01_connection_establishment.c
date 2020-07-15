@@ -15,7 +15,7 @@ int main(int argc, char * argv[])
 	SECURE_DECLARATION(struct ipc_ctx,   ctx);
 	SECURE_DECLARATION(struct ipc_event, event);
 
-	ret = ipc_connection (&ctx, SERVICE_NAME);
+	ret = ipc_connection (&ctx, SERVICE_NAME, NULL);
 	if (ret.error_code != IPC_ERROR_NONE) {
 		printf ("error: %s\n", ipc_errors_get(ret.error_code));
 		return EXIT_FAILURE;
