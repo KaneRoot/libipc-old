@@ -346,6 +346,20 @@ struct ipc_error ipc_del (struct ipc_ctx *ctx, uint32_t index)
 		ctx->cinfos[index].spath = NULL;
 	}
 
+	struct ipc_message *m = NULL;
+	// Removing all messages for this fd.
+	size_t looping_count = ctx->tx.size;
+	for (size_t i = 0; i < looping_count; i++) {
+		m = &ctx->tx.messages[i];
+		if (m->fd == ctx->pollfd[index].fd) {
+			printf ("removing message for %d\n", m->fd);
+			ipc_messages_del (&ctx->tx, i); // remove the message indexed by i
+			// Let restart this round
+			i--;
+			looping_count--;
+		}
+	}
+
 	ctx->size--;
 
 	if (ctx->size == 0) {
@@ -501,14 +515,29 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 
 	int32_t n;
 
+	printf("listening on: ");
+	for (size_t i = 0; i < ctx->size; i++) {
+		// We assume that any fd in the list has to be listen to.
+		ctx->pollfd[i].events = POLLIN;
+		printf("%d ", ctx->pollfd[i].fd);
+	}
+	printf("\n");
+
 	for (size_t i = 0; i < ctx->tx.size; i++) {
 		for (size_t y = 0; y < ctx->size; y++) {
 			if (ctx->pollfd[y].fd == ctx->tx.messages[i].fd) {
 				ctx->pollfd[y].events |= POLLOUT;
-				break;
 			}
 		}
 	}
+
+	printf("output on: ");
+	for (size_t i = 0; i < ctx->size; i++) {
+		if (ctx->pollfd[i].events & POLLOUT) {
+			printf("%d ", ctx->pollfd[i].fd);
+		}
+	}
+	printf("\n");
 
 	struct timeval tv_1;
 	memset (&tv_1, 0, sizeof(struct timeval));
