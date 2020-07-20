@@ -200,8 +200,8 @@ enum ipccb
 default_cb_in(int fd, struct ipc_message *m)
 {
 	// TODO: fix buffer size for switching messages
-	size_t msize = 4096;
-	char buf[msize];
+	size_t msize = IPC_MAX_MESSAGE_SIZE;
+	SECURE_BUFFER_DECLARATION (char, buf, msize);
 	char *pbuf = buf;
 
 	// By default, usock_read (a wrapper around read(2)) is used.
