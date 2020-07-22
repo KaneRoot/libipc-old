@@ -199,27 +199,11 @@ struct ipc_error ipc_close (struct ipc_ctx *ctx, uint32_t index)
 	SECURE_DECLARATION (struct ipc_error, ret);
 	int fd = ctx->pollfd[index].fd;
 
-#if 0
-	if (fd_is_valid (fd)) {
-		printf ("ipc_close: fd is valid ==> %d\n", fd);
-
-		if (ctx->cinfos[index].type == IPC_CONNECTION_TYPE_EXTERNAL) {
-			printf ("=== === === external fd: not closing %d\n", fd);
-		}
-		else {
-			ret = usock_close (fd);
-		}
-	}
-	else {
-		printf ("!!!!!!!!!!! !! !! !! IPC_CLOSE: fd is not valid!! ==> %d\n", fd);
-	}
-#else
 	// Closing the file descriptor only if it is not an external connection,
 	// this should be handled by the libipc user application.
 	if (ctx->cinfos[index].type != IPC_CONNECTION_TYPE_EXTERNAL) {
 		ret = usock_close (fd);
 	}
-#endif
 
 	// Verify that the close was OK.
 	if (ret.error_code != IPC_ERROR_NONE) {
@@ -352,7 +336,6 @@ struct ipc_error ipc_del (struct ipc_ctx *ctx, uint32_t index)
 	for (size_t i = 0; i < looping_count; i++) {
 		m = &ctx->tx.messages[i];
 		if (m->fd == ctx->pollfd[index].fd) {
-			printf ("removing message for %d\n", m->fd);
 			ipc_messages_del (&ctx->tx, i); // remove the message indexed by i
 			// Let restart this round
 			i--;
@@ -515,13 +498,10 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 
 	int32_t n;
 
-	printf("listening on: ");
 	for (size_t i = 0; i < ctx->size; i++) {
 		// We assume that any fd in the list has to be listen to.
 		ctx->pollfd[i].events = POLLIN;
-		printf("%d ", ctx->pollfd[i].fd);
 	}
-	printf("\n");
 
 	for (size_t i = 0; i < ctx->tx.size; i++) {
 		for (size_t y = 0; y < ctx->size; y++) {
@@ -531,13 +511,10 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 		}
 	}
 
-	printf("output on: ");
 	for (size_t i = 0; i < ctx->size; i++) {
 		if (ctx->pollfd[i].events & POLLOUT) {
-			printf("%d ", ctx->pollfd[i].fd);
 		}
 	}
-	printf("\n");
 
 	struct timeval tv_1;
 	memset (&tv_1, 0, sizeof(struct timeval));
@@ -581,13 +558,6 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 
 			// fd is switched: using callbacks for IO operations.
 			if (ctx->cinfos[i].type == IPC_CONNECTION_TYPE_SWITCHED) {
-#if 0
-				int fd_validity = fd_is_valid (ctx->pollfd[i].fd);
-				if (! fd_validity) {
-					printf ("switch happening in C: %d FD IS INVALID:::::::::: IM BROKEN INSIIIIIIIDE\n", ctx->pollfd[i].fd);
-				}
-#endif
-
 				return handle_switched_message (event, ctx, i);
 			}
 
