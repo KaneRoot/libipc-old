@@ -511,11 +511,6 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 		}
 	}
 
-	for (size_t i = 0; i < ctx->size; i++) {
-		if (ctx->pollfd[i].events & POLLOUT) {
-		}
-	}
-
 	struct timeval tv_1;
 	memset (&tv_1, 0, sizeof(struct timeval));
 
