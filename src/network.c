@@ -197,9 +197,10 @@ void ipc_switching_free (struct ipc_switchings *is)
 }
 
 enum ipccb
-default_cb_in(int fd, struct ipc_message *m)
+default_cb_in(int fd, struct ipc_message *m, short int *more_to_read)
 {
-	// TODO: fix buffer size for switching messages
+	*more_to_read = 0;
+
 	size_t msize = IPC_MAX_MESSAGE_SIZE;
 	SECURE_BUFFER_DECLARATION (char, buf, msize);
 	char *pbuf = buf;
@@ -251,7 +252,7 @@ default_cb_out(int fd, struct ipc_message *m)
 }
 
 void ipc_switching_callbacks_ (struct ipc_ctx *ctx, int fd
-	, enum ipccb (*cb_in )(int fd, struct ipc_message *m))
+	, enum ipccb (*cb_in )(int fd, struct ipc_message *m, short int *more_to_read))
 {
 	ipc_switching_callbacks (ctx, fd, cb_in, NULL);
 }
@@ -259,7 +260,7 @@ void ipc_switching_callbacks_ (struct ipc_ctx *ctx, int fd
 void ipc_switching_callbacks (
 	  struct ipc_ctx *ctx
 	, int fd
-	, enum ipccb (*cb_in )(int fd, struct ipc_message *m)
+	, enum ipccb (*cb_in )(int fd, struct ipc_message *m, short int *more_to_read)
 	, enum ipccb (*cb_out)(int fd, struct ipc_message *m))
 {
 	struct ipc_switching *sw = NULL;
@@ -297,6 +298,7 @@ struct ipc_error fd_switching_read (struct ipc_event *event, struct ipc_ctx *ctx
 
 	enum ipccb r;
 	int is_valid = 0;
+	short int more_to_read = 0;
 
 	is_valid = ipc_switching_get_ (&ctx->switchdb, talkingfd, &sw);
 
@@ -305,21 +307,23 @@ struct ipc_error fd_switching_read (struct ipc_event *event, struct ipc_ctx *ctx
 	if (sw->orig == talkingfd) {
 		dest_fd = sw->dest;
 		if (sw->orig_in == NULL) {
-			r = default_cb_in (talkingfd, &m);
+			r = default_cb_in (talkingfd, &m, &more_to_read);
 		}
 		else {
-			r = (*sw->orig_in)(talkingfd, &m);
+			r = (*sw->orig_in)(talkingfd, &m, &more_to_read);
 		}
 	}
 	else {
 		dest_fd = sw->orig;
 		if (sw->dest_in == NULL) {
-			r = default_cb_in (talkingfd, &m);
+			r = default_cb_in (talkingfd, &m, &more_to_read);
 		}
 		else {
-			r = (*sw->dest_in)(talkingfd, &m);
+			r = (*sw->dest_in)(talkingfd, &m, &more_to_read);
 		}
 	}
+
+	ctx->cinfos[index].more_to_read = more_to_read;
 
 	// Message reception OK: reading the message and put it in the list of messages to send.
 	if (r == IPC_CB_NO_ERROR) {
@@ -339,7 +343,7 @@ struct ipc_error fd_switching_read (struct ipc_event *event, struct ipc_ctx *ctx
 	// This is applied to protocol-specific messages, for example when the client
 	// has to communicate with the proxy, not the service.
 	if (r == IPC_CB_IGNORE) {
-		printf ("IGNORING REQUEST\n");
+		// printf ("IGNORING REQUEST\n");
 		// In case of message reception:
 		// 1. set event IPC_EVENT_TYPE_SWITCH, inform ipcd of a successful reception.
 		IPC_EVENT_SET (event, IPC_EVENT_TYPE_SWITCH, index, ctx->pollfd[index].fd, NULL);

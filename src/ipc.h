@@ -231,6 +231,7 @@ enum ipc_connection_type {
 
 struct ipc_connection_info {
 	enum ipc_connection_type type;
+	short int more_to_read;
 	char *spath; // max size: PATH_MAX
 };
 
@@ -250,9 +251,9 @@ struct ipc_messages {
 struct ipc_switching {
 	int orig;
 	int dest;
-	enum ipccb (*orig_in)  (int origin_fd, struct ipc_message *m);
+	enum ipccb (*orig_in)  (int origin_fd, struct ipc_message *m, short int *more_to_read);
 	enum ipccb (*orig_out) (int origin_fd, struct ipc_message *m);
-	enum ipccb (*dest_in)  (int origin_fd, struct ipc_message *m);
+	enum ipccb (*dest_in)  (int origin_fd, struct ipc_message *m, short int *more_to_read);
 	enum ipccb (*dest_out) (int origin_fd, struct ipc_message *m);
 };
 
@@ -404,11 +405,11 @@ int ipc_switching_del (struct ipc_switchings *is, int fd);
 int ipc_switching_get (struct ipc_switchings *is, int fd);
 void ipc_switching_free (struct ipc_switchings *is);
 void ipc_switching_callbacks_ (struct ipc_ctx *ctx, int fd
-	, enum ipccb (*cb_in )(int fd, struct ipc_message *m));
+	, enum ipccb (*cb_in )(int fd, struct ipc_message *m, short int *more_to_read));
 void ipc_switching_callbacks (
 	  struct ipc_ctx *ctx
 	, int fd
-	, enum ipccb (*cb_in )(int fd, struct ipc_message *m)
+	, enum ipccb (*cb_in )(int fd, struct ipc_message *m, short int *more_to_read)
 	, enum ipccb (*cb_out)(int fd, struct ipc_message *m));
 
 int ipc_ctx_fd_type (struct ipc_ctx *ctx, int fd, enum ipc_connection_type type);

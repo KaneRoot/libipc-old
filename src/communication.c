@@ -496,7 +496,7 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 
 	IPC_EVENT_CLEAN (event);
 
-	int32_t n;
+	int32_t n = 0;
 
 	for (size_t i = 0; i < ctx->size; i++) {
 		// We assume that any fd in the list has to be listen to.
@@ -519,7 +519,18 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 
 	gettimeofday(&tv_1, NULL);
 
-	if ((n = poll(ctx->pollfd, ctx->size, *timer)) < 0) {
+	int timer_ = *timer;
+
+	/* In case there is a file descriptor that requires more to read. */
+	for (size_t i = 0; i <= ctx->size; i++) {
+		if (ctx->cinfos[i].more_to_read == 1) {
+			// printf ("There is more to read for _at least_ fd %d\n", ctx->pollfd[i].fd);
+			timer_ = 0;
+			break;
+		}
+	}
+
+	if ((n = poll(ctx->pollfd, ctx->size, timer_)) < 0) {
 		IPC_RETURN_ERROR (IPC_ERROR_WAIT_EVENT__POLL);
 	}
 
@@ -538,14 +549,18 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 	}
 
 	// Timeout.
-	if (n == 0) {
+	if (n == 0 && timer_ != 0) {
 		IPC_EVENT_SET (event, IPC_EVENT_TYPE_TIMER, 0, 0, NULL);
 		IPC_RETURN_NO_ERROR;
 	}
 
 	for (size_t i = 0; i <= ctx->size; i++) {
 		// Something to read or connection.
-		if (ctx->pollfd[i].revents & POLLIN) {
+		if (ctx->pollfd[i].revents & POLLIN || ctx->cinfos[i].more_to_read == 1) {
+
+			// Avoiding loops.
+			ctx->cinfos[i].more_to_read = 0;
+
 			// In case there is something to read for the server socket: new client.
 			if (ctx->cinfos[i].type == IPC_CONNECTION_TYPE_SERVER) {
 				return ipc_accept_add (event, ctx, i);
