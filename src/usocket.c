@@ -35,37 +35,51 @@ struct ipc_error usock_recv (const int32_t fd, char **buf, size_t * len)
 	T_R ((buf == NULL), IPC_ERROR_USOCK_RECV__NO_BUFFER);
 	T_R ((len == NULL), IPC_ERROR_USOCK_RECV__NO_LENGTH);
 
+	// printf("USOCKET: listen to %d (up to %lu bytes)\n", fd, *len);
 	int32_t ret_recv = 0;
 
 	if (*len == 0)
 		*len = IPC_MAX_MESSAGE_SIZE;
 
+	// msize_read: size of the message (without the header).
 	uint32_t msize = 0;
+
+	// msize_read: size sum of the packets received.
 	uint32_t msize_read = 0;
 
 	do {
+		/**
+		 * recv:
+		 * ret >  0: message receveid
+		 * ret == 0: fd is closing
+		 * ret <  0: error
+		 */
 		ret_recv = recv (fd, *buf, *len, 0);
-#ifdef IPC_DEBUG
+
 		if (ret_recv > 0) {
+#ifdef IPC_DEBUG
 			print_hexa ("msg recv", (uint8_t *) * buf, ret_recv);
 			fflush (stdout);
-		}
 #endif
-
-		if (ret_recv > 0) {
 			if (msize == 0) {
 				memcpy (&msize, *buf + 1, sizeof msize);
+				msize = ntohl (msize);
 			}
-			msize = ntohl (msize);
+			// else {
+			// 	printf ("USOCKET: We received a message in (at least) two packets (receveid %u bytes).\n", msize_read);
+			// }
 
-			if (msize >= IPC_MAX_MESSAGE_SIZE) {
+			if (msize > IPC_MAX_MESSAGE_SIZE) {
 #ifdef IPC_DEBUG
 				print_hexa ("msg recv", (uint8_t *) * buf, ret_recv);
 				fflush (stdout);
 #endif
 			}
+
+			// Do not allow messages with a longer size than expected.
 			T_R ((msize > IPC_MAX_MESSAGE_SIZE), IPC_ERROR_USOCK_RECV__MESSAGE_SIZE);
-			msize_read += ret_recv - IPC_HEADER_SIZE;
+
+			msize_read += ret_recv;
 		} else if (ret_recv < 0) {
 			*len = 0;
 
@@ -111,11 +125,17 @@ struct ipc_error usock_recv (const int32_t fd, char **buf, size_t * len)
 				, "usock_recv: recv < 0, is the message size malformed?");
 		}
 
-	} while (msize > msize_read);
+		// if (msize > msize_read) {
+		// 	printf ("USOCKET: loop again for %d (read %u/%u)\n", fd, msize_read, msize);
+		// }
 
-	*len = msize + IPC_HEADER_SIZE;
+		// In case msize still is 0, recv didn't worked as expected.
+	} while (msize > 0 && msize > msize_read - IPC_HEADER_SIZE);
 
-	// 1 on none byte received, indicates a closed recipient
+	// printf("USOCKET: end of the loop for client %d -- %u bytes read\n", fd, msize_read);
+	*len = msize_read;
+
+	// none bytes received, indicates a closed recipient
 	if (ret_recv == 0) {
 		*len = 0;
 		IPC_RETURN_ERROR (IPC_ERROR_CLOSED_RECIPIENT);
