@@ -522,7 +522,7 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 	int timer_ = *timer;
 
 	/* In case there is a file descriptor that requires more to read. */
-	for (size_t i = 0; i <= ctx->size; i++) {
+	for (size_t i = 0; i < ctx->size; i++) {
 		if (ctx->cinfos[i].more_to_read == 1) {
 			// printf ("There is more to read for _at least_ fd %d\n", ctx->pollfd[i].fd);
 			timer_ = 0;
