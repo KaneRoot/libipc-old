@@ -522,6 +522,7 @@ struct ipc_error ipc_provide_fd (int sock, int fd);
 	TEST_IPC_RR_F(function_to_test, "%s", err_message)
 
 // same as TEST_IPC_RR but do not return
+// Also: print the error right away.
 #define TEST_IPC_P(function_to_test, err_message) {\
 	struct ipc_error ret = function_to_test;\
 	if (ret.error_code != IPC_ERROR_NONE) {\
@@ -529,6 +530,8 @@ struct ipc_error ipc_provide_fd (int sock, int fd);
 			, "non blocking error" \
 			, ":" __FILE__ "%s:%s" \
 			, err_message );\
+		\
+		fprintf (stderr, "%s\n", ret.error_message);\
 	}\
 }
 

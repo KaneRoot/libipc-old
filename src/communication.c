@@ -192,6 +192,24 @@ struct ipc_error ipc_close_all (struct ipc_ctx *ctx)
 	IPC_RETURN_NO_ERROR;
 }
 
+// Removing all messages for this fd.
+void ipc_remove_messages_for_fd (struct ipc_ctx *ctx, int fd)
+{
+	struct ipc_message *m = NULL;
+	size_t looping_count = ctx->tx.size;
+	for (size_t i = 0; i < looping_count; i++) {
+		m = &ctx->tx.messages[i];
+		if (m->fd == fd) {
+			// Freeing the message structure.
+			ipc_message_empty (m);
+			ipc_messages_del (&ctx->tx, i); // remove the message indexed by i
+			// Let restart this round
+			i--;
+			looping_count--;
+		}
+	}
+}
+
 struct ipc_error ipc_close (struct ipc_ctx *ctx, uint32_t index)
 {
 	T_R ((ctx == NULL), IPC_ERROR_CLOSE__NO_CTX_PARAM);
@@ -204,6 +222,9 @@ struct ipc_error ipc_close (struct ipc_ctx *ctx, uint32_t index)
 	if (ctx->cinfos[index].type != IPC_CONNECTION_TYPE_EXTERNAL) {
 		ret = usock_close (fd);
 	}
+
+	// Remove all messages for this fd.
+	ipc_remove_messages_for_fd (ctx, fd);
 
 	// Verify that the close was OK.
 	if (ret.error_code != IPC_ERROR_NONE) {
@@ -330,18 +351,7 @@ struct ipc_error ipc_del (struct ipc_ctx *ctx, uint32_t index)
 		ctx->cinfos[index].spath = NULL;
 	}
 
-	struct ipc_message *m = NULL;
-	// Removing all messages for this fd.
-	size_t looping_count = ctx->tx.size;
-	for (size_t i = 0; i < looping_count; i++) {
-		m = &ctx->tx.messages[i];
-		if (m->fd == ctx->pollfd[index].fd) {
-			ipc_messages_del (&ctx->tx, i); // remove the message indexed by i
-			// Let restart this round
-			i--;
-			looping_count--;
-		}
-	}
+	ipc_remove_messages_for_fd (ctx, ctx->pollfd[index].fd);
 
 	ctx->size--;
 
@@ -416,7 +426,9 @@ struct ipc_error handle_writing_message (struct ipc_event *event, struct ipc_ctx
 		m = &ctx->tx.messages[i];
 		mfd = m->fd;
 		if (txfd == mfd) {
-			TEST_IPC_RR (ipc_write_fd (txfd, m), "cannot send a message to the client");
+			// In case the writing is compromised, do not return right away,
+			// just print the result.
+			TEST_IPC_P(ipc_write_fd (txfd, m), "cannot send a message to the client");
 
 			// Freeing the message structure.
 			ipc_message_empty (m);
