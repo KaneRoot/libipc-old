@@ -136,6 +136,7 @@ void exit_program (int signal)
 
 int main (int argc, char *argv[])
 {
+	printf ("Usage: %s [verbosity]\n", argv[0]);
 	if (argc > 1) {
 		verbosity = atoi(argv[1]);
 	}

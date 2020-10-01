@@ -39,6 +39,9 @@ void non_interactive (int verbosity, size_t nb_msg, char *msg_str)
 	for (size_t i = 0 ; i < nb_msg ; i++) {
 		TEST_IPC_QUIT_ON_ERROR (ipc_message_format_data (&m, 42, msg_str, (ssize_t) strlen (msg_str) + 1), EXIT_FAILURE);
 		TEST_IPC_QUIT_ON_ERROR (ipc_write_fd (ctx->pollfd[0].fd, &m), EXIT_FAILURE);
+		if (verbosity > 1) {
+			printf ("msg written (type: %u): %s\n", m.user_type, m.payload);
+		}
 		ipc_message_empty (&m);
 		TEST_IPC_QUIT_ON_ERROR (ipc_read (ctx, 0 /* read from the only valid index */, &m), EXIT_FAILURE);
 
@@ -110,16 +113,16 @@ void interactive ()
 					fprintf (stderr, "%s", ret.error_message);
 					exit (EXIT_FAILURE);
 				}
-#if 0
+#if 1
 				printf ("\n");
 				printf ("right before sending a message\n");
 #endif
-				ret = ipc_write (ctx, m);
+				ret = ipc_write_fd (ctx->pollfd[1].fd, m);
 				if (ret.error_code != IPC_ERROR_NONE) {
 					fprintf (stderr, "%s", ret.error_message);
 					exit (EXIT_FAILURE);
 				}
-#if 0
+#if 1
 				printf ("right after sending a message\n");
 #endif
 
@@ -145,7 +148,7 @@ void interactive ()
 
 int main (int argc, char *argv[])
 {
-	printf("usage: %s [verbosity #messages message]", argv[0]);
+	printf("usage: %s [verbosity #messages message]\n", argv[0]);
 
 	ctx = malloc (sizeof (struct ipc_ctx));
 	memset (ctx, 0, sizeof (struct ipc_ctx));
