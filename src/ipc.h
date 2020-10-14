@@ -41,7 +41,7 @@ enum msg_types {
 	, MSG_TYPE_ERR            = 1
 	, MSG_TYPE_DATA           = 2
 	, MSG_TYPE_NETWORK_LOOKUP = 3
-} message_types;
+};
 
 /**
  * Event types.
