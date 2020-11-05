@@ -58,9 +58,11 @@ struct ipc_error ipc_contact_ipcd (int *pfd, const char *sname)
 	T_R ((pfd == NULL),   IPC_ERROR_CONTACT_IPCD__NO_FD_PARAM);
 	T_R ((sname == NULL), IPC_ERROR_CONTACT_IPCD__NO_SERVICE_NAME_PARAM);
 
+	// In case there is a problem with ipcd.
+	*pfd = 0;
+
 	char *ipcd_var = getenv ("IPC_NETWORK");
 	if (ipcd_var == NULL) {
-		*pfd = 0;
 		IPC_RETURN_NO_ERROR;
 	}
 	// TODO: is there another, more interesting way to do this?
@@ -73,7 +75,6 @@ struct ipc_error ipc_contact_ipcd (int *pfd, const char *sname)
 	memcpy (columnthensname + 1, sname, strlen (sname));
 
 	if (strncmp (ipcd_var, sname, strlen (sname)) != 0 && strstr (ipcd_var, columnthensname) == NULL) {
-		*pfd = 0;
 		IPC_RETURN_NO_ERROR;
 	}
 
@@ -95,7 +96,24 @@ struct ipc_error ipc_contact_ipcd (int *pfd, const char *sname)
 	msg.length = strlen (content);
 	msg.payload = content;
 
-	TEST_IPC_RR (ipc_write_fd (ipcd_fd, &msg), "cannot send a message to networkd");
+	TEST_IPC_RR (ipc_write_fd (ipcd_fd, &msg), "cannot send a message to ipcd");
+
+	memset (&msg, 0, sizeof(struct ipc_message));
+
+	// ipcd successfully contacted the service or failed.
+	// ipcd will tell either OK or NOT OK.
+	TEST_IPC_RR (ipc_read_fd (ipcd_fd, &msg), "cannot read the ipcd response");
+
+	// In case ipcd failed.
+	if (msg.length != 2) {
+		printf ("ipcd failed to contact service: (%d bytes) %s\n"
+			, msg.length
+			, msg.payload);
+		SECURE_DECLARATION(struct ipc_error, ret);
+		ret.error_code = IPC_ERROR_CLOSED_RECIPIENT;
+		usock_close (ipcd_fd);
+		return ret;
+	}
 
 	struct ipc_error ret = ipc_receive_fd (ipcd_fd, pfd);
 	if (ret.error_code == IPC_ERROR_NONE) {
@@ -116,7 +134,7 @@ struct ipc_error ipc_connection_ (struct ipc_ctx *ctx, const char *sname, enum i
 	SECURE_DECLARATION(struct pollfd, pollfd);
 	pollfd.events = POLLIN;
 
-	TEST_IPC_P (ipc_contact_ipcd (&pollfd.fd, sname), "error during networkd connection");
+	TEST_IPC_P (ipc_contact_ipcd (&pollfd.fd, sname), "error during ipcd connection");
 
 	// if ipcd did not initiate the connection
 	if (pollfd.fd <= 0) {
