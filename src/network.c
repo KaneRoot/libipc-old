@@ -118,6 +118,11 @@ void ipc_switching_add (struct ipc_switchings *is, int orig, int dest)
 	// printf ("ipc_switching_add END: switchdb has %ld entries\n", is->size);
 }
 
+int ipc_ctx_switching_del (struct ipc_ctx *ctx, int fd)
+{
+	return ipc_switching_del (&ctx->switchdb, fd);
+}
+
 int ipc_switching_del (struct ipc_switchings *is, int fd)
 {
 	for (size_t i = 0; i < is->size; i++) {
@@ -355,13 +360,14 @@ struct ipc_error fd_switching_read (struct ipc_event *event, struct ipc_ctx *ctx
 	 * NOTE: In any other case, the fd is, or should be closed.
 	 */
 
-	// 1. close and remove both fd from switchdb
-	close (sw->dest);
-	ipc_del_fd (ctx, sw->dest);
-	// Should not close the client: it's the job of the libipc user application.
-	// XXX: this may be normal, but should be documented.
+	// 1. remove both fd from switchdb
+	// Client and servers should be closed by the libipc user application.
+	// close (sw->dest);
 	// close (talkingfd);
+
+	ipc_del_fd (ctx, sw->dest);
 	ipc_del_fd (ctx, talkingfd);
+
 	ipc_switching_del (&ctx->switchdb, talkingfd);
 
 	// 2. set event (either error or disconnection)

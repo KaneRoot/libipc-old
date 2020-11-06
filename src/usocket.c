@@ -24,6 +24,66 @@ struct ipc_error usock_send (const int32_t fd, const char *buf, size_t len, size
 {
 	ssize_t ret = 0;
 	ret = send (fd, buf, len, MSG_NOSIGNAL);
+	if (ret <= 0)
+	{
+		// TODO: Check for errno.
+		// Some choice could be made.
+		switch (errno) {
+
+			// The receive buffer pointer(s) point outside the process's address space.
+			ERROR_CASE (EACCES, "usock_send", "write permission is denied");
+
+			// The socket is marked nonblocking and the requested operation would block.
+			// POSIX.1-2001 allows either error to be returned for this case, and does not
+			// require these constants to have the same value, so a portable application
+			// should check for both possibilities.
+			case (EWOULDBLOCK) :
+			ERROR_CASE (EAGAIN, "usock_send", "socket marked as nonblocking, but requested operation would block");
+
+			ERROR_CASE (EAGAIN, "usock_send", "socket not previously bound to an address and all ports are in use");
+
+			ERROR_CASE (EALREADY, "usock_send", "another Fast Open is in progress");
+
+			ERROR_CASE (EBADF, "usock_send", "sockfd is not a valid open file descriptor");
+
+			ERROR_CASE (ECONNRESET, "usock_send", "Connection reset by peer.");
+
+			ERROR_CASE (EDESTADDRREQ, "usock_send", "socket not connection-mode, and no peer address is set.");
+
+			ERROR_CASE (EFAULT, "usock_send", "an invalid user space address was specified for an argument");
+
+			// See signal(7).
+			ERROR_CASE (EINTR, "usock_send", "a signal occurred before any data was transmitted");
+
+			ERROR_CASE (EINVAL, "usock_send", "invalid argument passed");
+
+			// This error should not happen, and the recipient specification may be ignored.
+			ERROR_CASE (EISCONN, "usock_send", "connection-mode socket was already connected but a recipient was specified");
+
+			// The socket type requires that message be sent atomically, and the size of the message to be sent made this impossible.
+			ERROR_CASE (EMSGSIZE, "usock_send", "cannot send a message of that size");
+
+			// This generally indicates that the interface has stopped sending, but
+			// may be caused by transient congestion. (Normally, this does not occur in Linux.
+			// Packets are just silently dropped when a device queue overflows.)
+			ERROR_CASE (ENOBUFS, "usock_send", "the output queue for the network interface was full");
+
+			ERROR_CASE (ENOMEM, "usock_send", "no memory available");
+
+			ERROR_CASE (ENOTCONN, "usock_send", "the socket is not connected, and no target has been given");
+
+			// Should not happen in libipc (watch out for libipc user application).
+			ERROR_CASE (ENOTSOCK, "usock_send", "the file descriptor sockfd does not refer to a socket");
+
+			// Should not happen in libipc.
+			ERROR_CASE (EOPNOTSUPP, "usock_send", "some bit in the flags argument is inappropriate for the socket type");
+
+			// In this case, the process will also receive a SIGPIPE unless MSG_NOSIGNAL is set.
+			ERROR_CASE (EPIPE, "usock_send", "the local end has been shut down on a connection oriented socket");
+
+		}
+	}
+
 	T_R ((ret <= 0), IPC_ERROR_USOCK_SEND);
 	*sent = ret;
 	IPC_RETURN_NO_ERROR;

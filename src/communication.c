@@ -204,7 +204,7 @@ struct ipc_error ipc_close_all (struct ipc_ctx *ctx)
 	T_R ((ctx == NULL), IPC_ERROR_CLOSE_ALL__NO_CTX_PARAM);
 
 	for (size_t i = 0 ; i < ctx->size ; i++) {
-		TEST_IPC_P (ipc_close (ctx, i), "cannot close a connection in handle_message");
+		TEST_IPC_P (ipc_close (ctx, i), "cannot close a connection in ipc_close_all");
 	}
 
 	IPC_RETURN_NO_ERROR;
@@ -526,6 +526,10 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 
 	IPC_EVENT_CLEAN (event);
 
+	// By default, everything is alright.
+	SECURE_DECLARATION(struct ipc_error, final_return);
+	final_return.error_code = IPC_ERROR_NONE;
+
 	int32_t n = 0;
 
 	for (size_t i = 0; i < ctx->size; i++) {
@@ -533,7 +537,9 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 		ctx->pollfd[i].events = POLLIN;
 	}
 
+	// For each message to send…
 	for (size_t i = 0; i < ctx->tx.size; i++) {
+		// … verify that its destination is available for message exchange.
 		for (size_t y = 0; y < ctx->size; y++) {
 			if (ctx->pollfd[y].fd == ctx->tx.messages[i].fd) {
 				ctx->pollfd[y].events |= POLLOUT;
@@ -584,7 +590,12 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 		IPC_RETURN_NO_ERROR;
 	}
 
-	for (size_t i = 0; i <= ctx->size; i++) {
+	for (size_t i = 0; i < ctx->size; i++) {
+
+		// Whatever happens, we have the fd and the index in event.
+		event->index  = i;
+		event->origin = ctx->pollfd[i].fd;
+
 		// Something to read or connection.
 		if (ctx->pollfd[i].revents & POLLIN || ctx->cinfos[i].more_to_read == 1) {
 
@@ -593,21 +604,25 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 
 			// In case there is something to read for the server socket: new client.
 			if (ctx->cinfos[i].type == IPC_CONNECTION_TYPE_SERVER) {
-				return ipc_accept_add (event, ctx, i);
+				final_return = ipc_accept_add (event, ctx, i);
+				goto wait_event_exit;
 			}
 
 			// fd is switched: using callbacks for IO operations.
 			if (ctx->cinfos[i].type == IPC_CONNECTION_TYPE_SWITCHED) {
-				return handle_switched_message (event, ctx, i);
+				final_return = handle_switched_message (event, ctx, i);
+				goto wait_event_exit;
 			}
 
 			// No treatment of the socket if external socket: the libipc user should handle IO operations.
 			if (ctx->cinfos[i].type == IPC_CONNECTION_TYPE_EXTERNAL) {
 				IPC_EVENT_SET (event, IPC_EVENT_TYPE_EXTRA_SOCKET, i, ctx->pollfd[i].fd, NULL);
-				IPC_RETURN_NO_ERROR;
+				// Default: return no error.
+				goto wait_event_exit;
 			}
 
-			return handle_new_message (event, ctx, i);
+			final_return = handle_new_message (event, ctx, i);
+			goto wait_event_exit;
 		}
 
 		// Something can be sent.
@@ -616,20 +631,46 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 
 			// fd is switched: using callbacks for IO operations.
 			if (ctx->cinfos[i].type == IPC_CONNECTION_TYPE_SWITCHED) {
-				return handle_writing_switched_message (event, ctx, i);
+				final_return = handle_writing_switched_message (event, ctx, i);
+				goto wait_event_exit;
 			}
 
-			return handle_writing_message (event, ctx, i);
+			final_return = handle_writing_message (event, ctx, i);
+			goto wait_event_exit;
 		}
 
 		// Disconnection.
 		if (ctx->pollfd[i].revents & POLLHUP) {
 			/** IPC_EVENT_SET: event, type, index, fd, message */
 			IPC_EVENT_SET (event, IPC_EVENT_TYPE_DISCONNECTION, i, ctx->pollfd[i].fd, NULL);
-			return ipc_close (ctx, i);
+			final_return = ipc_close (ctx, i);
+			goto wait_event_exit;
+		}
+
+		if (ctx->pollfd[i].revents & POLLERR) {
+			printf ("POLLERR: PROBLEM WITH fd %d\n", ctx->pollfd[i].fd);
+			IPC_EVENT_SET (event, IPC_EVENT_TYPE_ERROR, i, ctx->pollfd[i].fd, NULL);
+			goto wait_event_exit;
+		}
+
+		if (ctx->pollfd[i].revents & POLLNVAL) {
+			printf ("POLLNVAL: INVALID fd %d\n", ctx->pollfd[i].fd);
+			IPC_EVENT_SET (event, IPC_EVENT_TYPE_ERROR, i, ctx->pollfd[i].fd, NULL);
+			goto wait_event_exit;
 		}
 
 	} /** for loop: end of the message handling */
 
-	IPC_RETURN_NO_ERROR;
+	printf ("END OF THE LOOP WITHOUT GOTO!\n");
+
+wait_event_exit:
+
+	/** TODO: tests on event, it has to be filled. */
+	if (event->type == 0) {
+		printf ("EVENT TYPE NOT FILLED! code: %d, error_message: %s\n"
+			, final_return.error_code
+			, final_return.error_message);
+	}
+
+	return final_return;
 }

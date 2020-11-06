@@ -316,6 +316,8 @@ struct ipc_event {
 
 #define IPC_EVENT_CLEAN(pevent) {\
 	pevent->type = IPC_EVENT_TYPE_NOT_SET;\
+	pevent->origin = 0;\
+	pevent->index  = 0;\
 	if (pevent->m != NULL) {\
 		ipc_message_empty (pevent->m);\
 		free(pevent->m);\
@@ -376,7 +378,7 @@ void ipc_messages_free (struct ipc_messages *);
 
 // Switch cases macros
 // print on error
-#define ERROR_CASE(e,f,m) case e : { fprintf (stderr, "function %s: %s", f, m); } break;
+#define ERROR_CASE(e,f,m) case e : { fprintf (stderr, "function %s: %s\n", f, m); } break;
 
 /***
  * non public functions
@@ -400,6 +402,7 @@ struct ipc_error service_path         (char *path, const char *sname);
  **/
 
 void ipc_ctx_switching_add (struct ipc_ctx *ctx, int orig, int dest);
+int  ipc_ctx_switching_del (struct ipc_ctx *ctx, int fd);
 void ipc_switching_add (struct ipc_switchings *is, int orig, int dest);
 int ipc_switching_del (struct ipc_switchings *is, int fd);
 int ipc_switching_get (struct ipc_switchings *is, int fd);
