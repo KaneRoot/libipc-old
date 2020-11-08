@@ -23,10 +23,14 @@
 struct ipc_error usock_send (const int32_t fd, const char *buf, size_t len, size_t * sent)
 {
 	ssize_t ret = 0;
+
+#ifdef __PRINT_MSG_SIZES
+	fprintf (stderr, "a %10lu-byte message should be sent to %d\n", len, fd);
+#endif
+
 	ret = send (fd, buf, len, MSG_NOSIGNAL);
 	if (ret == -1)
 	{
-		// TODO: Check for errno.
 		// Some choice could be made.
 		switch (errno) {
 
@@ -125,6 +129,12 @@ struct ipc_error usock_recv (const int32_t fd, char **buf, size_t * len)
 			if (msize == 0) {
 				memcpy (&msize, *buf + 1, sizeof msize);
 				msize = ntohl (msize);
+
+#ifdef __PRINT_MSG_SIZES
+				fprintf (stderr, "a %10u-byte message should be received on %d\n"
+					, msize + IPC_HEADER_SIZE
+					, fd);
+#endif
 			}
 			// else {
 			// 	printf ("USOCKET: We received a message in (at least) two packets (receveid %u bytes).\n", msize_read);

@@ -18,6 +18,7 @@
 #define RUNDIR "/run/ipc/"
 #define PATH_MAX 4096
 #define IPC_HEADER_SIZE 6
+// #define __IPC_BASE_SIZE       500000  // 500 KB
 #define __IPC_BASE_SIZE       2000000  // 2 MB, plenty enough space for messages
 #define IPC_MAX_MESSAGE_SIZE  __IPC_BASE_SIZE-IPC_HEADER_SIZE
 

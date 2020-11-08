@@ -88,14 +88,10 @@ void ipc_ctx_switching_add (struct ipc_ctx *ctx, int orig, int dest)
 
 void ipc_switching_add (struct ipc_switchings *is, int orig, int dest)
 {
-	// printf ("ipc_switching_add START: switchdb has %ld entries\n", is->size);
-
 	if (is->collection == NULL) {
-		// printf ("switchdb collection is null\n");
 		is->collection = malloc (sizeof (struct ipc_switching) * (is->size + 1));
 	}
 	else {
-		// printf ("switchdb collection isn't null\n");
 		is->collection = realloc (is->collection, sizeof (struct ipc_switching) * (is->size + 1));
 	}
 
@@ -114,8 +110,6 @@ void ipc_switching_add (struct ipc_switchings *is, int orig, int dest)
 	is->collection[is->size - 1].dest_in  = NULL;
 	is->collection[is->size - 1].orig_out = NULL;
 	is->collection[is->size - 1].dest_out = NULL;
-
-	// printf ("ipc_switching_add END: switchdb has %ld entries\n", is->size);
 }
 
 int ipc_ctx_switching_del (struct ipc_ctx *ctx, int fd)
@@ -293,6 +287,7 @@ struct ipc_error fd_switching_read (struct ipc_event *event, struct ipc_ctx *ctx
 
 	// If the socket is associated to another one for ipcd:
 	// read and write automatically and provide a new IPC_EVENT_TYPE indicating the switch.
+
 	T_R ((ctx->switchdb.size == 0), IPC_ERROR_FD_SWITCHING__NO_FD_RECORD);
 
 	int talkingfd = ctx->pollfd[index].fd;
@@ -387,8 +382,6 @@ struct ipc_error fd_switching_read (struct ipc_event *event, struct ipc_ctx *ctx
  */
 struct ipc_error fd_switching_write (struct ipc_event *event, struct ipc_ctx *ctx, int index)
 {
-	// printf ("fd_switching_write\n");
-
 	// If the socket is associated to another one for ipcd:
 	// read and write automatically and provide a new IPC_EVENT_TYPE indicating the switch.
 	T_R ((ctx->switchdb.size == 0), IPC_ERROR_FD_SWITCHING__NO_FD_RECORD);

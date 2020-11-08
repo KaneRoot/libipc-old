@@ -474,8 +474,16 @@ struct ipc_error handle_new_message (struct ipc_event *event, struct ipc_ctx *ct
 	ret = ipc_read (ctx, index, m);
 	if (ret.error_code != IPC_ERROR_NONE && ret.error_code != IPC_ERROR_CLOSED_RECIPIENT) {
 		struct ipc_error rvalue = ret;	// store the final return value
+
 		ipc_message_empty (m);
 		free (m);
+
+#ifdef DEBUG
+		printf ("error when ipc_read: index %d fd %d error num %d, message: %s\n"
+			, index, ctx->pollfd[index].fd
+			, ret.error_code
+			, ret.error_message);
+#endif
 
 		// if there is a problem, just remove the client
 		TEST_IPC_P (ipc_close (ctx, index), "cannot close a connection in handle_message");
@@ -534,6 +542,9 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 
 	for (size_t i = 0; i < ctx->size; i++) {
 		// We assume that any fd in the list has to be listen to.
+#ifdef DEBUG
+		printf ("reading fd: %d index %lu\n", ctx->pollfd[i].fd, i);
+#endif
 		ctx->pollfd[i].events = POLLIN;
 	}
 
@@ -542,6 +553,9 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 		// … verify that its destination is available for message exchange.
 		for (size_t y = 0; y < ctx->size; y++) {
 			if (ctx->pollfd[y].fd == ctx->tx.messages[i].fd) {
+#ifdef DEBUG
+				printf ("writing fd: %d\n", ctx->pollfd[y].fd);
+#endif
 				ctx->pollfd[y].events |= POLLOUT;
 			}
 		}
@@ -648,13 +662,17 @@ struct ipc_error ipc_wait_event (struct ipc_ctx *ctx, struct ipc_event *event, i
 		}
 
 		if (ctx->pollfd[i].revents & POLLERR) {
-			printf ("POLLERR: PROBLEM WITH fd %d\n", ctx->pollfd[i].fd);
+#ifdef DEBUG
+			printf ("pollerr: problem with fd %d\n", ctx->pollfd[i].fd);
+#endif
 			IPC_EVENT_SET (event, IPC_EVENT_TYPE_ERROR, i, ctx->pollfd[i].fd, NULL);
 			goto wait_event_exit;
 		}
 
 		if (ctx->pollfd[i].revents & POLLNVAL) {
-			printf ("POLLNVAL: INVALID fd %d\n", ctx->pollfd[i].fd);
+#ifdef DEBUG
+			printf ("pollnval: invalid fd %d\n", ctx->pollfd[i].fd);
+#endif
 			IPC_EVENT_SET (event, IPC_EVENT_TYPE_ERROR, i, ctx->pollfd[i].fd, NULL);
 			goto wait_event_exit;
 		}
