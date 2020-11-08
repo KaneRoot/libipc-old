@@ -490,11 +490,11 @@ struct ipc_error handle_new_message (struct ipc_event *event, struct ipc_ctx *ct
 
 		IPC_EVENT_SET (event, IPC_EVENT_TYPE_DISCONNECTION, index, ctx->pollfd[index].fd, NULL);
 
-		TEST_IPC_P (ipc_close (ctx, index), "cannot close a connection on closed recipient in handle_message");
-		TEST_IPC_P (ipc_del   (ctx, index), "cannot delete a connection on closed recipient in handle_message");
-
 		ipc_message_empty (m);
 		free (m);
+
+		TEST_IPC_P (ipc_close (ctx, index), "cannot close a connection on closed recipient in handle_message");
+		TEST_IPC_P (ipc_del   (ctx, index), "cannot delete a connection on closed recipient in handle_message");
 
 		// warning: do not forget to free the ipc_client structure
 		IPC_RETURN_NO_ERROR;

@@ -24,7 +24,7 @@ struct ipc_error usock_send (const int32_t fd, const char *buf, size_t len, size
 {
 	ssize_t ret = 0;
 	ret = send (fd, buf, len, MSG_NOSIGNAL);
-	if (ret <= 0)
+	if (ret == -1)
 	{
 		// TODO: Check for errno.
 		// Some choice could be made.
@@ -37,10 +37,9 @@ struct ipc_error usock_send (const int32_t fd, const char *buf, size_t len, size
 			// POSIX.1-2001 allows either error to be returned for this case, and does not
 			// require these constants to have the same value, so a portable application
 			// should check for both possibilities.
-			case (EWOULDBLOCK) :
-			ERROR_CASE (EAGAIN, "usock_send", "socket marked as nonblocking, but requested operation would block");
+			ERROR_CASE (EWOULDBLOCK, "usock_send", "socket marked as nonblocking, but requested operation would block");
 
-			ERROR_CASE (EAGAIN, "usock_send", "socket not previously bound to an address and all ports are in use");
+			// ERROR_CASE (EAGAIN, "usock_send", "socket not previously bound to an address and all ports are in use");
 
 			ERROR_CASE (EALREADY, "usock_send", "another Fast Open is in progress");
 
@@ -81,10 +80,12 @@ struct ipc_error usock_send (const int32_t fd, const char *buf, size_t len, size
 			// In this case, the process will also receive a SIGPIPE unless MSG_NOSIGNAL is set.
 			ERROR_CASE (EPIPE, "usock_send", "the local end has been shut down on a connection oriented socket");
 
+			default:
+				fprintf (stderr, "usock_send: unrecognized error after send(2), num: %d\n", errno);
 		}
 	}
 
-	T_R ((ret <= 0), IPC_ERROR_USOCK_SEND);
+	T_R ((ret == -1), IPC_ERROR_USOCK_SEND);
 	*sent = ret;
 	IPC_RETURN_NO_ERROR;
 }
