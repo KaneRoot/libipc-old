@@ -17,15 +17,15 @@ It provides both client and server code.
 
 // server initialization
 
-_enum ipc_errors_ **ipc_server_init** (*char* \*\*env , *struct ipc_connection_info* \*srv, *const char* \*sname);
+_enum ipc_errors_ **ipc_server_init** (*char* \*\*env, *const char* \*sname);
 
 // connection establishement to a server
 
-_enum ipc_errors_ **ipc_connection** (*char* \*\*env, *struct ipc_connection_info* \*, *const char* \*);
+_enum ipc_errors_ **ipc_connection** (*char* \*\*env, *const char* \*, int \*serverfd);
 
 // closing a server
 
-_enum ipc_errors_ **ipc_server_close** (*struct ipc_connection_info* \*srv);
+_enum ipc_errors_ **ipc_close** (*struct ipc_connection_info* \*srv);
 
 // closing a connection
 
