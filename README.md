@@ -5,7 +5,7 @@ libipc - Simple, easy-to-use IPC library
 
 See the introductory man page in `man/libipc.7`.
 
-See the presentation in [docs/presentation.md](docs/presentation.md).
+See the presentation in [docs/libipc.md](docs/libipc.md).
 
 > This library is a work in progress, but is already used intensively in production.
 > It works, but we provide no warranty.
