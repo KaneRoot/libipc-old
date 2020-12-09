@@ -137,6 +137,7 @@ LibIPC has a high level API for the user
    listening to file descriptors (libIPC ones or not)
 
   example:
+
     while(1) {
       wait_event (context, &event, &timer)
       switch (event.type) {
@@ -153,14 +154,15 @@ LibIPC has a high level API for the user
 
 3. send messages
 
+```c
     struct ipc_message m
     m.payload   = ...
     m.length    = strlen(m.payload)
     m.fd        = event.fd
     m.type      = ...
     m.user_type = ...
-
     ipc_write (context, &m)
+```
 
 #pause
 4. add and remove fd from the context
@@ -194,6 +196,7 @@ Main goal: simplest possible structures
 Examples:
 
   Message
+
     struct ipc_message {
       char type;        => Internal message type, used by protocol daemons.
       char user_type;   => User-defined message type (arbitrary).
@@ -203,6 +206,7 @@ Examples:
     };
 
   Context of the whole networking state
+
     struct ipc_ctx {
       struct ipc_connection_info *cinfos;  => Keeps track of connections.
       struct pollfd *pollfd;               => List of "pollfd" structures within cinfos,
