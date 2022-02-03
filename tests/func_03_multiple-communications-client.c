@@ -58,7 +58,7 @@ void read_message (struct ipc_ctx *ctx)
 	SECURE_DECLARATION (struct ipc_message, m);
 
 	TEST_IPC_Q(ipc_read (ctx, 0 /* only one server here */, &m), EXIT_FAILURE);
-	printf ("received message: %*.s\n", m.length, m.payload);
+	printf ("received message: %.*s\n", m.length, m.payload);
 	free (m.payload);
 #endif
 }
@@ -76,11 +76,13 @@ int main(void)
 	read_message (&ctx1);
 
 	TEST_IPC_Q (ipc_close_all (&ctx1), EXIT_FAILURE);
+	ipc_ctx_free (&ctx1);
 
 	send_message (&ctx2);
 	read_message (&ctx2);
 
 	TEST_IPC_Q (ipc_close_all (&ctx2), EXIT_FAILURE);
+	ipc_ctx_free (&ctx2);
 
     return EXIT_SUCCESS;
 }

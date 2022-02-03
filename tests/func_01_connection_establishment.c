@@ -32,6 +32,7 @@ int main(int argc, char * argv[])
 		printf ("error: %s\n", ipc_errors_get(ret.error_code));
 		return EXIT_FAILURE;
 	}
+	ipc_ctx_free (&ctx);
 
     return EXIT_SUCCESS;
 }

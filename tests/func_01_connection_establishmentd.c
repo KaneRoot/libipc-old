@@ -11,6 +11,7 @@ int main(int argc, char * argv[])
 	argc = (int) argc;
 	argv = (char **) argv;
 
+
 	SECURE_DECLARATION(struct ipc_ctx, ctx);
 	int timer = 10000; // 10 seconds timer
 

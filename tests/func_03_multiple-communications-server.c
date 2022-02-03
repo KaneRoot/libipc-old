@@ -6,6 +6,20 @@
 #include <string.h>
 
 #define SERVICE_NAME "pong"
+struct ipc_ctx *pctx = NULL;
+
+void exit_program(int signal)
+{
+	printf("Quitting, signal: %d\n", signal);
+
+    // the application will shut down, and close the service
+	TEST_IPC_Q(ipc_close_all (pctx), EXIT_FAILURE);
+
+	// free remaining ctx
+	ipc_ctx_free (pctx);
+
+	exit(EXIT_SUCCESS);
+}
 
 int main_loop(int argc, char * argv[])
 {
@@ -13,6 +27,7 @@ int main_loop(int argc, char * argv[])
 	argv = argv;
 
 	SECURE_DECLARATION (struct ipc_ctx, ctx);
+	pctx = &ctx;
 	int timer = 10000; // in ms
 
 	printf ("func 03 - server init...\n");
@@ -41,8 +56,12 @@ int main_loop(int argc, char * argv[])
 				};
 				break;
 			case IPC_EVENT_TYPE_MESSAGE : {
-					printf ("received message: %s\n", ((struct ipc_message*) event.m)->payload);
-					ipc_write (&ctx, (struct ipc_message*) event.m);
+					struct ipc_message *m = (struct ipc_message*) event.m;
+					printf ("received message (%d bytes): %.*s\n"
+						, m->length
+						, m->length
+						, m->payload);
+					ipc_write (&ctx, m);
 				}
 				break;
 			case IPC_EVENT_TYPE_TX : {
@@ -68,21 +87,17 @@ int main_loop(int argc, char * argv[])
 	return 0;
 }
 
-void exit_program(int signal)
-{
-	printf("Quitting, signal: %d\n", signal);
-	exit(EXIT_SUCCESS);
-}
-
 
 int main(int argc, char * argv[])
 {
+	// In case we want to quit the program, do it cleanly.
 	signal (SIGHUP, exit_program);
 	signal (SIGALRM, exit_program);
 	signal (SIGUSR1, exit_program);
 	signal (SIGUSR2, exit_program);
 	signal (SIGTERM, exit_program);
 	signal (SIGINT, exit_program);
+
 	main_loop (argc, argv);
     return EXIT_SUCCESS;
 }
