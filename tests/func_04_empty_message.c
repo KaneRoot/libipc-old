@@ -53,6 +53,7 @@ int main(void)
 	read_message (&ctx);
 
 	TEST_IPC_Q(ipc_close_all (&ctx), EXIT_FAILURE);
+	ipc_ctx_free(&ctx);
 
     return EXIT_SUCCESS;
 }

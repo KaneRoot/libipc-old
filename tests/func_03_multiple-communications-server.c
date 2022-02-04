@@ -39,7 +39,13 @@ int main_loop(int argc, char * argv[])
 	printf ("func 01 - service polling...\n");
 	// listen only for a single client
 	while (1) {
-		TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (&ctx, &event, &timer), EXIT_FAILURE);
+		// TEST_IPC_WAIT_EVENT_Q (ipc_wait_event (&ctx, &event, &timer), EXIT_FAILURE);
+		struct ipc_error ret = ipc_wait_event (&ctx, &event, &timer);
+
+		if (ret.error_code != IPC_ERROR_NONE &&
+			ret.error_code != IPC_ERROR_CLOSED_RECIPIENT) {
+			printf ("An error happened :(\n");
+		}
 
 		switch (event.type) {
 			case IPC_EVENT_TYPE_TIMER : {
@@ -73,7 +79,6 @@ int main_loop(int argc, char * argv[])
 			case IPC_EVENT_TYPE_EXTRA_SOCKET :
 			default :
 				printf ("not ok - should not happen\n");
-				exit (EXIT_FAILURE);
 				break;
 		}
 	}
