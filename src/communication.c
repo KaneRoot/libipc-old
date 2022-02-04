@@ -478,9 +478,11 @@ struct ipc_error handle_new_message (struct ipc_event *event, struct ipc_ctx *ct
 		ipc_message_empty (m);
 		free (m);
 
+		int fd = ctx->pollfd[index].fd;
+
 #ifdef DEBUG
 		printf ("error when ipc_read: index %d fd %d error num %d, message: %s\n"
-			, index, ctx->pollfd[index].fd
+			, index, fd
 			, ret.error_code
 			, ret.error_message);
 #endif
@@ -489,7 +491,7 @@ struct ipc_error handle_new_message (struct ipc_event *event, struct ipc_ctx *ct
 		TEST_IPC_P (ipc_close (ctx, index), "cannot close a connection in handle_message");
 		TEST_IPC_P (ipc_del   (ctx, index), "cannot delete a connection in handle_message");
 
-		IPC_EVENT_SET (event, IPC_EVENT_TYPE_ERROR, index, ctx->pollfd[index].fd, NULL);
+		IPC_EVENT_SET (event, IPC_EVENT_TYPE_ERROR, index, fd, NULL);
 		return rvalue;
 	}
 
