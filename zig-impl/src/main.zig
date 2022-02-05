@@ -24,9 +24,9 @@ pub const MessageType = enum {
 
 pub const Message = struct {
 
-    @"type": MessageType, // Internal message type.
-    user_type: u8,                    // User-defined message type (arbitrary).
-    fd: usize,                        // File descriptor concerned about this message.
+    @"type": MessageType,     // Internal message type.
+    user_type: u8,            // User-defined message type (arbitrary).
+    fd: usize,                // File descriptor concerned about this message.
     payload: []const u8,
 
     const Self = @This();
@@ -43,16 +43,25 @@ pub const Message = struct {
         };
     }
 
+    pub fn format(
+        self: Self,
+        comptime _: []const u8,    // No need.
+        _: std.fmt.FormatOptions,  // No need.
+        out_stream: anytype,
+    ) !void {
+        try std.fmt.format(out_stream, "fd: {}, type {}, usertype {}, payload: {s}",
+            .{self.fd, self.@"type", self.user_type, self.payload} );
+    }
     // del == list.swapRemove(index)
 };
 
 test "Message - creation and display" {
     // fd type usertype payload
-    var s = "hello I'm a message";
+    var s = "hello!!";
     var m = Message.init(1, MessageType.DATA, 3, s);
 
     print("\n", .{});
-    print("fd: {}, type {}, usertype {}, payload: {s}\n", .{m.fd, m.@"type", m.user_type, m.payload});
+    print("message:\t{}\n", .{m});
 }
 
 pub const Messages = std.ArrayList(Message);
@@ -83,8 +92,8 @@ pub const Messages = std.ArrayList(Message);
 //    to it. This is a lookup.
 
 pub const EventType = enum {
-    NOT_SET,
-    ERROR,
+    NOT_SET,       // Default. TODO: should we keep this?
+    ERROR,         // A problem occured.
     EXTRA_SOCKET,  // Message received from a non IPC socket.
     SWITCH,        // Message to send to a corresponding fd.
     CONNECTION,    // New user.
@@ -95,16 +104,16 @@ pub const EventType = enum {
     TX,            // Message sent.
 };
 
-pub const Event = struct {
+// For IO callbacks (switching).
+pub const EventCallBack = enum {
+    NO_ERROR,      // No error. A message was generated.
+    FD_CLOSING,    // The fd is closing.
+    FD_ERROR,      // Generic error.
+    PARSING_ERROR, // The message was read but with errors.
+    IGNORE,        // The message should be ignored (protocol specific).
+};
 
-    // For IO callbacks (switching).
-    pub const event_cb_type = enum {
-        NO_ERROR,      // No error. A message was generated.
-        FD_CLOSING,    // The fd is closing.
-        FD_ERROR,      // Generic error.
-        PARSING_ERROR, // The message was read but with errors.
-        IGNORE,        // The message should be ignored (protocol specific).
-    };
+pub const Event = struct {
 
     @"type": EventType,
     index: u32,
@@ -153,15 +162,16 @@ pub const Event = struct {
 //    //e = Event.init(Event.available_types.EXTRA_SOCKET, 0, 0, m);
 //}
 
-pub const Connection = struct {
-    pub const available_types = enum {
-        IPC,      // Standard connection.
-        EXTERNAL, // ??
-        SERVER,   // Messages received = new connections.
-        SWITCHED, // IO operations should go through registered callbacks.
-    };
+pub const ConnectionType = enum {
+    IPC,      // Standard connection.
+    EXTERNAL, // ??
+    SERVER,   // Messages received = new connections.
+    SWITCHED, // IO operations should go through registered callbacks.
+};
 
-    @"type": Connection.available_types,
+pub const Connection = struct {
+
+    @"type": Connection.ConnectionType,
     more_to_read: bool,
     path: *const []u8,
 };
