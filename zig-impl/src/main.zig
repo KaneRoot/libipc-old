@@ -1,7 +1,11 @@
 const std = @import("std");
 const testing = std.testing;
 
-// TODO: file descriptors should have a specific type (however, usize is pointer size).
+// TODO: file descriptors should have a specific type
+//       (however, usize is pointer size).
+
+// TODO: path => std.XXX.YYY, not simple [] const u8
+
 
 pub const RUNDIR = "/run/ipc/";
 pub const IPC_HEADER_SIZE = 6;
@@ -266,21 +270,84 @@ pub const Connections = std.ArrayList(Connection);
 
 // Context of the whole networking state.
 pub const Context = struct {
-    // Keep track of connections.
-    connections: Connections,
+    allocator: std.mem.Allocator,  // Memory allocator.
+    connections: Connections,      // Keep track of connections.
 
-    // TODO: List of "pollfd" structures within cinfos, so we can pass it to poll(2).
-    // struct pollfd              *pollfd;
+    // TODO: List of "pollfd" structures within cinfos,
+    //       so we can pass it to poll(2). Share indexes with 'connections'.
+    // struct pollfd  *pollfd;
 
-    // List of messages to send, once the fd are available.
-    tx: Messages,
+    tx: Messages,        // Messages to send, once their fd is available.
+    switchdb: ?Switches, // Relations between fd.
 
-    // Relations between fd.
-    switchdb: Switches,
+
+    const Self = @This();
+
+    pub fn init(allocator: std.mem.Allocator) Self {
+        return Self {
+             .connections = Connections.init(allocator)
+           , .tx = Messages.init(allocator)
+           , .switchdb = null
+           , .allocator = allocator
+        };
+    }
+
+    pub fn connect(self: *Self, path: []const u8) !void {
+        print("connection to {s}", .{path});
+        var newcon = Connection.init(ConnectionType.IPC, path);
+        try self.connections.append(newcon);
+    }
+
+    pub fn format(
+        self: Self,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        out_stream: anytype,
+    ) !void {
+        try std.fmt.format(out_stream
+            , "context ({} connections and {} messages):"
+            , .{self.connections.items.len, self.tx.items.len});
+
+        for (self.connections.items) |con| {
+            try con.format(fmt, options, out_stream);
+        }
+
+        for (self.tx.items) |tx| {
+            try tx.format(fmt, options, out_stream);
+        }
+    }
+
 };
 
+
+// TODO
+test "Context - creation and display" {
+    // origin destination
+    //var s = Switch.init(3,8);
+    print("\n", .{});
+
+    const config = .{.safety = true};
+    var gpa = std.heap.GeneralPurposeAllocator(config){};
+    defer _ = gpa.deinit(); // There. Can't leak. Isn't Zig wonderful?
+
+    const allocator = gpa.allocator();
+
+
+//    var payload = "hello!!";
+//    // fd type usertype payload
+//    var m = Message.init(0, MessageType.DATA, 1, payload);
+//
+//    // type index origin message
+//    var e = Event.init(EventType.CONNECTION, 5, 8, &m);
+
+    var c = Context.init(allocator);
+
+    try c.connect("/somewhere/over/the/rainbow");
+
+    print ("Context: {}\n", .{c});
+}
+
 pub fn main() u8 {
-    print ("Hello world!\n", .{});
     return 0;
 }
 
