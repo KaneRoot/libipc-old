@@ -61,7 +61,7 @@ test "Message - creation and display" {
     var m = Message.init(1, MessageType.DATA, 3, s);
 
     print("\n", .{});
-    print("message:\t{}\n", .{m});
+    print("message:\t[{}]\n", .{m});
 }
 
 pub const Messages = std.ArrayList(Message);
@@ -155,35 +155,110 @@ pub const Event = struct {
         self.m = null;
     }
 
+    pub fn format(
+        self: Self,
+        comptime _: []const u8,    // No need.
+        _: std.fmt.FormatOptions,  // No need.
+        out_stream: anytype,
+    ) !void {
+        try std.fmt.format(out_stream
+            , "type {}, origin: {}, index {}, message: [{}]"
+            , .{ self.@"type", self.origin, self.index, self.m} );
+    }
+
 };
 
-//test {
-//    //m = Message.init
-//    //e = Event.init(Event.available_types.EXTRA_SOCKET, 0, 0, m);
-//}
+test "Event - creation and display" {
+    var s = "hello!!";
+    // fd type usertype payload
+    var m = Message.init(1, MessageType.DATA, 3, s);
+    // type index origin message
+    var e = Event.init(EventType.CONNECTION, 5, 8, &m);
+
+    print("\n", .{});
+    print("event:\t[{}]\n", .{e});
+}
 
 pub const ConnectionType = enum {
     IPC,      // Standard connection.
-    EXTERNAL, // ??
+    EXTERNAL, // Non IPC connection (TCP, UDP, etc.).
     SERVER,   // Messages received = new connections.
     SWITCHED, // IO operations should go through registered callbacks.
 };
 
 pub const Connection = struct {
-
-    @"type": Connection.ConnectionType,
+    @"type": ConnectionType,
     more_to_read: bool,
-    path: *const []u8,
+    path: ?[] const u8, // Not always needed.
+
+    const Self = @This();
+
+    pub fn init(@"type": ConnectionType, path: ?[] const u8) Self {
+        return Self {
+           .@"type"      = @"type",
+           .more_to_read = false,
+           .path         = path,
+        };
+    }
+
+    pub fn format(
+        self: Self,
+        comptime _: []const u8,    // No need.
+        _: std.fmt.FormatOptions,  // No need.
+        out_stream: anytype,
+    ) !void {
+        try std.fmt.format(out_stream
+            , "connection type {}, more_to_read {}, path {s}"
+            , .{ self.@"type", self.more_to_read, self.path} );
+    }
 };
 
+test "Connection - creation and display" {
+    // origin destination
+    var path = "/some/path";
+    var c1 = Connection.init(ConnectionType.EXTERNAL, path);
+    var c2 = Connection.init(ConnectionType.IPC     , null);
+    print("\n", .{});
+    print("connection 1:\t[{}]\n", .{c1});
+    print("connection 2:\t[{}]\n", .{c2});
+}
+
+// TODO: callbacks.
 pub const Switch = struct {
-    orig : usize,
-    dest : usize,
+    origin : usize,
+    destination : usize,
 //     enum ipccb (*orig_in)  (int origin_fd, struct ipc_message *m, short int *more_to_read);
 //     enum ipccb (*orig_out) (int origin_fd, struct ipc_message *m);
 //     enum ipccb (*dest_in)  (int origin_fd, struct ipc_message *m, short int *more_to_read);
 //     enum ipccb (*dest_out) (int origin_fd, struct ipc_message *m);
+
+    const Self = @This();
+
+    pub fn init(origin: usize, destination: usize) Self {
+        return Self {
+           .origin = origin,
+           .destination = destination,
+        };
+    }
+
+    pub fn format(
+        self: Self,
+        comptime _: []const u8,    // No need.
+        _: std.fmt.FormatOptions,  // No need.
+        out_stream: anytype,
+    ) !void {
+        try std.fmt.format(out_stream
+            , "switch {} <-> {}"
+            , .{ self.origin, self.destination} );
+    }
 };
+
+test "Switch - creation and display" {
+    // origin destination
+    var s = Switch.init(3,8);
+    print("\n", .{});
+    print("switch:\t[{}]\n", .{s});
+}
 
 pub const Switches = std.ArrayList(Switch);
 
