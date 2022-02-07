@@ -293,9 +293,17 @@ pub const Context = struct {
     }
 
     pub fn connect(self: *Self, path: []const u8) !void {
-        print("connection to {s}", .{path});
+        print("connection to {s}\n", .{path});
         var newcon = Connection.init(ConnectionType.IPC, path);
         try self.connections.append(newcon);
+    }
+
+    pub fn deinit(self: *Self) void {
+        print("connection deinit\n", .{});
+        self.connections.deinit();
+        self.tx.deinit();
+        if (self.switchdb) |sdb| { sdb.deinit(); }
+        self.tx.deinit();
     }
 
     pub fn format(
@@ -309,10 +317,12 @@ pub const Context = struct {
             , .{self.connections.items.len, self.tx.items.len});
 
         for (self.connections.items) |con| {
+            try std.fmt.format(out_stream, "\n- ", .{});
             try con.format(fmt, options, out_stream);
         }
 
         for (self.tx.items) |tx| {
+            try std.fmt.format(out_stream, "\n- ", .{});
             try tx.format(fmt, options, out_stream);
         }
     }
@@ -328,10 +338,9 @@ test "Context - creation and display" {
 
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
-    defer _ = gpa.deinit(); // There. Can't leak. Isn't Zig wonderful?
+    defer _ = gpa.deinit();
 
     const allocator = gpa.allocator();
-
 
 //    var payload = "hello!!";
 //    // fd type usertype payload
@@ -341,6 +350,7 @@ test "Context - creation and display" {
 //    var e = Event.init(EventType.CONNECTION, 5, 8, &m);
 
     var c = Context.init(allocator);
+    defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
     try c.connect("/somewhere/over/the/rainbow");
 
