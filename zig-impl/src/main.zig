@@ -306,6 +306,19 @@ pub const Context = struct {
         };
     }
 
+    pub fn deinit(self: *Self) void {
+        print("connection deinit\n", .{});
+        self.close_all() catch |err| switch(err){
+            error.IndexOutOfBounds => {
+                print("context.deinit(): IndexOutOfBounds\n", .{});
+            },
+        };
+        self.connections.deinit();
+        self.pollfd.deinit();
+        self.tx.deinit();
+        if (self.switchdb) |sdb| { sdb.deinit(); }
+    }
+
     // Return the new fd. Can be useful to the caller.
     pub fn connect(self: *Self, path: []const u8) !usize {
         print("connection to {s}\n", .{path});
@@ -313,6 +326,20 @@ pub const Context = struct {
         var newcon = ConnectionInfos.init(ConnectionType.IPC, path);
         try self.connections.append(newcon);
         try self.pollfd.append(newfd);
+        return newfd;
+    }
+
+    // Connection to a service, but with switched with the client fd.
+    pub fn connection_switched(self: *Self
+        , path: [] const u8
+        , clientfd: usize) !usize {
+        print("connection switched from {} to path {s}\n"
+            , .{clientfd, path});
+        const newfd = 0; // TODO
+        var newcon = ConnectionInfos.init(ConnectionType.SWITCHED, path);
+        try self.connections.append(newcon);
+        try self.pollfd.append(newfd);
+        // TODO: record switch.
         return newfd;
     }
 
@@ -326,22 +353,60 @@ pub const Context = struct {
         return newfd;
     }
 
+    /// ipc_write   (ctx *, const struct ipc_message *m);
+    pub fn write (self: *Self, m: Message) !void {
+        print("write fd {}\n", .{m.fd});
+        self.tx.append(m);
+    }
+
+    pub fn read (self: *Self, index: u32) !Message {
+        // TODO: read the actual content.
+        if (index >= self.pollfd.items.len) {
+            return error.IndexOutOfBounds;
+        }
+        var fd = self.pollfd[index];
+        print("read fd {} index {}\n", .{fd, index});
+        var payload = "hello!!";
+        // fd type usertype payload
+        var m = Message.init(0, MessageType.DATA, 1, payload);
+        return m;
+    }
+
+    pub fn read_fd (_: *Self, fd: usize) !Message {
+        // TODO: read the actual content.
+        print("read fd {}\n", .{fd});
+        var payload = "hello!!";
+        // fd type usertype payload
+        var m = Message.init(0, MessageType.DATA, 1, payload);
+        return m;
+    }
+
     // Wait an event.
-    pub fn wait_event(self: *Self) !Event {
-        // TODO: this is a simple example.
+    pub fn wait_event(self: *Self, timer: *i32) !Event {
         for (self.pollfd.items) |fd| {
             print("listening to fd {}\n", .{fd});
         }
+        print("listening for MAXIMUM {} us\n", .{timer});
+        // TODO: listening to these file descriptors.
         var event = Event.init(EventType.CONNECTION, 5, 8, null);
         return event;
     }
 
-    pub fn deinit(self: *Self) void {
-        print("connection deinit\n", .{});
-        self.connections.deinit();
-        self.pollfd.deinit();
-        self.tx.deinit();
-        if (self.switchdb) |sdb| { sdb.deinit(); }
+    pub fn close(self: *Self, index: usize) !void {
+        if (index >= self.pollfd.items.len) {
+            return error.IndexOutOfBounds;
+        }
+        print("connection close index {}\n", .{index});
+        // close the connection and remove it from the two structures
+        if (self.connections.items.len > 0) {
+            // TODO: actually close the file descriptor.
+            _ = self.connections.swapRemove(index);
+            _ = self.pollfd.swapRemove(index);
+        }
+    }
+
+    pub fn close_all(self: *Self) !void {
+        while(self.connections.items.len > 0) { try self.close(0); }
     }
 
     pub fn format(
