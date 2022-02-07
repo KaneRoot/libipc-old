@@ -60,12 +60,13 @@ pub const Message = struct {
 };
 
 test "Message - creation and display" {
+    print("\n", .{});
     // fd type usertype payload
     var s = "hello!!";
     var m = Message.init(1, MessageType.DATA, 3, s);
 
-    print("\n", .{});
     print("message:\t[{}]\n", .{m});
+    print("\n", .{});
 }
 
 pub const Messages = std.ArrayList(Message);
@@ -173,14 +174,15 @@ pub const Event = struct {
 };
 
 test "Event - creation and display" {
+    print("\n", .{});
     var s = "hello!!";
     // fd type usertype payload
     var m = Message.init(1, MessageType.DATA, 3, s);
     // type index origin message
     var e = Event.init(EventType.CONNECTION, 5, 8, &m);
 
-    print("\n", .{});
     print("event:\t[{}]\n", .{e});
+    print("\n", .{});
 }
 
 pub const ConnectionType = enum {
@@ -190,7 +192,13 @@ pub const ConnectionType = enum {
     SWITCHED, // IO operations should go through registered callbacks.
 };
 
-pub const Connection = struct {
+// RATIONALE: a connection is mostly a file descriptor,
+//            but with a few other pieces of information.
+//            Storing all data related to a connection in a single place
+//            would be logical but very inefficient.
+//            File descriptors are stored elsewhere (in the context),
+//            packed together, in a single dedicated structure.
+pub const ConnectionInfos = struct {
     @"type": ConnectionType,
     more_to_read: bool,
     path: ?[] const u8, // Not always needed.
@@ -217,14 +225,15 @@ pub const Connection = struct {
     }
 };
 
-test "Connection - creation and display" {
+test "ConnectionInfos - creation and display" {
+    print("\n", .{});
     // origin destination
     var path = "/some/path";
-    var c1 = Connection.init(ConnectionType.EXTERNAL, path);
-    var c2 = Connection.init(ConnectionType.IPC     , null);
-    print("\n", .{});
+    var c1 = ConnectionInfos.init(ConnectionType.EXTERNAL, path);
+    var c2 = ConnectionInfos.init(ConnectionType.IPC     , null);
     print("connection 1:\t[{}]\n", .{c1});
     print("connection 2:\t[{}]\n", .{c2});
+    print("\n", .{});
 }
 
 // TODO: callbacks.
@@ -260,18 +269,19 @@ pub const Switch = struct {
 test "Switch - creation and display" {
     // origin destination
     var s = Switch.init(3,8);
-    print("\n", .{});
     print("switch:\t[{}]\n", .{s});
+    print("\n", .{});
 }
 
 pub const Switches = std.ArrayList(Switch);
-
-pub const Connections = std.ArrayList(Connection);
+pub const Connections = std.ArrayList(ConnectionInfos);
+pub const PollFD = std.ArrayList(usize);
 
 // Context of the whole networking state.
 pub const Context = struct {
     allocator: std.mem.Allocator,  // Memory allocator.
     connections: Connections,      // Keep track of connections.
+    pollfd: PollFD,                // File descriptors.
 
     // TODO: List of "pollfd" structures within cinfos,
     //       so we can pass it to poll(2). Share indexes with 'connections'.
@@ -283,27 +293,55 @@ pub const Context = struct {
 
     const Self = @This();
 
+    // Context initialization:
+    // - init structures (provide the allocator)
     pub fn init(allocator: std.mem.Allocator) Self {
+        print("Context init\n", .{});
         return Self {
              .connections = Connections.init(allocator)
+           , .pollfd = PollFD.init(allocator)
            , .tx = Messages.init(allocator)
            , .switchdb = null
            , .allocator = allocator
         };
     }
 
-    pub fn connect(self: *Self, path: []const u8) !void {
+    // Return the new fd. Can be useful to the caller.
+    pub fn connect(self: *Self, path: []const u8) !usize {
         print("connection to {s}\n", .{path});
-        var newcon = Connection.init(ConnectionType.IPC, path);
+        const newfd = 0; // TODO
+        var newcon = ConnectionInfos.init(ConnectionType.IPC, path);
         try self.connections.append(newcon);
+        try self.pollfd.append(newfd);
+        return newfd;
+    }
+
+    // Create a unix socket.
+    pub fn server_init(self: *Self, path: [] const u8) !usize {
+        print("context server init {s}\n", .{path});
+        const newfd = 0; // TODO
+        var newcon = ConnectionInfos.init(ConnectionType.SERVER, path);
+        try self.connections.append(newcon);
+        try self.pollfd.append(newfd);
+        return newfd;
+    }
+
+    // Wait an event.
+    pub fn wait_event(self: *Self) !Event {
+        // TODO: this is a simple example.
+        for (self.pollfd.items) |fd| {
+            print("listening to fd {}\n", .{fd});
+        }
+        var event = Event.init(EventType.CONNECTION, 5, 8, null);
+        return event;
     }
 
     pub fn deinit(self: *Self) void {
         print("connection deinit\n", .{});
         self.connections.deinit();
+        self.pollfd.deinit();
         self.tx.deinit();
         if (self.switchdb) |sdb| { sdb.deinit(); }
-        self.tx.deinit();
     }
 
     pub fn format(
@@ -331,10 +369,10 @@ pub const Context = struct {
 
 
 // TODO
-test "Context - creation and display" {
+test "Context - creation, display and memory check" {
+    print("\n", .{});
     // origin destination
     //var s = Switch.init(3,8);
-    print("\n", .{});
 
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
@@ -352,9 +390,14 @@ test "Context - creation and display" {
     var c = Context.init(allocator);
     defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
-    try c.connect("/somewhere/over/the/rainbow");
+    // Creating a service.
+    _ = try c.server_init("/tmp/.TEST_USOCK");
+
+    // Connection to a service.
+    _ = try c.connect("/tmp/.TEST_USOCK");
 
     print ("Context: {}\n", .{c});
+    print("\n", .{});
 }
 
 pub fn main() u8 {
