@@ -1,5 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
+const net = std.net;
 
 // TODO: file descriptors should have a specific type
 //       (however, usize is pointer size).
@@ -203,6 +204,8 @@ pub const ConnectionInfos = struct {
     more_to_read: bool,
     path: ?[] const u8, // Not always needed.
 
+    // TODO: socket: ?net.Stream, // Not always needed.
+
     const Self = @This();
 
     pub fn init(@"type": ConnectionType, path: ?[] const u8) Self {
@@ -275,17 +278,18 @@ test "Switch - creation and display" {
 
 pub const Switches = std.ArrayList(Switch);
 pub const Connections = std.ArrayList(ConnectionInfos);
-pub const PollFD = std.ArrayList(usize);
+pub const PollFD = std.ArrayList(i32);
 
 // Context of the whole networking state.
 pub const Context = struct {
     allocator: std.mem.Allocator,  // Memory allocator.
     connections: Connections,      // Keep track of connections.
-    pollfd: PollFD,                // File descriptors.
 
     // TODO: List of "pollfd" structures within cinfos,
     //       so we can pass it to poll(2). Share indexes with 'connections'.
-    // struct pollfd  *pollfd;
+    //       For now, this list doesn't do anything.
+    //       Can even be replaced in a near future.
+    pollfd: PollFD,                // File descriptors.
 
     tx: Messages,        // Messages to send, once their fd is available.
     switchdb: ?Switches, // Relations between fd.
@@ -319,38 +323,44 @@ pub const Context = struct {
         if (self.switchdb) |sdb| { sdb.deinit(); }
     }
 
-    // Return the new fd. Can be useful to the caller.
-    pub fn connect(self: *Self, path: []const u8) !usize {
-        print("connection to {s}\n", .{path});
-        const newfd = 0; // TODO
-        var newcon = ConnectionInfos.init(ConnectionType.IPC, path);
+    fn connect_ (self: *Self, ctype: ConnectionType, path: []const u8) !i32 {
+        var stream = try net.connectUnixSocket(path);
+        const newfd = stream.handle;
+        errdefer std.os.closeSocket(newfd);
+        var newcon = ConnectionInfos.init(ctype, path);
         try self.connections.append(newcon);
         try self.pollfd.append(newfd);
         return newfd;
+    }
+
+    // Return the new fd. Can be useful to the caller.
+    pub fn connect(self: *Self, path: []const u8) !i32 {
+        print("connection to:\t{s}\n", .{path});
+        return self.connect_ (ConnectionType.IPC, path);
     }
 
     // Connection to a service, but with switched with the client fd.
     pub fn connection_switched(self: *Self
         , path: [] const u8
-        , clientfd: usize) !usize {
-        print("connection switched from {} to path {s}\n"
-            , .{clientfd, path});
-        const newfd = 0; // TODO
-        var newcon = ConnectionInfos.init(ConnectionType.SWITCHED, path);
-        try self.connections.append(newcon);
-        try self.pollfd.append(newfd);
+        , clientfd: i32) !i32 {
+        print("connection switched from {} to path {s}\n", .{clientfd, path});
+        var newfd = try self.connect_ (ConnectionType.SWITCHED, path);
         // TODO: record switch.
         return newfd;
     }
 
     // Create a unix socket.
-    pub fn server_init(self: *Self, path: [] const u8) !usize {
+    pub fn server_init(self: *Self, path: [] const u8) !net.StreamServer {
         print("context server init {s}\n", .{path});
-        const newfd = 0; // TODO
+        var server = net.StreamServer.init(.{});
+        var socket_addr = try net.Address.initUnix(path);
+        try server.listen(socket_addr);
+
+        const newfd = server.sockfd orelse return error.SocketLOL;
         var newcon = ConnectionInfos.init(ConnectionType.SERVER, path);
         try self.connections.append(newcon);
         try self.pollfd.append(newfd);
-        return newfd;
+        return server;
     }
 
     /// ipc_write   (ctx *, const struct ipc_message *m);
@@ -372,7 +382,7 @@ pub const Context = struct {
         return m;
     }
 
-    pub fn read_fd (_: *Self, fd: usize) !Message {
+    pub fn read_fd (_: *Self, fd: i32) !Message {
         // TODO: read the actual content.
         print("read fd {}\n", .{fd});
         var payload = "hello!!";
@@ -396,7 +406,6 @@ pub const Context = struct {
         if (index >= self.pollfd.items.len) {
             return error.IndexOutOfBounds;
         }
-        print("connection close index {}\n", .{index});
         // close the connection and remove it from the two structures
         if (self.connections.items.len > 0) {
             // TODO: actually close the file descriptor.
@@ -455,14 +464,44 @@ test "Context - creation, display and memory check" {
     var c = Context.init(allocator);
     defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
-    // Creating a service.
-    _ = try c.server_init("/tmp/.TEST_USOCK");
+    const path = "/tmp/.TEST_USOCK";
 
-    // Connection to a service.
-    _ = try c.connect("/tmp/.TEST_USOCK");
+    // SERVER SIDE: creating a service.
+    var server = try c.server_init(path);
+    defer server.deinit();
+    defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
 
-    print ("Context: {}\n", .{c});
-    print("\n", .{});
+
+    // CLIENT SIDE: connection to a service.
+    //_ = try c.connect(path);
+
+    // TODO: connection to a server, but switched with clientfd "3".
+    // _ = try c.connection_switched(path, 3);
+
+    // print ("Context: {}\n", .{c});
+    // print("\n", .{});
+
+    const S = struct {
+        fn clientFn() !void {
+            const socket = try net.connectUnixSocket(path);
+            defer socket.close();
+            print("So we're a client now... path: {s}\n", .{path});
+
+            _ = try socket.writer().writeAll("Hello world!");
+        }
+    };
+
+    const t = try std.Thread.spawn(.{}, S.clientFn, .{});
+    defer t.join();
+
+    // Server.accept returns a net.Connection (handle = fd, addr = net.Address).
+    var client = try server.accept();
+    defer client.stream.close();
+    var buf: [16]u8 = undefined;
+    const n = try client.stream.reader().read(&buf);
+
+    try testing.expectEqual(@as(usize, 12), n);
+    try testing.expectEqualSlices(u8, "Hello world!", buf[0..n]);
 }
 
 pub fn main() u8 {
