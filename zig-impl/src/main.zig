@@ -2,16 +2,20 @@ const std = @import("std");
 const testing = std.testing;
 const net = std.net;
 
-// TODO: file descriptors should have a specific type
-//       (however, usize is pointer size).
+// TODO: file descriptors should have a specific type (but i32 is used in std.net...).
 
 // TODO: path => std.XXX.YYY, not simple [] const u8
 
+// TODO: both ConnectionInfos and pollfd store file descriptors.
+//       ConnectionInfos stores either Stream (server) or Address (client).
+
+// TODO: API should completely obfuscate the inner structures.
+//       Only structures in this file should be necessary.
 
 pub const RUNDIR = "/run/ipc/";
 pub const IPC_HEADER_SIZE = 6;
 pub const IPC_BASE_SIZE = 2000000; // 2 MB, plenty enough space for messages
-pub const IPC_MAX_MESSAGE_SIZE =  IPC_BASE_SIZE-IPC_HEADER_SIZE;
+pub const IPC_MAX_MESSAGE_SIZE = IPC_BASE_SIZE-IPC_HEADER_SIZE;
 pub const IPC_VERSION = 4;
 
 const print = std.debug.print;
@@ -193,18 +197,13 @@ pub const ConnectionType = enum {
     SWITCHED, // IO operations should go through registered callbacks.
 };
 
-// RATIONALE: a connection is mostly a file descriptor,
-//            but with a few other pieces of information.
-//            Storing all data related to a connection in a single place
-//            would be logical but very inefficient.
-//            File descriptors are stored elsewhere (in the context),
-//            packed together, in a single dedicated structure.
 pub const ConnectionInfos = struct {
     @"type": ConnectionType,
     more_to_read: bool,
     path: ?[] const u8, // Not always needed.
 
-    // TODO: socket: ?net.Stream, // Not always needed.
+    server: ?net.StreamServer = null,
+    client: ?net.StreamServer.Connection = null,
 
     const Self = @This();
 
@@ -216,6 +215,10 @@ pub const ConnectionInfos = struct {
         };
     }
 
+    pub fn deinit(self: *Self) void {
+        if (self.server) |s| { s.deinit(); }
+    }
+
     pub fn format(
         self: Self,
         comptime _: []const u8,    // No need.
@@ -225,6 +228,12 @@ pub const ConnectionInfos = struct {
         try std.fmt.format(out_stream
             , "connection type {}, more_to_read {}, path {s}"
             , .{ self.@"type", self.more_to_read, self.path} );
+        if (self.server) |s| {
+            try std.fmt.format(out_stream, "{}" , .{s});
+        }
+        if (self.client) |c| {
+            try std.fmt.format(out_stream, "{}" , .{c});
+        }
     }
 };
 
@@ -328,6 +337,7 @@ pub const Context = struct {
         const newfd = stream.handle;
         errdefer std.os.closeSocket(newfd);
         var newcon = ConnectionInfos.init(ctype, path);
+        newcon.client = stream;
         try self.connections.append(newcon);
         try self.pollfd.append(newfd);
         return newfd;
@@ -358,6 +368,7 @@ pub const Context = struct {
 
         const newfd = server.sockfd orelse return error.SocketLOL;
         var newcon = ConnectionInfos.init(ConnectionType.SERVER, path);
+        newcon.server = server;
         try self.connections.append(newcon);
         try self.pollfd.append(newfd);
         return server;
@@ -380,6 +391,11 @@ pub const Context = struct {
         // fd type usertype payload
         var m = Message.init(0, MessageType.DATA, 1, payload);
         return m;
+    }
+
+    // TODO: this shouldn't be available in the API.
+    pub fn read_ (_: *Self, client: net.StreamServer.Connection, buf: [] u8) !usize {
+        return try client.stream.reader().read(buf);
     }
 
     pub fn read_fd (_: *Self, fd: i32) !Message {
@@ -494,7 +510,7 @@ test "Context - creation, display and memory check" {
     const t = try std.Thread.spawn(.{}, S.clientFn, .{});
     defer t.join();
 
-    // Server.accept returns a net.Connection (handle = fd, addr = net.Address).
+    // Server.accept returns a net.StreamServer.Connection.
     var client = try server.accept();
     defer client.stream.close();
     var buf: [16]u8 = undefined;
@@ -504,7 +520,36 @@ test "Context - creation, display and memory check" {
     try testing.expectEqualSlices(u8, "Hello world!", buf[0..n]);
 }
 
-pub fn main() u8 {
+
+// FIRST
+fn create_service() !void {
+    const config = .{.safety = true};
+    var gpa = std.heap.GeneralPurposeAllocator(config){};
+    defer _ = gpa.deinit();
+
+    const allocator = gpa.allocator();
+    var ctx = Context.init(allocator);
+    defer ctx.deinit(); // There. Can't leak. Isn't Zig wonderful?
+
+    const path = "/tmp/.TEST_USOCK";
+
+    // SERVER SIDE: creating a service.
+    var server = try ctx.server_init(path);
+    defer server.deinit();
+    defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
+
+    // Server.accept returns a net.Connection (handle = fd, addr = net.Address).
+    var client = try server.accept();
+    defer client.stream.close();
+    var buf: [4096]u8 = undefined;
+    const n = try ctx.read_ (client, &buf);
+
+    print("new client: {}\n", .{client});
+    print("{} bytes: {s}\n", .{n, buf});
+}
+
+pub fn main() !u8 {
+    try create_service();
     return 0;
 }
 
