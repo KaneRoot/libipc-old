@@ -38,3 +38,7 @@ What Zig brings to the table:
 All these features provide a **massive gain of time**.
 
 And in general, just having the same standard library for all OSs is great just not to have to rely on different implementations and even locations of code and header files.
+
+What isn't *that* great with Zig:
+
+- structures can be printed, but they also provide the format themselves, leading to an unreliable way of discovering structure's content.
