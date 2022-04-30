@@ -298,11 +298,12 @@ pub const Context = struct {
     //       so we can pass it to poll(2). Share indexes with 'connections'.
     //       For now, this list doesn't do anything.
     //       Can even be replaced in a near future.
-    pollfd: PollFD,                // File descriptors.
+    pollfd: PollFD,      // File descriptors.
 
     tx: Messages,        // Messages to send, once their fd is available.
     switchdb: ?Switches, // Relations between fd.
 
+    timer: ?i32 = null,  // No timer by default (no TIMER event).
 
     const Self = @This();
 
@@ -320,7 +321,7 @@ pub const Context = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        print("connection deinit\n", .{});
+        print("context deinit\n", .{});
         self.close_all() catch |err| switch(err){
             error.IndexOutOfBounds => {
                 print("context.deinit(): IndexOutOfBounds\n", .{});
@@ -332,6 +333,7 @@ pub const Context = struct {
         if (self.switchdb) |sdb| { sdb.deinit(); }
     }
 
+    // Both simple connection and the switched one share this code.
     fn connect_ (self: *Self, ctype: ConnectionType, path: []const u8) !i32 {
         var stream = try net.connectUnixSocket(path);
         const newfd = stream.handle;
@@ -351,8 +353,8 @@ pub const Context = struct {
 
     // Connection to a service, but with switched with the client fd.
     pub fn connection_switched(self: *Self
-        , path: [] const u8
-        , clientfd: i32) !i32 {
+            , path: [] const u8
+            , clientfd: i32) !i32 {
         print("connection switched from {} to path {s}\n", .{clientfd, path});
         var newfd = try self.connect_ (ConnectionType.SWITCHED, path);
         // TODO: record switch.
@@ -360,6 +362,7 @@ pub const Context = struct {
     }
 
     // Create a unix socket.
+    // Store std lib structures in the context.
     pub fn server_init(self: *Self, path: [] const u8) !net.StreamServer {
         print("context server init {s}\n", .{path});
         var server = net.StreamServer.init(.{});
@@ -374,7 +377,6 @@ pub const Context = struct {
         return server;
     }
 
-    /// ipc_write   (ctx *, const struct ipc_message *m);
     pub fn write (self: *Self, m: Message) !void {
         print("write fd {}\n", .{m.fd});
         self.tx.append(m);
@@ -393,11 +395,6 @@ pub const Context = struct {
         return m;
     }
 
-    // TODO: this shouldn't be available in the API.
-    pub fn read_ (_: *Self, client: net.StreamServer.Connection, buf: [] u8) !usize {
-        return try client.stream.reader().read(buf);
-    }
-
     pub fn read_fd (_: *Self, fd: i32) !Message {
         // TODO: read the actual content.
         print("read fd {}\n", .{fd});
@@ -408,26 +405,39 @@ pub const Context = struct {
     }
 
     // Wait an event.
-    pub fn wait_event(self: *Self, timer: *i32) !Event {
-        for (self.pollfd.items) |fd| {
-            print("listening to fd {}\n", .{fd});
-        }
-        print("listening for MAXIMUM {} us\n", .{timer});
+    pub fn wait_event(self: *Self) !Event {
+        // TODO: remove these debug prints.
+        // for (self.pollfd.items) |fd| {
+        //     print("listening to fd {}\n", .{fd});
+        // }
+        if (self.timer) |t| { print("listening for MAXIMUM {} us\n", .{t}); }
+        else                { print("listening (no timer)\n", .{});         }
+
         // TODO: listening to these file descriptors.
         var event = Event.init(EventType.CONNECTION, 5, 8, null);
         return event;
     }
 
     pub fn close(self: *Self, index: usize) !void {
+        // REMINDER: connections and pollfd have the same length
         if (index >= self.pollfd.items.len) {
             return error.IndexOutOfBounds;
         }
+
         // close the connection and remove it from the two structures
-        if (self.connections.items.len > 0) {
-            // TODO: actually close the file descriptor.
-            _ = self.connections.swapRemove(index);
-            _ = self.pollfd.swapRemove(index);
+        // TODO: actually close the file descriptor.
+        var con = self.connections.swapRemove(index);
+        if (con.server) |s| {
+            // Remove service's UNIX socket file.
+            var addr = s.listen_address;
+            var path = std.mem.sliceTo(&addr.un.path, 0);
+            std.fs.cwd().deleteFile(path) catch {};
         }
+        if (con.client) |c| {
+            // Close the client's socket.
+            c.stream.close();
+        }
+        _ = self.pollfd.swapRemove(index);
     }
 
     pub fn close_all(self: *Self) !void {
@@ -453,6 +463,12 @@ pub const Context = struct {
             try std.fmt.format(out_stream, "\n- ", .{});
             try tx.format(fmt, options, out_stream);
         }
+    }
+
+    // PRIVATE API
+
+    fn read_ (_: *Self, client: net.StreamServer.Connection, buf: [] u8) !usize {
+        return try client.stream.reader().read(buf);
     }
 
 };
@@ -534,18 +550,25 @@ fn create_service() !void {
     const path = "/tmp/.TEST_USOCK";
 
     // SERVER SIDE: creating a service.
-    var server = try ctx.server_init(path);
-    defer server.deinit();
-    defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
+    _ = try ctx.server_init(path);
+    var event = try ctx.wait_event();
+    switch (event.@"type") {
+        .CONNECTION => {
+            print("New connection!\n", .{});
+        },
+        else => {
+            print("New event: {}\n", .{event.@"type"});
+        },
+    }
 
     // Server.accept returns a net.Connection (handle = fd, addr = net.Address).
-    var client = try server.accept();
-    defer client.stream.close();
-    var buf: [4096]u8 = undefined;
-    const n = try ctx.read_ (client, &buf);
+    // var client = try server.accept();
+    // var buf: [4096]u8 = undefined;
+    // const n = try ctx.read_ (client, &buf);
 
-    print("new client: {}\n", .{client});
-    print("{} bytes: {s}\n", .{n, buf});
+    // print("new client: {}\n", .{client});
+    // print("{} bytes: {s}\n", .{n, buf});
+    print("End the create_service function\n", .{});
 }
 
 pub fn main() !u8 {
