@@ -1,13 +1,14 @@
 const std = @import("std");
 const testing = std.testing;
 const net = std.net;
+const fmt = std.fmt;
 
 // TODO: file descriptors should have a specific type (but i32 is used in std.net...).
 
 // TODO: path => std.XXX.YYY, not simple [] const u8
 
-// TODO: both ConnectionInfos and pollfd store file descriptors.
-//       ConnectionInfos stores either Stream (server) or Address (client).
+// TODO: both Connection and pollfd store file descriptors.
+//       Connection stores either Stream (server) or Address (client).
 
 // TODO: API should completely obfuscate the inner structures.
 //       Only structures in this file should be necessary.
@@ -20,28 +21,43 @@ pub const IPC_VERSION = 4;
 
 const print = std.debug.print;
 
+pub const Messages = std.ArrayList(Message);
+pub const Switches = std.ArrayList(Switch);
+pub const Connections = std.ArrayList(Connection);
+pub const PollFD = std.ArrayList(i32);
+
 pub const IPC_TYPE = enum {
     UNIX_SOCKETS
 };
 
-pub const MessageType = enum {
-    SERVER_CLOSE,
-    ERR,
-    DATA,
-    NETWORK_LOOKUP,
-};
-
 pub const Message = struct {
 
-    @"type": MessageType,     // Internal message type.
+    pub const Type = enum {
+        SERVER_CLOSE,
+        ERROR,
+        DATA,
+        NETWORK_LOOKUP,
+    };
+
+    @"type": Message.Type,    // Internal message type.
     user_type: u8,            // User-defined message type (arbitrary).
     fd: usize,                // File descriptor concerned about this message.
     payload: []const u8,
 
     const Self = @This();
 
+    // TODO
+    //pub fn initFromConnection(fd: usize) Self {
+    //    return Self{
+    //        .@"type"   = Message.Type.ERROR,
+    //        .user_type = 8,
+    //        .fd        = fd,
+    //        .payload   = "hello",
+    //    };
+    //}
+
     pub fn init(fd: usize,
-                @"type": MessageType,
+                @"type": Message.Type,
                 user_type: u8,
                 payload: []const u8) Self {
         return Message {
@@ -52,87 +68,79 @@ pub const Message = struct {
         };
     }
 
-    pub fn format(
-        self: Self,
-        comptime _: []const u8,    // No need.
-        _: std.fmt.FormatOptions,  // No need.
-        out_stream: anytype,
-    ) !void {
-        try std.fmt.format(out_stream, "fd: {}, type {}, usertype {}, payload: {s}",
+    pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
+        try fmt.format(out_stream, "fd: {}, {}, usertype {}, payload: [{s}]",
             .{self.fd, self.@"type", self.user_type, self.payload} );
     }
-    // del == list.swapRemove(index)
 };
 
 test "Message - creation and display" {
     print("\n", .{});
     // fd type usertype payload
     var s = "hello!!";
-    var m = Message.init(1, MessageType.DATA, 3, s);
+    var m = Message.init(1, Message.Type.DATA, 3, s);
 
     print("message:\t[{}]\n", .{m});
     print("\n", .{});
 }
 
-pub const Messages = std.ArrayList(Message);
-
-//  Event types.
-//  In the main event loop, servers and clients can receive connections,
-//  disconnections, errors or messages from their pairs. They also can
-//  set a timer so the loop will allow a periodic routine (sending ping
-//  messages for websockets, for instance).
-// 
-//  A few other events can occur.
-// 
-//  Extra socket
-//    The main loop waiting for an event can be used as an unique entry
-//    point for socket management. libipc users can register sockets via
-//    ipc_add_fd allowing them to trigger an event, so events unrelated
-//    to libipc are managed the same way.
-//  Switch
-//    libipc can be used to create protocol-related programs, such as a
-//    websocket proxy allowing libipc services to be accessible online.
-//    To help those programs (with TCP-complient sockets), two sockets
-//    can be bound together, each message coming from one end will be
-//    automatically transfered to the other socket and a Switch event
-//    will be triggered.
-//  Look Up
-//    When a client establishes a connection to a service, it asks the
-//    ipc daemon (ipcd) to locate the service and establish a connection
-//    to it. This is a lookup.
-
-pub const EventType = enum {
-    NOT_SET,       // Default. TODO: should we keep this?
-    ERROR,         // A problem occured.
-    EXTRA_SOCKET,  // Message received from a non IPC socket.
-    SWITCH,        // Message to send to a corresponding fd.
-    CONNECTION,    // New user.
-    DISCONNECTION, // User disconnected.
-    MESSAGE,       // New message.
-    LOOKUP,        // Client asking for a service through ipcd.
-    TIMER,         // Timeout in the poll(2) function.
-    TX,            // Message sent.
-};
-
-// For IO callbacks (switching).
-pub const EventCallBack = enum {
-    NO_ERROR,      // No error. A message was generated.
-    FD_CLOSING,    // The fd is closing.
-    FD_ERROR,      // Generic error.
-    PARSING_ERROR, // The message was read but with errors.
-    IGNORE,        // The message should be ignored (protocol specific).
-};
-
 pub const Event = struct {
 
-    @"type": EventType,
+    //  Event types.
+    //  In the main event loop, servers and clients can receive connections,
+    //  disconnections, errors or messages from their pairs. They also can
+    //  set a timer so the loop will allow a periodic routine (sending ping
+    //  messages for websockets, for instance).
+    // 
+    //  A few other events can occur.
+    // 
+    //  Extra socket
+    //    The main loop waiting for an event can be used as an unique entry
+    //    point for socket management. libipc users can register sockets via
+    //    ipc_add_fd allowing them to trigger an event, so events unrelated
+    //    to libipc are managed the same way.
+    //  Switch
+    //    libipc can be used to create protocol-related programs, such as a
+    //    websocket proxy allowing libipc services to be accessible online.
+    //    To help those programs (with TCP-complient sockets), two sockets
+    //    can be bound together, each message coming from one end will be
+    //    automatically transfered to the other socket and a Switch event
+    //    will be triggered.
+    //  Look Up
+    //    When a client establishes a connection to a service, it asks the
+    //    ipc daemon (ipcd) to locate the service and establish a connection
+    //    to it. This is a lookup.
+
+    pub const Type = enum {
+        NOT_SET,       // Default. TODO: should we keep this?
+        ERROR,         // A problem occured.
+        EXTRA_SOCKET,  // Message received from a non IPC socket.
+        SWITCH,        // Message to send to a corresponding fd.
+        CONNECTION,    // New user.
+        DISCONNECTION, // User disconnected.
+        MESSAGE,       // New message.
+        LOOKUP,        // Client asking for a service through ipcd.
+        TIMER,         // Timeout in the poll(2) function.
+        TX,            // Message sent.
+    };
+
+    // For IO callbacks (switching).
+    pub const CallBack = enum {
+        NO_ERROR,      // No error. A message was generated.
+        FD_CLOSING,    // The fd is closing.
+        FD_ERROR,      // Generic error.
+        PARSING_ERROR, // The message was read but with errors.
+        IGNORE,        // The message should be ignored (protocol specific).
+    };
+
+    @"type": Event.Type,
     index: u32,
     origin: usize,
     m: ?*Message,  // message pointer
 
     const Self = @This();
 
-    pub fn init(@"type": EventType,
+    pub fn init(@"type": Event.Type,
             index: u32,
             origin: usize,
             m: ?*Message) Self {
@@ -145,7 +153,7 @@ pub const Event = struct {
     }
 
     pub fn set(self: *Self,
-               @"type": EventType,
+               @"type": Event.Type,
                index: u32,
                origin: usize,
                m: ?*Message) void {
@@ -156,7 +164,7 @@ pub const Event = struct {
     }
 
     pub fn clean(self: *Self) void {
-        self.@"type" = EventType.NOT_SET;
+        self.@"type" = Event.Type.NOT_SET;
         self.index = @as(u8,0);
         self.origin = @as(usize,0);
         if (self.m) |message| {
@@ -165,14 +173,9 @@ pub const Event = struct {
         self.m = null;
     }
 
-    pub fn format(
-        self: Self,
-        comptime _: []const u8,    // No need.
-        _: std.fmt.FormatOptions,  // No need.
-        out_stream: anytype,
-    ) !void {
-        try std.fmt.format(out_stream
-            , "type {}, origin: {}, index {}, message: [{}]"
+    pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
+        try fmt.format(out_stream
+            , "{}, origin: {}, index {}, message: [{}]"
             , .{ self.@"type", self.origin, self.index, self.m} );
     }
 
@@ -182,23 +185,24 @@ test "Event - creation and display" {
     print("\n", .{});
     var s = "hello!!";
     // fd type usertype payload
-    var m = Message.init(1, MessageType.DATA, 3, s);
+    var m = Message.init(1, Message.Type.DATA, 3, s);
     // type index origin message
-    var e = Event.init(EventType.CONNECTION, 5, 8, &m);
+    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
 
     print("event:\t[{}]\n", .{e});
     print("\n", .{});
 }
 
-pub const ConnectionType = enum {
-    IPC,      // Standard connection.
-    EXTERNAL, // Non IPC connection (TCP, UDP, etc.).
-    SERVER,   // Messages received = new connections.
-    SWITCHED, // IO operations should go through registered callbacks.
-};
+pub const Connection = struct {
 
-pub const ConnectionInfos = struct {
-    @"type": ConnectionType,
+    pub const Type = enum {
+        IPC,      // Standard connection.
+        EXTERNAL, // Non IPC connection (TCP, UDP, etc.).
+        SERVER,   // Messages received = new connections.
+        SWITCHED, // IO operations should go through registered callbacks.
+    };
+
+    @"type": Connection.Type,
     more_to_read: bool,
     path: ?[] const u8, // Not always needed.
 
@@ -207,7 +211,7 @@ pub const ConnectionInfos = struct {
 
     const Self = @This();
 
-    pub fn init(@"type": ConnectionType, path: ?[] const u8) Self {
+    pub fn init(@"type": Connection.Type, path: ?[] const u8) Self {
         return Self {
            .@"type"      = @"type",
            .more_to_read = false,
@@ -219,30 +223,25 @@ pub const ConnectionInfos = struct {
         if (self.server) |s| { s.deinit(); }
     }
 
-    pub fn format(
-        self: Self,
-        comptime _: []const u8,    // No need.
-        _: std.fmt.FormatOptions,  // No need.
-        out_stream: anytype,
-    ) !void {
-        try std.fmt.format(out_stream
-            , "connection type {}, more_to_read {}, path {s}"
+    pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
+        try fmt.format(out_stream
+            , "{}, more_to_read {}, path {s}"
             , .{ self.@"type", self.more_to_read, self.path} );
         if (self.server) |s| {
-            try std.fmt.format(out_stream, "{}" , .{s});
+            try fmt.format(out_stream, "{}" , .{s});
         }
         if (self.client) |c| {
-            try std.fmt.format(out_stream, "{}" , .{c});
+            try fmt.format(out_stream, "{}" , .{c});
         }
     }
 };
 
-test "ConnectionInfos - creation and display" {
+test "Connection - creation and display" {
     print("\n", .{});
     // origin destination
     var path = "/some/path";
-    var c1 = ConnectionInfos.init(ConnectionType.EXTERNAL, path);
-    var c2 = ConnectionInfos.init(ConnectionType.IPC     , null);
+    var c1 = Connection.init(Connection.Type.EXTERNAL, path);
+    var c2 = Connection.init(Connection.Type.IPC     , null);
     print("connection 1:\t[{}]\n", .{c1});
     print("connection 2:\t[{}]\n", .{c2});
     print("\n", .{});
@@ -266,13 +265,8 @@ pub const Switch = struct {
         };
     }
 
-    pub fn format(
-        self: Self,
-        comptime _: []const u8,    // No need.
-        _: std.fmt.FormatOptions,  // No need.
-        out_stream: anytype,
-    ) !void {
-        try std.fmt.format(out_stream
+    pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
+        try fmt.format(out_stream
             , "switch {} <-> {}"
             , .{ self.origin, self.destination} );
     }
@@ -281,13 +275,9 @@ pub const Switch = struct {
 test "Switch - creation and display" {
     // origin destination
     var s = Switch.init(3,8);
-    print("switch:\t[{}]\n", .{s});
+    print("\nswitch:\t[{}]\n", .{s});
     print("\n", .{});
 }
-
-pub const Switches = std.ArrayList(Switch);
-pub const Connections = std.ArrayList(ConnectionInfos);
-pub const PollFD = std.ArrayList(i32);
 
 // Context of the whole networking state.
 pub const Context = struct {
@@ -334,11 +324,11 @@ pub const Context = struct {
     }
 
     // Both simple connection and the switched one share this code.
-    fn connect_ (self: *Self, ctype: ConnectionType, path: []const u8) !i32 {
+    fn connect_ (self: *Self, ctype: Connection.Type, path: []const u8) !i32 {
         var stream = try net.connectUnixSocket(path);
         const newfd = stream.handle;
         errdefer std.os.closeSocket(newfd);
-        var newcon = ConnectionInfos.init(ctype, path);
+        var newcon = Connection.init(ctype, path);
         newcon.client = stream;
         try self.connections.append(newcon);
         try self.pollfd.append(newfd);
@@ -348,7 +338,7 @@ pub const Context = struct {
     // Return the new fd. Can be useful to the caller.
     pub fn connect(self: *Self, path: []const u8) !i32 {
         print("connection to:\t{s}\n", .{path});
-        return self.connect_ (ConnectionType.IPC, path);
+        return self.connect_ (Connection.Type.IPC, path);
     }
 
     // Connection to a service, but with switched with the client fd.
@@ -356,7 +346,7 @@ pub const Context = struct {
             , path: [] const u8
             , clientfd: i32) !i32 {
         print("connection switched from {} to path {s}\n", .{clientfd, path});
-        var newfd = try self.connect_ (ConnectionType.SWITCHED, path);
+        var newfd = try self.connect_ (Connection.Type.SWITCHED, path);
         // TODO: record switch.
         return newfd;
     }
@@ -370,7 +360,7 @@ pub const Context = struct {
         try server.listen(socket_addr);
 
         const newfd = server.sockfd orelse return error.SocketLOL;
-        var newcon = ConnectionInfos.init(ConnectionType.SERVER, path);
+        var newcon = Connection.init(Connection.Type.SERVER, path);
         newcon.server = server;
         try self.connections.append(newcon);
         try self.pollfd.append(newfd);
@@ -391,7 +381,7 @@ pub const Context = struct {
         print("read fd {} index {}\n", .{fd, index});
         var payload = "hello!!";
         // fd type usertype payload
-        var m = Message.init(0, MessageType.DATA, 1, payload);
+        var m = Message.init(0, Message.Type.DATA, 1, payload);
         return m;
     }
 
@@ -400,7 +390,7 @@ pub const Context = struct {
         print("read fd {}\n", .{fd});
         var payload = "hello!!";
         // fd type usertype payload
-        var m = Message.init(0, MessageType.DATA, 1, payload);
+        var m = Message.init(0, Message.Type.DATA, 1, payload);
         return m;
     }
 
@@ -414,7 +404,7 @@ pub const Context = struct {
         else                { print("listening (no timer)\n", .{});         }
 
         // TODO: listening to these file descriptors.
-        var event = Event.init(EventType.CONNECTION, 5, 8, null);
+        var event = Event.init(Event.Type.CONNECTION, 5, 8, null);
         return event;
     }
 
@@ -444,24 +434,19 @@ pub const Context = struct {
         while(self.connections.items.len > 0) { try self.close(0); }
     }
 
-    pub fn format(
-        self: Self,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        out_stream: anytype,
-    ) !void {
-        try std.fmt.format(out_stream
+    pub fn format(self: Self, comptime form: []const u8, options: fmt.FormatOptions, out_stream: anytype) !void {
+        try fmt.format(out_stream
             , "context ({} connections and {} messages):"
             , .{self.connections.items.len, self.tx.items.len});
 
         for (self.connections.items) |con| {
-            try std.fmt.format(out_stream, "\n- ", .{});
-            try con.format(fmt, options, out_stream);
+            try fmt.format(out_stream, "\n- ", .{});
+            try con.format(form, options, out_stream);
         }
 
         for (self.tx.items) |tx| {
-            try std.fmt.format(out_stream, "\n- ", .{});
-            try tx.format(fmt, options, out_stream);
+            try fmt.format(out_stream, "\n- ", .{});
+            try tx.format(form, options, out_stream);
         }
     }
 
@@ -488,10 +473,10 @@ test "Context - creation, display and memory check" {
 
 //    var payload = "hello!!";
 //    // fd type usertype payload
-//    var m = Message.init(0, MessageType.DATA, 1, payload);
+//    var m = Message.init(0, Message.Type.DATA, 1, payload);
 //
 //    // type index origin message
-//    var e = Event.init(EventType.CONNECTION, 5, 8, &m);
+//    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
 
     var c = Context.init(allocator);
     defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
