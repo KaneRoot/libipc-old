@@ -13,12 +13,6 @@ const fmt = std.fmt;
 // TODO: API should completely obfuscate the inner structures.
 //       Only structures in this file should be necessary.
 
-pub const RUNDIR = "/run/ipc/";
-pub const IPC_HEADER_SIZE = 6;
-pub const IPC_BASE_SIZE = 2000000; // 2 MB, plenty enough space for messages
-pub const IPC_MAX_MESSAGE_SIZE = IPC_BASE_SIZE-IPC_HEADER_SIZE;
-pub const IPC_VERSION = 4;
-
 const print = std.debug.print;
 
 pub const Messages = std.ArrayList(Message);
@@ -124,15 +118,6 @@ pub const Event = struct {
         TX,            // Message sent.
     };
 
-    // For IO callbacks (switching).
-    pub const CallBack = enum {
-        NO_ERROR,      // No error. A message was generated.
-        FD_CLOSING,    // The fd is closing.
-        FD_ERROR,      // Generic error.
-        PARSING_ERROR, // The message was read but with errors.
-        IGNORE,        // The message should be ignored (protocol specific).
-    };
-
     @"type": Event.Type,
     index: u32,
     origin: usize,
@@ -193,6 +178,45 @@ test "Event - creation and display" {
     print("\n", .{});
 }
 
+pub const CBEvent = struct {
+
+    //  CallBack Event types.
+    //  In the main event loop, servers and clients can receive connections,
+    //  disconnections, errors or messages from their pairs. They also can
+    //  set a timer so the loop will allow a periodic routine (sending ping
+    //  messages for websockets, for instance).
+    // 
+    //  A few other events can occur.
+    // 
+    //  Extra socket
+    //    The main loop waiting for an event can be used as an unique entry
+    //    point for socket management. libipc users can register sockets via
+    //    ipc_add_fd allowing them to trigger an event, so events unrelated
+    //    to libipc are managed the same way.
+    //  Switch
+    //    libipc can be used to create protocol-related programs, such as a
+    //    websocket proxy allowing libipc services to be accessible online.
+    //    To help those programs (with TCP-complient sockets), two sockets
+    //    can be bound together, each message coming from one end will be
+    //    automatically transfered to the other socket and a Switch event
+    //    will be triggered.
+    //  Look Up
+    //    When a client establishes a connection to a service, it asks the
+    //    ipc daemon (ipcd) to locate the service and establish a connection
+    //    to it. This is a lookup.
+
+    // For IO callbacks (switching).
+    pub const Type = enum {
+        NO_ERROR,      // No error. A message was generated.
+        FD_CLOSING,    // The fd is closing.
+        FD_ERROR,      // Generic error.
+        PARSING_ERROR, // The message was read but with errors.
+        IGNORE,        // The message should be ignored (protocol specific).
+    };
+
+    @"type": CBEvent.Type,
+};
+
 pub const Connection = struct {
 
     pub const Type = enum {
@@ -203,30 +227,32 @@ pub const Connection = struct {
     };
 
     @"type": Connection.Type,
-    more_to_read: bool,
     path: ?[] const u8, // Not always needed.
 
+    // TODO: use these connections
     server: ?net.StreamServer = null,
     client: ?net.StreamServer.Connection = null,
+
+    // more_to_read: bool, // useless for now
 
     const Self = @This();
 
     pub fn init(@"type": Connection.Type, path: ?[] const u8) Self {
         return Self {
            .@"type"      = @"type",
-           .more_to_read = false,
            .path         = path,
+           // .more_to_read = false, // TODO: maybe useless
         };
     }
 
     pub fn deinit(self: *Self) void {
-        if (self.server) |s| { s.deinit(); }
+        if (self.server) |*s| { s.deinit(); }
+        // if (self.client) |*c| { c.deinit(); }
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
-        try fmt.format(out_stream
-            , "{}, more_to_read {}, path {s}"
-            , .{ self.@"type", self.more_to_read, self.path} );
+        try fmt.format(out_stream, "{}, path {s}", .{ self.@"type", self.path});
+
         if (self.server) |s| {
             try fmt.format(out_stream, "{}" , .{s});
         }
@@ -241,20 +267,23 @@ test "Connection - creation and display" {
     // origin destination
     var path = "/some/path";
     var c1 = Connection.init(Connection.Type.EXTERNAL, path);
+    defer c1.deinit();
     var c2 = Connection.init(Connection.Type.IPC     , null);
+    defer c2.deinit();
     print("connection 1:\t[{}]\n", .{c1});
     print("connection 2:\t[{}]\n", .{c2});
     print("\n", .{});
 }
 
-// TODO: callbacks.
+// TODO: default callbacks, actual switching.
 pub const Switch = struct {
     origin : usize,
     destination : usize,
-//     enum ipccb (*orig_in)  (int origin_fd, struct ipc_message *m, short int *more_to_read);
-//     enum ipccb (*orig_out) (int origin_fd, struct ipc_message *m);
-//     enum ipccb (*dest_in)  (int origin_fd, struct ipc_message *m, short int *more_to_read);
-//     enum ipccb (*dest_out) (int origin_fd, struct ipc_message *m);
+
+    // orig_in:  ?fn (origin: usize, m: Message) CBEvent,
+    // orig_out: ?fn (origin: usize, m: Message) CBEvent,
+    // dest_in:  ?fn (origin: usize, m: Message) CBEvent,
+    // dest_out: ?fn (origin: usize, m: Message) CBEvent,
 
     const Self = @This();
 
@@ -281,6 +310,12 @@ test "Switch - creation and display" {
 
 // Context of the whole networking state.
 pub const Context = struct {
+    pub var RUNDIR = "/run/ipc/";
+    pub const IPC_HEADER_SIZE = 4; // Size (4 bytes) then content.
+    pub const IPC_BASE_SIZE = 2000000; // 2 MB, plenty enough space for messages
+    pub const IPC_MAX_MESSAGE_SIZE = IPC_BASE_SIZE-IPC_HEADER_SIZE;
+    pub const IPC_VERSION = 1;
+
     allocator: std.mem.Allocator,  // Memory allocator.
     connections: Connections,      // Keep track of connections.
 
@@ -299,8 +334,13 @@ pub const Context = struct {
 
     // Context initialization:
     // - init structures (provide the allocator)
-    pub fn init(allocator: std.mem.Allocator) Self {
+    pub fn init(allocator: std.mem.Allocator) !Self {
         print("Context init\n", .{});
+
+        var rundir = try std.process.getEnvVarOwned(allocator, "RUNDIR");
+        defer allocator.free(rundir);
+        print("rundir: {s}\n", .{rundir});
+
         return Self {
              .connections = Connections.init(allocator)
            , .pollfd = PollFD.init(allocator)
@@ -478,7 +518,7 @@ test "Context - creation, display and memory check" {
 //    // type index origin message
 //    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
 
-    var c = Context.init(allocator);
+    var c = try Context.init(allocator);
     defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
     const path = "/tmp/.TEST_USOCK";
@@ -529,7 +569,7 @@ fn create_service() !void {
     defer _ = gpa.deinit();
 
     const allocator = gpa.allocator();
-    var ctx = Context.init(allocator);
+    var ctx = try Context.init(allocator);
     defer ctx.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
     const path = "/tmp/.TEST_USOCK";
