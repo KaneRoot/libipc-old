@@ -160,7 +160,7 @@ pub const Event = struct {
 
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
         try fmt.format(out_stream
-            , "{}, origin: {}, index {}, message: [{}]"
+            , "{}, origin: {}, index {}, message: [{?}]"
             , .{ self.@"type", self.origin, self.index, self.m} );
     }
 
@@ -251,7 +251,7 @@ pub const Connection = struct {
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
-        try fmt.format(out_stream, "{}, path {s}", .{ self.@"type", self.path});
+        try fmt.format(out_stream, "{}, path {?s}", .{ self.@"type", self.path});
 
         if (self.server) |s| {
             try fmt.format(out_stream, "{}" , .{s});
@@ -337,7 +337,15 @@ pub const Context = struct {
     pub fn init(allocator: std.mem.Allocator) !Self {
         print("Context init\n", .{});
 
-        var rundir = try std.process.getEnvVarOwned(allocator, "RUNDIR");
+        var rundir = std.process.getEnvVarOwned(allocator, "RUNDIR") catch |err| switch(err) {
+            error.EnvironmentVariableNotFound => blk: {
+                print("RUNTIME variable not set, using default /tmp/runtime\n", .{});
+                break :blk try allocator.dupeZ(u8, "/tmp/runtime");
+            },
+            else => {
+                return err;
+            },
+        };
         defer allocator.free(rundir);
         print("rundir: {s}\n", .{rundir});
 
