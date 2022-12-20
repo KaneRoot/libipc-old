@@ -34,7 +34,6 @@ pub const Message = struct {
     };
 
     @"type": Message.Type,    // Internal message type.
-    user_type: u8,            // User-defined message type (arbitrary).
     fd: usize,                // File descriptor concerned about this message.
     payload: []const u8,
 
@@ -44,27 +43,22 @@ pub const Message = struct {
     //pub fn initFromConnection(fd: usize) Self {
     //    return Self{
     //        .@"type"   = Message.Type.ERROR,
-    //        .user_type = 8,
     //        .fd        = fd,
     //        .payload   = "hello",
     //    };
     //}
 
-    pub fn init(fd: usize,
-                @"type": Message.Type,
-                user_type: u8,
-                payload: []const u8) Self {
+    pub fn init(fd: usize, @"type": Message.Type, payload: []const u8) Self {
         return Message {
             .fd = fd,
             .@"type" = @"type",
-            .user_type = user_type,
             .payload = payload,
         };
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
-        try fmt.format(out_stream, "fd: {}, {}, usertype {}, payload: [{s}]",
-            .{self.fd, self.@"type", self.user_type, self.payload} );
+        try fmt.format(out_stream, "fd: {}, {}, payload: [{s}]",
+            .{self.fd, self.@"type", self.payload} );
     }
 };
 
@@ -72,7 +66,7 @@ test "Message - creation and display" {
     print("\n", .{});
     // fd type usertype payload
     var s = "hello!!";
-    var m = Message.init(1, Message.Type.DATA, 3, s);
+    var m = Message.init(1, Message.Type.DATA, s);
 
     print("message:\t[{}]\n", .{m});
     print("\n", .{});
@@ -170,7 +164,7 @@ test "Event - creation and display" {
     print("\n", .{});
     var s = "hello!!";
     // fd type usertype payload
-    var m = Message.init(1, Message.Type.DATA, 3, s);
+    var m = Message.init(1, Message.Type.DATA, s);
     // type index origin message
     var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
 
@@ -310,12 +304,12 @@ test "Switch - creation and display" {
 
 // Context of the whole networking state.
 pub const Context = struct {
-    pub var RUNDIR = "/run/ipc/";
     pub const IPC_HEADER_SIZE = 4; // Size (4 bytes) then content.
     pub const IPC_BASE_SIZE = 2000000; // 2 MB, plenty enough space for messages
     pub const IPC_MAX_MESSAGE_SIZE = IPC_BASE_SIZE-IPC_HEADER_SIZE;
     pub const IPC_VERSION = 1;
 
+    rundir: [] u8,
     allocator: std.mem.Allocator,  // Memory allocator.
     connections: Connections,      // Keep track of connections.
 
@@ -339,18 +333,18 @@ pub const Context = struct {
 
         var rundir = std.process.getEnvVarOwned(allocator, "RUNDIR") catch |err| switch(err) {
             error.EnvironmentVariableNotFound => blk: {
-                print("RUNTIME variable not set, using default /tmp/runtime\n", .{});
-                break :blk try allocator.dupeZ(u8, "/tmp/runtime");
+                print("RUNTIME variable not set, using default /tmp/libipc-run/\n", .{});
+                break :blk try allocator.dupeZ(u8, "/tmp/libipc-run/");
             },
             else => {
                 return err;
             },
         };
-        defer allocator.free(rundir);
         print("rundir: {s}\n", .{rundir});
 
         return Self {
-             .connections = Connections.init(allocator)
+             .rundir = rundir
+           , .connections = Connections.init(allocator)
            , .pollfd = PollFD.init(allocator)
            , .tx = Messages.init(allocator)
            , .switchdb = null
@@ -365,6 +359,7 @@ pub const Context = struct {
                 print("context.deinit(): IndexOutOfBounds\n", .{});
             },
         };
+        self.allocator.free(self.rundir);
         self.connections.deinit();
         self.pollfd.deinit();
         self.tx.deinit();
@@ -429,7 +424,7 @@ pub const Context = struct {
         print("read fd {} index {}\n", .{fd, index});
         var payload = "hello!!";
         // fd type usertype payload
-        var m = Message.init(0, Message.Type.DATA, 1, payload);
+        var m = Message.init(0, Message.Type.DATA, payload);
         return m;
     }
 
@@ -438,7 +433,7 @@ pub const Context = struct {
         print("read fd {}\n", .{fd});
         var payload = "hello!!";
         // fd type usertype payload
-        var m = Message.init(0, Message.Type.DATA, 1, payload);
+        var m = Message.init(0, Message.Type.DATA, payload);
         return m;
     }
 
@@ -521,7 +516,7 @@ test "Context - creation, display and memory check" {
 
 //    var payload = "hello!!";
 //    // fd type usertype payload
-//    var m = Message.init(0, Message.Type.DATA, 1, payload);
+//    var m = Message.init(0, Message.Type.DATA, payload);
 //
 //    // type index origin message
 //    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
