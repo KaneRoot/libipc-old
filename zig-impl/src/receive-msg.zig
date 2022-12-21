@@ -19,6 +19,12 @@ fn waiting_for_connection(stream: *net.StreamServer
     return stream.accept();
 }
 
+fn remove_unix_socket(path: []const u8) void {
+    std.fs.deleteFileAbsolute(path) catch |err| switch(err) {
+        else => { print("error: {}\n", .{err}); }
+    };
+}
+
 fn receive_msg(stream: net.Stream) !void {
     var buffer: [1000]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&buffer);
@@ -38,8 +44,10 @@ pub fn main() !u8 {
     var path = "/tmp/.TEST_USOCK";
     print("Init UNIX server to {s}...\n", .{path});
     var stream = server_init();
+    defer stream.deinit();
     print("Waiting for a connection...\n", .{});
     var connection = try waiting_for_connection(&stream, path);
+    defer remove_unix_socket(path);
     print("Someone is connected! Receiving a message...\n", .{});
     try receive_msg(connection.stream);
     print("Disconnection...\n", .{});
