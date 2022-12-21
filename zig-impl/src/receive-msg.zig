@@ -30,8 +30,7 @@ fn receive_msg(stream: net.Stream) !void {
     var fbs = std.io.fixedBufferStream(&buffer);
     var reader = fbs.reader();
 
-    var size = try stream.read(buffer[0..]);
-    print ("Received a message! Read {} bytes\n", .{size});
+    _ = try stream.read(buffer[0..]);
 
     const msg_type    = try reader.readByte();
     const msg_len     = try reader.readIntBig(u32);
