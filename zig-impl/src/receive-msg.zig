@@ -35,7 +35,7 @@ fn receive_msg(stream: net.Stream) !void {
 
     const msg_type    = try reader.readByte();
     const msg_len     = try reader.readIntBig(u32);
-    const msg_payload = buffer[4..size];
+    const msg_payload = buffer[5..5+msg_len];
     print ("type: {}, len {}, content: {s}\n"
            , .{msg_type, msg_len, msg_payload});
 }
