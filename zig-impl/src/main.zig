@@ -62,14 +62,51 @@ pub const Message = struct {
         self.allocator.free(self.payload);
     }
 
+    pub fn read(buffer: []const u8, allocator: std.mem.Allocator) !Self {
+        // var payload = allocator.
+        // defer allocator.free(payload);
+        var fbs = std.io.fixedBufferStream(&buffer);
+        var reader = fbs.reader();
+
+        const msg_type    = try reader.readByte();
+        const msg_len     = try reader.readIntBig(u32);
+        const msg_payload = buffer[5..5+msg_len];
+
+        return try Message.init(0, msg_type, allocator, msg_payload);
+    }
+
+    pub fn write(self: Self, writer: anytype) !usize {
+        try writer.writeByte(self.t);
+        try writer.writeIntBig(u32, self.payload.len);
+        return try writer.write(self.payload);
+    }
+
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
         try fmt.format(out_stream, "fd: {}, {}, payload: [{s}]",
             .{self.fd, self.t, self.payload} );
     }
 };
 
+fn print_eq(expected: anytype, obj: anytype) !void {
+    var buffer: [4096]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buffer);
+    var writer = fbs.writer();
+
+    try writer.print("{}", .{obj});
+    // print("print_eq, expected: {s}\n", .{expected});
+    // print("print_eq: {s}\n", .{fbs.getWritten()});
+
+    // typing workaround
+    var secbuffer: [4096]u8 = undefined;
+    var secfbs = std.io.fixedBufferStream(&secbuffer);
+    var secwriter = secfbs.writer();
+
+    try secwriter.print("{s}", .{expected});
+
+    try std.testing.expectEqualSlices(u8, secfbs.getWritten(), fbs.getWritten());
+}
+
 test "Message - creation and display" {
-    print("\n", .{});
     // fd type payload
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
@@ -80,8 +117,7 @@ test "Message - creation and display" {
     var m = try Message.init(1, Message.Type.DATA, allocator, s);
     defer m.deinit();
 
-    print("message:\t[{}]\n", .{m});
-    print("\n", .{});
+    try print_eq("fd: 1, main.Message.Type.DATA, payload: [hello!!]", m);
 }
 
 pub const Event = struct {
@@ -91,9 +127,9 @@ pub const Event = struct {
     //  disconnections, errors or messages from their pairs. They also can
     //  set a timer so the loop will allow a periodic routine (sending ping
     //  messages for websockets, for instance).
-    // 
+    //
     //  A few other events can occur.
-    // 
+    //
     //  Extra socket
     //    The main loop waiting for an event can be used as an unique entry
     //    point for socket management. libipc users can register sockets via
@@ -161,7 +197,6 @@ pub const Event = struct {
 };
 
 test "Event - creation and display" {
-    print("\n", .{});
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
     defer _ = gpa.deinit();
@@ -172,8 +207,7 @@ test "Event - creation and display" {
     defer m.deinit();
     var e = Event.init(Event.Type.CONNECTION, 5, 8, &m); // type index origin message
 
-    print("event:\t[{}]\n", .{e});
-    print("\n", .{});
+    try print_eq("main.Event.Type.CONNECTION, origin: 8, index 5, message: [fd: 1, main.Message.Type.DATA, payload: [hello!!]]", e);
 }
 
 pub const CBEvent = struct {
@@ -183,9 +217,9 @@ pub const CBEvent = struct {
     //  disconnections, errors or messages from their pairs. They also can
     //  set a timer so the loop will allow a periodic routine (sending ping
     //  messages for websockets, for instance).
-    // 
+    //
     //  A few other events can occur.
-    // 
+    //
     //  Extra socket
     //    The main loop waiting for an event can be used as an unique entry
     //    point for socket management. libipc users can register sockets via
@@ -261,16 +295,14 @@ pub const Connection = struct {
 };
 
 test "Connection - creation and display" {
-    print("\n", .{});
     // origin destination
     var path = "/some/path";
     var c1 = Connection.init(Connection.Type.EXTERNAL, path);
     defer c1.deinit();
     var c2 = Connection.init(Connection.Type.IPC     , null);
     defer c2.deinit();
-    print("connection 1:\t[{}]\n", .{c1});
-    print("connection 2:\t[{}]\n", .{c2});
-    print("\n", .{});
+    try print_eq("main.Connection.Type.EXTERNAL, path /some/path", c1);
+    try print_eq("main.Connection.Type.IPC, path null", c2);
 }
 
 // TODO: default callbacks, actual switching.
@@ -299,25 +331,6 @@ pub const Switch = struct {
     }
 };
 
-fn print_eq(expected: anytype, obj: anytype) !void {
-    var buffer: [4096]u8 = undefined;
-    var fbs = std.io.fixedBufferStream(&buffer);
-    var writer = fbs.writer();
-
-    try writer.print("{}", .{obj});
-    // print("print_eq, expected: {s}\n", .{expected});
-    // print("print_eq: {s}\n", .{fbs.getWritten()});
-
-    // typing workaround
-    var secbuffer: [4096]u8 = undefined;
-    var secfbs = std.io.fixedBufferStream(&secbuffer);
-    var secwriter = secfbs.writer();
-
-    try secwriter.print("{s}", .{expected});
-
-    try std.testing.expectEqualSlices(u8, secfbs.getWritten(), fbs.getWritten());
-}
-
 test "Switch - creation and display" {
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
@@ -335,9 +348,7 @@ test "Switch - creation and display" {
     try print_eq("switch 3 <-> 8", first);
     try print_eq("switch 2 <-> 4", second);
 
-    print("\nswitch:\t[{}]\n", .{first});
-    print(  "switch:\t[{}]\n", .{second});
-    print("switchdb:\t[{}]\n\n", .{switchdb});
+    try std.testing.expect(2 == switchdb.items.len);
 }
 
 // Context of the whole networking state.
@@ -369,7 +380,7 @@ pub const Context = struct {
     pub fn init(allocator: std.mem.Allocator) !Self {
         var rundir = std.process.getEnvVarOwned(allocator, "RUNDIR") catch |err| switch(err) {
             error.EnvironmentVariableNotFound => blk: {
-                print("RUNTIME variable not set, using default /tmp/libipc-run/\n", .{});
+                // print("RUNTIME variable not set, using default /tmp/libipc-run/\n", .{});
                 break :blk try allocator.dupeZ(u8, "/tmp/libipc-run/");
             },
             else => {
@@ -419,24 +430,24 @@ pub const Context = struct {
 
     // Return the new fd. Can be useful to the caller.
     pub fn connect(self: *Self, path: []const u8) !i32 {
-        print("connection to:\t{s}\n", .{path});
+        // print("connection to:\t{s}\n", .{path});
         return self.connect_ (Connection.Type.IPC, path);
     }
 
     // Connection to a service, but with switched with the client fd.
-    pub fn connection_switched(self: *Self
-            , path: [] const u8
-            , clientfd: i32) !i32 {
-        print("connection switched from {} to path {s}\n", .{clientfd, path});
-        var newfd = try self.connect_ (Connection.Type.SWITCHED, path);
-        // TODO: record switch.
-        return newfd;
-    }
+//    pub fn connection_switched(self: *Self
+//            , path: [] const u8
+//            , clientfd: i32) !i32 {
+//        // print("connection switched from {} to path {s}\n", .{clientfd, path});
+//        var newfd = try self.connect_ (Connection.Type.SWITCHED, path);
+//        // TODO: record switch.
+//        return newfd;
+//    }
 
     // Create a unix socket.
     // Store std lib structures in the context.
     pub fn server_init(self: *Self, path: [] const u8) !net.StreamServer {
-        print("context server init {s}\n", .{path});
+        // print("context server init {s}\n", .{path});
         var server = net.StreamServer.init(.{});
         var socket_addr = try net.Address.initUnix(path);
         try server.listen(socket_addr);
@@ -556,7 +567,7 @@ const CommunicationTestThread = struct {
         var path = fbs.getWritten();
         const socket = try net.connectUnixSocket(path);
         defer socket.close();
-        print("So we're a client now... path: {s}\n", .{path});
+        // print("So we're a client now... path: {s}\n", .{path});
         _ = try socket.writer().writeAll("Hello world!");
     }
 };
@@ -579,8 +590,6 @@ test "Simple structures - init, display and memory check" {
 }
 
 test "Context - creation, display and memory check" {
-    print("\n", .{});
-
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
     defer _ = gpa.deinit();
@@ -616,64 +625,79 @@ test "Context - creation, display and memory check" {
     try testing.expectEqualSlices(u8, "Hello world!", buf[0..n]);
 }
 
-const ConnectThenSendMessageThread = struct {
-    fn clientFn() !void {
-        const config = .{.safety = true};
-        var gpa = std.heap.GeneralPurposeAllocator(config){};
-        defer _ = gpa.deinit();
-        const allocator = gpa.allocator();
-
-        var c = try Context.init(allocator);
-        defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
-
-        var buffer: [1000]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&buffer);
-        var writer = fbs.writer();
-
-        try c.server_path("simple-context-test", writer);
-        var path = fbs.getWritten();
-        const socket = try net.connectUnixSocket(path);
-        defer socket.close();
-        print("So we're a client now... path: {s}\n", .{path});
-        _ = try socket.writer().writeAll("Hello world!");
-    }
-};
-
-
-test "Context - creation, echo once" {
-    print("\n", .{});
-    const config = .{.safety = true};
-    var gpa = std.heap.GeneralPurposeAllocator(config){};
-    defer _ = gpa.deinit();
-
-    const allocator = gpa.allocator();
-
-    var c = try Context.init(allocator);
-    defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
-
-    var buffer: [1000]u8 = undefined;
-    var fbs = std.io.fixedBufferStream(&buffer);
-    var writer = fbs.writer();
-    try c.server_path("simple-context-test", writer);
-    var path = fbs.getWritten();
-
-    // SERVER SIDE: creating a service.
-    var server = try c.server_init(path);
-    defer server.deinit();
-    defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
-
-    const t = try std.Thread.spawn(.{}, ConnectThenSendMessageThread.clientFn, .{});
-    defer t.join();
-
-    // Server.accept returns a net.StreamServer.Connection.
-    var client = try server.accept();
-    defer client.stream.close();
-    var buf: [16]u8 = undefined;
-    const n = try client.stream.reader().read(&buf);
-
-    try testing.expectEqual(@as(usize, 12), n);
-    try testing.expectEqualSlices(u8, "Hello world!", buf[0..n]);
-}
+// // TODO:
+// // Creating a new thread: testing UNIX communication.
+// // This is a client sending a raw "Hello world!" bytestring,
+// // not an instance of Message.
+// const ConnectThenSendMessageThread = struct {
+//     fn clientFn() !void {
+//         const config = .{.safety = true};
+//         var gpa = std.heap.GeneralPurposeAllocator(config){};
+//         defer _ = gpa.deinit();
+//         const allocator = gpa.allocator();
+//
+//         var c = try Context.init(allocator);
+//         defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
+//
+//         var path_buffer: [1000]u8 = undefined;
+//         var path_fbs = std.io.fixedBufferStream(&path_buffer);
+//         var path_writer = path_fbs.writer();
+//         try c.server_path("simple-context-test", path_writer);
+//         var path = path_fbs.getWritten();
+//
+//         // Actual UNIX socket connection.
+//         const socket = try net.connectUnixSocket(path);
+//         defer socket.close();
+//
+//         // Writing message into a buffer.
+//         var message_buffer: [1000]u8 = undefined;
+//         var message_fbs = std.io.fixedBufferStream(&message_buffer);
+//         var message_writer = message_fbs.writer();
+//         // 'fd' parameter is not taken into account here (no loop)
+//
+//         var m = try Message.init(0, Message.Type.DATA, allocator, "Hello world!");
+//         try m.write(message_writer);
+//
+//         // print("So we're a client now... path: {s}\n", .{path});
+//         _ = try socket.writer().writeAll(message_fbs.getWritten());
+//     }
+// };
+//
+//
+// test "Context - creation, echo once" {
+//     const config = .{.safety = true};
+//     var gpa = std.heap.GeneralPurposeAllocator(config){};
+//     defer _ = gpa.deinit();
+//
+//     const allocator = gpa.allocator();
+//
+//     var c = try Context.init(allocator);
+//     defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
+//
+//     var buffer: [1000]u8 = undefined;
+//     var fbs = std.io.fixedBufferStream(&buffer);
+//     var writer = fbs.writer();
+//     try c.server_path("simple-context-test", writer);
+//     var path = fbs.getWritten();
+//
+//     // SERVER SIDE: creating a service.
+//     var server = try c.server_init(path);
+//     defer server.deinit();
+//     defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
+//
+//     const t = try std.Thread.spawn(.{}, ConnectThenSendMessageThread.clientFn, .{});
+//     defer t.join();
+//
+//     // Server.accept returns a net.StreamServer.Connection.
+//     var client = try server.accept();
+//     defer client.stream.close();
+//     var buf: [1000]u8 = undefined;
+//     const n = try client.stream.reader().read(&buf);
+//     var m = try Message.read(buf[0..n], allocator);
+//
+//     try testing.expectEqual(@as(usize, 12), m.payload.len);
+//     try testing.expectEqualSlices(u8, m.payload, "Hello world!");
+// }
 
 
 // FIRST
