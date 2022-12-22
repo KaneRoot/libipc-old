@@ -1,4 +1,5 @@
 const std = @import("std");
+const hexdump = @import("./hexdump.zig");
 const testing = std.testing;
 const net = std.net;
 const fmt = std.fmt;
@@ -63,12 +64,19 @@ pub const Message = struct {
     }
 
     pub fn read(buffer: []const u8, allocator: std.mem.Allocator) !Self {
+
+        // var hexbuf: [4000]u8 = undefined;
+        // var hexfbs = std.io.fixedBufferStream(&hexbuf);
+        // var hexwriter = hexfbs.writer();
+        // try hexdump.hexdump(hexwriter, "Message.read input buffer", buffer);
+        // print("{s}\n", .{hexfbs.getWritten()});
+
         // var payload = allocator.
         // defer allocator.free(payload);
-        var fbs = std.io.fixedBufferStream(&buffer);
+        var fbs = std.io.fixedBufferStream(buffer);
         var reader = fbs.reader();
 
-        const msg_type    = try reader.readByte();
+        const msg_type    = @intToEnum(Message.Type, try reader.readByte());
         const msg_len     = try reader.readIntBig(u32);
         const msg_payload = buffer[5..5+msg_len];
 
@@ -76,9 +84,9 @@ pub const Message = struct {
     }
 
     pub fn write(self: Self, writer: anytype) !usize {
-        try writer.writeByte(self.t);
-        try writer.writeIntBig(u32, self.payload.len);
-        return try writer.write(self.payload);
+        try writer.writeByte(@enumToInt(self.t));
+        try writer.writeIntBig(u32, @truncate(u32, self.payload.len));
+        return 5 + try writer.write(self.payload);
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
@@ -118,6 +126,44 @@ test "Message - creation and display" {
     defer m.deinit();
 
     try print_eq("fd: 1, main.Message.Type.DATA, payload: [hello!!]", m);
+}
+
+test "Message - read and write" {
+    // fd type payload
+    const config = .{.safety = true};
+    var gpa = std.heap.GeneralPurposeAllocator(config){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    // First, create a message.
+    var s = "hello!!";
+    var first_message = try Message.init(1, Message.Type.DATA, allocator, s);
+    defer first_message.deinit();
+
+    // Test its content.
+    try std.testing.expect(first_message.fd == 1);
+    try std.testing.expect(first_message.payload.len == 7);
+    try std.testing.expectEqualSlices(u8, first_message.payload, "hello!!");
+
+    // Write it in a buffer, similar to sending it on the network.
+    var buffer: [1000]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buffer);
+    var writer = fbs.writer();
+
+    var count = try first_message.write(writer);
+
+    var second_buffer: [2000]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&second_buffer);
+    var second_allocator = fba.allocator();
+
+    // Read the buffer, similar to receiving a message on the network.
+    var second_message = try Message.read(buffer[0..count], second_allocator);
+    // var second_message = try Message.read(fbs.getWritten(), second_allocator);
+    defer second_message.deinit();
+
+    // Test its content, should be equal to the first.
+    try std.testing.expect(second_message.payload.len == first_message.payload.len);
+    try std.testing.expectEqualSlices(u8, second_message.payload, first_message.payload);
 }
 
 pub const Event = struct {
