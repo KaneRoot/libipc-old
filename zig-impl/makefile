@@ -12,5 +12,8 @@ s: src/receive-msg.zig
 m: src/main.zig
 	$(ZIGC) build-exe $(ZIGOPTS) $^
 
+t: src/main.zig
+	$(ZIGC) test $^
+
 d: src/main.zig
 	$(ZIGC) build-exe $(ZIGOPTS) -freference-trace $^
