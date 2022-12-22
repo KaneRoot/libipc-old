@@ -33,40 +33,52 @@ pub const Message = struct {
         NETWORK_LOOKUP,
     };
 
-    @"type": Message.Type,    // Internal message type.
-    fd: usize,                // File descriptor concerned about this message.
+    t: Message.Type,      // Internal message type.
+    fd: usize,            // File descriptor concerned about this message.
     payload: []const u8,
+
+    allocator: std.mem.Allocator,  // Memory allocator.
 
     const Self = @This();
 
     // TODO
     //pub fn initFromConnection(fd: usize) Self {
     //    return Self{
-    //        .@"type"   = Message.Type.ERROR,
-    //        .fd        = fd,
-    //        .payload   = "hello",
+    //        .t        = Message.Type.ERROR,
+    //        .fd       = fd,
+    //        .payload  = "hello",
     //    };
     //}
 
-    pub fn init(fd: usize, @"type": Message.Type, payload: []const u8) Self {
-        return Message {
-            .fd = fd,
-            .@"type" = @"type",
-            .payload = payload,
-        };
+    pub fn init(fd: usize, t: Message.Type
+               , allocator: std.mem.Allocator
+               , payload: []const u8) !Self {
+        return Message { .fd = fd, .t = t
+            , .allocator = allocator
+            , .payload = try allocator.dupe(u8, payload) };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.allocator.free(self.payload);
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
         try fmt.format(out_stream, "fd: {}, {}, payload: [{s}]",
-            .{self.fd, self.@"type", self.payload} );
+            .{self.fd, self.t, self.payload} );
     }
 };
 
 test "Message - creation and display" {
     print("\n", .{});
-    // fd type usertype payload
+    // fd type payload
+    const config = .{.safety = true};
+    var gpa = std.heap.GeneralPurposeAllocator(config){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
     var s = "hello!!";
-    var m = Message.init(1, Message.Type.DATA, s);
+    var m = try Message.init(1, Message.Type.DATA, allocator, s);
+    defer m.deinit();
 
     print("message:\t[{}]\n", .{m});
     print("\n", .{});
@@ -112,38 +124,26 @@ pub const Event = struct {
         TX,            // Message sent.
     };
 
-    @"type": Event.Type,
+    t: Event.Type,
     index: u32,
-    origin: usize,
+    origin: usize, // socket fd
     m: ?*Message,  // message pointer
 
     const Self = @This();
 
-    pub fn init(@"type": Event.Type,
-            index: u32,
-            origin: usize,
-            m: ?*Message) Self {
-        return Self {
-           .@"type" = @"type",
-           .index   = index,
-           .origin  = origin,
-           .m       = m,
-        };
+    pub fn init(t: Event.Type, index: u32, origin: usize, m: ?*Message) Self {
+        return Self { .t = t, .index = index, .origin = origin, .m = m, };
     }
 
-    pub fn set(self: *Self,
-               @"type": Event.Type,
-               index: u32,
-               origin: usize,
-               m: ?*Message) void {
-        self.@"type" = @"type";
+    pub fn set(self: *Self, t: Event.Type, index: u32, origin: usize, m: ?*Message) void {
+        self.t = t;
         self.index = index;
         self.origin = origin;
         self.m = m;
     }
 
     pub fn clean(self: *Self) void {
-        self.@"type" = Event.Type.NOT_SET;
+        self.t = Event.Type.NOT_SET;
         self.index = @as(u8,0);
         self.origin = @as(usize,0);
         if (self.m) |message| {
@@ -155,18 +155,22 @@ pub const Event = struct {
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
         try fmt.format(out_stream
             , "{}, origin: {}, index {}, message: [{?}]"
-            , .{ self.@"type", self.origin, self.index, self.m} );
+            , .{ self.t, self.origin, self.index, self.m} );
     }
 
 };
 
 test "Event - creation and display" {
     print("\n", .{});
+    const config = .{.safety = true};
+    var gpa = std.heap.GeneralPurposeAllocator(config){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
     var s = "hello!!";
-    // fd type usertype payload
-    var m = Message.init(1, Message.Type.DATA, s);
-    // type index origin message
-    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
+    var m = try Message.init(1, Message.Type.DATA, allocator, s); // fd type payload
+    defer m.deinit();
+    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m); // type index origin message
 
     print("event:\t[{}]\n", .{e});
     print("\n", .{});
@@ -208,7 +212,7 @@ pub const CBEvent = struct {
         IGNORE,        // The message should be ignored (protocol specific).
     };
 
-    @"type": CBEvent.Type,
+    t: CBEvent.Type,
 };
 
 pub const Connection = struct {
@@ -220,7 +224,7 @@ pub const Connection = struct {
         SWITCHED, // IO operations should go through registered callbacks.
     };
 
-    @"type": Connection.Type,
+    t: Connection.Type,
     path: ?[] const u8, // Not always needed.
 
     // TODO: use these connections
@@ -231,9 +235,9 @@ pub const Connection = struct {
 
     const Self = @This();
 
-    pub fn init(@"type": Connection.Type, path: ?[] const u8) Self {
+    pub fn init(t: Connection.Type, path: ?[] const u8) Self {
         return Self {
-           .@"type"      = @"type",
+           .t            = t,
            .path         = path,
            // .more_to_read = false, // TODO: maybe useless
         };
@@ -245,7 +249,7 @@ pub const Connection = struct {
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
-        try fmt.format(out_stream, "{}, path {?s}", .{ self.@"type", self.path});
+        try fmt.format(out_stream, "{}, path {?s}", .{ self.t, self.path});
 
         if (self.server) |s| {
             try fmt.format(out_stream, "{}" , .{s});
@@ -295,11 +299,45 @@ pub const Switch = struct {
     }
 };
 
+fn print_eq(expected: anytype, obj: anytype) !void {
+    var buffer: [4096]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buffer);
+    var writer = fbs.writer();
+
+    try writer.print("{}", .{obj});
+    // print("print_eq, expected: {s}\n", .{expected});
+    // print("print_eq: {s}\n", .{fbs.getWritten()});
+
+    // typing workaround
+    var secbuffer: [4096]u8 = undefined;
+    var secfbs = std.io.fixedBufferStream(&secbuffer);
+    var secwriter = secfbs.writer();
+
+    try secwriter.print("{s}", .{expected});
+
+    try std.testing.expectEqualSlices(u8, secfbs.getWritten(), fbs.getWritten());
+}
+
 test "Switch - creation and display" {
-    // origin destination
-    var s = Switch.init(3,8);
-    print("\nswitch:\t[{}]\n", .{s});
-    print("\n", .{});
+    const config = .{.safety = true};
+    var gpa = std.heap.GeneralPurposeAllocator(config){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var switchdb = Switches.init(allocator);
+    defer switchdb.deinit();
+
+    var first = Switch.init(3,8); // origin destination
+    var second = Switch.init(2,4); // origin destination
+    try switchdb.append(first);
+    try switchdb.append(second);
+
+    try print_eq("switch 3 <-> 8", first);
+    try print_eq("switch 2 <-> 4", second);
+
+    print("\nswitch:\t[{}]\n", .{first});
+    print(  "switch:\t[{}]\n", .{second});
+    print("switchdb:\t[{}]\n\n", .{switchdb});
 }
 
 // Context of the whole networking state.
@@ -329,8 +367,6 @@ pub const Context = struct {
     // Context initialization:
     // - init structures (provide the allocator)
     pub fn init(allocator: std.mem.Allocator) !Self {
-        print("Context init\n", .{});
-
         var rundir = std.process.getEnvVarOwned(allocator, "RUNDIR") catch |err| switch(err) {
             error.EnvironmentVariableNotFound => blk: {
                 print("RUNTIME variable not set, using default /tmp/libipc-run/\n", .{});
@@ -340,7 +376,6 @@ pub const Context = struct {
                 return err;
             },
         };
-        print("rundir: {s}\n", .{rundir});
 
         return Self {
              .rundir = rundir
@@ -352,8 +387,12 @@ pub const Context = struct {
         };
     }
 
+    // create a server path for the UNIX socket based on the service name
+    pub fn server_path(self: *Self, service_name: []const u8, writer: anytype) !void {
+        try writer.print("{s}/{s}", .{self.rundir, service_name});
+    }
+
     pub fn deinit(self: *Self) void {
-        print("context deinit\n", .{});
         self.close_all() catch |err| switch(err){
             error.IndexOutOfBounds => {
                 print("context.deinit(): IndexOutOfBounds\n", .{});
@@ -416,24 +455,21 @@ pub const Context = struct {
     }
 
     pub fn read (self: *Self, index: u32) !Message {
-        // TODO: read the actual content.
         if (index >= self.pollfd.items.len) {
             return error.IndexOutOfBounds;
         }
+        print("read index {}\n", .{index});
         var fd = self.pollfd[index];
-        print("read fd {} index {}\n", .{fd, index});
-        var payload = "hello!!";
-        // fd type usertype payload
-        var m = Message.init(0, Message.Type.DATA, payload);
-        return m;
+        return self.read_fd(fd);
     }
 
-    pub fn read_fd (_: *Self, fd: i32) !Message {
-        // TODO: read the actual content.
+    pub fn read_fd (self: *Self, fd: i32) !Message {
         print("read fd {}\n", .{fd});
+
+        // TODO: read the actual content.
         var payload = "hello!!";
-        // fd type usertype payload
-        var m = Message.init(0, Message.Type.DATA, payload);
+
+        var m = Message.init(fd, Message.Type.DATA, self.allocator, payload);
         return m;
     }
 
@@ -458,7 +494,6 @@ pub const Context = struct {
         }
 
         // close the connection and remove it from the two structures
-        // TODO: actually close the file descriptor.
         var con = self.connections.swapRemove(index);
         if (con.server) |s| {
             // Remove service's UNIX socket file.
@@ -498,15 +533,53 @@ pub const Context = struct {
     fn read_ (_: *Self, client: net.StreamServer.Connection, buf: [] u8) !usize {
         return try client.stream.reader().read(buf);
     }
-
 };
 
+// Creating a new thread: testing UNIX communication.
+// This is a client sending a raw "Hello world!" bytestring,
+// not an instance of Message.
+const CommunicationTestThread = struct {
+    fn clientFn() !void {
+        const config = .{.safety = true};
+        var gpa = std.heap.GeneralPurposeAllocator(config){};
+        defer _ = gpa.deinit();
+        const allocator = gpa.allocator();
 
-// TODO
+        var c = try Context.init(allocator);
+        defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
+
+        var buffer: [1000]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&buffer);
+        var writer = fbs.writer();
+
+        try c.server_path("simple-context-test", writer);
+        var path = fbs.getWritten();
+        const socket = try net.connectUnixSocket(path);
+        defer socket.close();
+        print("So we're a client now... path: {s}\n", .{path});
+        _ = try socket.writer().writeAll("Hello world!");
+    }
+};
+
+test "Simple structures - init, display and memory check" {
+    // origin destination
+//    var s = Switch.init(3,8);
+//    var payload = "hello!!";
+//    // fd type payload
+//    var m = Message.init(0, Message.Type.DATA, payload);
+//
+//    // type index origin message
+//    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
+
+//    // CLIENT SIDE: connection to a service.
+//    _ = try c.connect(path);
+
+//    // TODO: connection to a server, but switched with clientfd "3".
+//    _ = try c.connection_switched(path, 3);
+}
+
 test "Context - creation, display and memory check" {
     print("\n", .{});
-    // origin destination
-    //var s = Switch.init(3,8);
 
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
@@ -514,44 +587,82 @@ test "Context - creation, display and memory check" {
 
     const allocator = gpa.allocator();
 
-//    var payload = "hello!!";
-//    // fd type usertype payload
-//    var m = Message.init(0, Message.Type.DATA, payload);
-//
-//    // type index origin message
-//    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
-
     var c = try Context.init(allocator);
     defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
-    const path = "/tmp/.TEST_USOCK";
+    var buffer: [1000]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buffer);
+    var writer = fbs.writer();
+    try c.server_path("simple-context-test", writer);
+    var path = fbs.getWritten();
 
     // SERVER SIDE: creating a service.
     var server = try c.server_init(path);
     defer server.deinit();
     defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
 
-
-    // CLIENT SIDE: connection to a service.
-    //_ = try c.connect(path);
-
-    // TODO: connection to a server, but switched with clientfd "3".
-    // _ = try c.connection_switched(path, 3);
-
     // print ("Context: {}\n", .{c});
     // print("\n", .{});
+    const t = try std.Thread.spawn(.{}, CommunicationTestThread.clientFn, .{});
+    defer t.join();
 
-    const S = struct {
-        fn clientFn() !void {
-            const socket = try net.connectUnixSocket(path);
-            defer socket.close();
-            print("So we're a client now... path: {s}\n", .{path});
+    // Server.accept returns a net.StreamServer.Connection.
+    var client = try server.accept();
+    defer client.stream.close();
+    var buf: [16]u8 = undefined;
+    const n = try client.stream.reader().read(&buf);
 
-            _ = try socket.writer().writeAll("Hello world!");
-        }
-    };
+    try testing.expectEqual(@as(usize, 12), n);
+    try testing.expectEqualSlices(u8, "Hello world!", buf[0..n]);
+}
 
-    const t = try std.Thread.spawn(.{}, S.clientFn, .{});
+const ConnectThenSendMessageThread = struct {
+    fn clientFn() !void {
+        const config = .{.safety = true};
+        var gpa = std.heap.GeneralPurposeAllocator(config){};
+        defer _ = gpa.deinit();
+        const allocator = gpa.allocator();
+
+        var c = try Context.init(allocator);
+        defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
+
+        var buffer: [1000]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&buffer);
+        var writer = fbs.writer();
+
+        try c.server_path("simple-context-test", writer);
+        var path = fbs.getWritten();
+        const socket = try net.connectUnixSocket(path);
+        defer socket.close();
+        print("So we're a client now... path: {s}\n", .{path});
+        _ = try socket.writer().writeAll("Hello world!");
+    }
+};
+
+
+test "Context - creation, echo once" {
+    print("\n", .{});
+    const config = .{.safety = true};
+    var gpa = std.heap.GeneralPurposeAllocator(config){};
+    defer _ = gpa.deinit();
+
+    const allocator = gpa.allocator();
+
+    var c = try Context.init(allocator);
+    defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
+
+    var buffer: [1000]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buffer);
+    var writer = fbs.writer();
+    try c.server_path("simple-context-test", writer);
+    var path = fbs.getWritten();
+
+    // SERVER SIDE: creating a service.
+    var server = try c.server_init(path);
+    defer server.deinit();
+    defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
+
+    const t = try std.Thread.spawn(.{}, ConnectThenSendMessageThread.clientFn, .{});
     defer t.join();
 
     // Server.accept returns a net.StreamServer.Connection.
@@ -580,12 +691,12 @@ fn create_service() !void {
     // SERVER SIDE: creating a service.
     _ = try ctx.server_init(path);
     var event = try ctx.wait_event();
-    switch (event.@"type") {
+    switch (event.t) {
         .CONNECTION => {
             print("New connection!\n", .{});
         },
         else => {
-            print("New event: {}\n", .{event.@"type"});
+            print("New event: {}\n", .{event.t});
         },
     }
 
