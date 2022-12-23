@@ -39,7 +39,6 @@ test {
     _ = @import("./util.zig");
 }
 
-// FIRST
 fn create_service() !void {
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
@@ -53,6 +52,7 @@ fn create_service() !void {
 
     // SERVER SIDE: creating a service.
     _ = try ctx.server_init(path);
+
     var some_event = try ctx.wait_event();
     switch (some_event.t) {
         .CONNECTION => {
@@ -77,11 +77,3 @@ pub fn main() !u8 {
     try create_service();
     return 0;
 }
-
-// export fn add(a: i32, b: i32) i32 {
-//     return a + b;
-// }
-
-// test "basic add functionality" {
-//     try testing.expect(add(3, 7) == 10);
-// }

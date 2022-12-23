@@ -20,7 +20,7 @@ pub const PollFD = std.ArrayList(i32);
 
 // Context of the whole networking state.
 pub const Context = struct {
-    pub const IPC_HEADER_SIZE = 4; // Size (4 bytes) then content.
+    pub const IPC_HEADER_SIZE = 5; // Size (5 bytes) then content.
     pub const IPC_BASE_SIZE = 2000000; // 2 MB, plenty enough space for messages
     pub const IPC_MAX_MESSAGE_SIZE = IPC_BASE_SIZE-IPC_HEADER_SIZE;
     pub const IPC_VERSION = 1;
@@ -213,6 +213,22 @@ pub const Context = struct {
     }
 };
 
+//test "Simple structures - init, display and memory check" {
+//    // origin destination
+//    var s = Switch.init(3,8);
+//    var payload = "hello!!";
+//    // fd type payload
+//    var m = Message.init(0, Message.Type.DATA, payload);
+//
+//    // type index origin message
+//    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
+
+//    // CLIENT SIDE: connection to a service.
+//    _ = try c.connect(path);
+
+//    // TODO: connection to a server, but switched with clientfd "3".
+//    _ = try c.connection_switched(path, 3);
+//}
 
 // Creating a new thread: testing UNIX communication.
 // This is a client sending a raw "Hello world!" bytestring,
@@ -235,27 +251,9 @@ const CommunicationTestThread = struct {
         var path = fbs.getWritten();
         const socket = try net.connectUnixSocket(path);
         defer socket.close();
-        // print("So we're a client now... path: {s}\n", .{path});
         _ = try socket.writer().writeAll("Hello world!");
     }
 };
-
-test "Simple structures - init, display and memory check" {
-    // origin destination
-//    var s = Switch.init(3,8);
-//    var payload = "hello!!";
-//    // fd type payload
-//    var m = Message.init(0, Message.Type.DATA, payload);
-//
-//    // type index origin message
-//    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
-
-//    // CLIENT SIDE: connection to a service.
-//    _ = try c.connect(path);
-
-//    // TODO: connection to a server, but switched with clientfd "3".
-//    _ = try c.connection_switched(path, 3);
-}
 
 test "Context - creation, display and memory check" {
     const config = .{.safety = true};
@@ -293,77 +291,77 @@ test "Context - creation, display and memory check" {
     try testing.expectEqualSlices(u8, "Hello world!", buf[0..n]);
 }
 
-// // TODO:
-// // Creating a new thread: testing UNIX communication.
-// // This is a client sending a raw "Hello world!" bytestring,
-// // not an instance of Message.
-// const ConnectThenSendMessageThread = struct {
-//     fn clientFn() !void {
-//         const config = .{.safety = true};
-//         var gpa = std.heap.GeneralPurposeAllocator(config){};
-//         defer _ = gpa.deinit();
-//         const allocator = gpa.allocator();
-//
-//         var c = try Context.init(allocator);
-//         defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
-//
-//         var path_buffer: [1000]u8 = undefined;
-//         var path_fbs = std.io.fixedBufferStream(&path_buffer);
-//         var path_writer = path_fbs.writer();
-//         try c.server_path("simple-context-test", path_writer);
-//         var path = path_fbs.getWritten();
-//
-//         // Actual UNIX socket connection.
-//         const socket = try net.connectUnixSocket(path);
-//         defer socket.close();
-//
-//         // Writing message into a buffer.
-//         var message_buffer: [1000]u8 = undefined;
-//         var message_fbs = std.io.fixedBufferStream(&message_buffer);
-//         var message_writer = message_fbs.writer();
-//         // 'fd' parameter is not taken into account here (no loop)
-//
-//         var m = try Message.init(0, Message.Type.DATA, allocator, "Hello world!");
-//         try m.write(message_writer);
-//
-//         // print("So we're a client now... path: {s}\n", .{path});
-//         _ = try socket.writer().writeAll(message_fbs.getWritten());
-//     }
-// };
-//
-//
-// test "Context - creation, echo once" {
-//     const config = .{.safety = true};
-//     var gpa = std.heap.GeneralPurposeAllocator(config){};
-//     defer _ = gpa.deinit();
-//
-//     const allocator = gpa.allocator();
-//
-//     var c = try Context.init(allocator);
-//     defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
-//
-//     var buffer: [1000]u8 = undefined;
-//     var fbs = std.io.fixedBufferStream(&buffer);
-//     var writer = fbs.writer();
-//     try c.server_path("simple-context-test", writer);
-//     var path = fbs.getWritten();
-//
-//     // SERVER SIDE: creating a service.
-//     var server = try c.server_init(path);
-//     defer server.deinit();
-//     defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
-//
-//     const t = try std.Thread.spawn(.{}, ConnectThenSendMessageThread.clientFn, .{});
-//     defer t.join();
-//
-//     // Server.accept returns a net.StreamServer.Connection.
-//     var client = try server.accept();
-//     defer client.stream.close();
-//     var buf: [1000]u8 = undefined;
-//     const n = try client.stream.reader().read(&buf);
-//     var m = try Message.read(buf[0..n], allocator);
-//
-//     try testing.expectEqual(@as(usize, 12), m.payload.len);
-//     try testing.expectEqualSlices(u8, m.payload, "Hello world!");
-// }
+// Creating a new thread: testing UNIX communication.
+// This is a client sending a an instance of Message.
+const ConnectThenSendMessageThread = struct {
+    fn clientFn() !void {
+        const config = .{.safety = true};
+        var gpa = std.heap.GeneralPurposeAllocator(config){};
+        defer _ = gpa.deinit();
+        const allocator = gpa.allocator();
+
+        var c = try Context.init(allocator);
+        defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
+
+        var path_buffer: [1000]u8 = undefined;
+        var path_fbs = std.io.fixedBufferStream(&path_buffer);
+        var path_writer = path_fbs.writer();
+        try c.server_path("simple-context-test", path_writer);
+        var path = path_fbs.getWritten();
+
+        // Actual UNIX socket connection.
+        const socket = try net.connectUnixSocket(path);
+        defer socket.close();
+
+        // Writing message into a buffer.
+        var message_buffer: [1000]u8 = undefined;
+        var message_fbs = std.io.fixedBufferStream(&message_buffer);
+        var message_writer = message_fbs.writer();
+        // 'fd' parameter is not taken into account here (no loop)
+
+        var m = try Message.init(0, Message.Type.DATA, allocator, "Hello world!");
+        defer m.deinit();
+        _ = try m.write(message_writer);
+
+        // print("So we're a client now... path: {s}\n", .{path});
+        _ = try socket.writer().writeAll(message_fbs.getWritten());
+    }
+};
+
+
+ test "Context - creation, echo once" {
+     const config = .{.safety = true};
+     var gpa = std.heap.GeneralPurposeAllocator(config){};
+     defer _ = gpa.deinit();
+
+     const allocator = gpa.allocator();
+
+     var c = try Context.init(allocator);
+     defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
+
+     var buffer: [1000]u8 = undefined;
+     var fbs = std.io.fixedBufferStream(&buffer);
+     var writer = fbs.writer();
+     try c.server_path("simple-context-test", writer);
+     var path = fbs.getWritten();
+
+     // SERVER SIDE: creating a service.
+     var server = try c.server_init(path);
+     defer server.deinit();
+     defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
+
+     const t = try std.Thread.spawn(.{}, ConnectThenSendMessageThread.clientFn, .{});
+     defer t.join();
+
+     // Server.accept returns a net.StreamServer.Connection.
+     var client = try server.accept();
+     defer client.stream.close();
+     var buf: [1000]u8 = undefined;
+     const n = try client.stream.reader().read(&buf);
+     var m = try Message.read(buf[0..n], allocator);
+     defer m.deinit();
+
+     try testing.expectEqual(@as(usize, 12), m.payload.len);
+     try testing.expectEqualSlices(u8, m.payload, "Hello world!");
+ }
 
