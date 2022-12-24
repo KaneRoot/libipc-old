@@ -27,7 +27,6 @@ const Messages = @import("./message.zig").Messages;
 const Switches = @import("./switch.zig").Switches;
 const Connections = @import("./connection.zig").Connections;
 const Context = @import("./context.zig").Context;
-pub const PollFD = std.ArrayList(i32);
 
 test {
     _ = @import("./callback.zig");
@@ -43,8 +42,8 @@ fn create_service() !void {
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
     defer _ = gpa.deinit();
-
     const allocator = gpa.allocator();
+
     var ctx = try Context.init(allocator);
     defer ctx.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
@@ -53,15 +52,59 @@ fn create_service() !void {
     // SERVER SIDE: creating a service.
     _ = try ctx.server_init(path);
 
-    var some_event = try ctx.wait_event();
-    switch (some_event.t) {
-        .CONNECTION => {
-            print("New connection!\n", .{});
-        },
-        else => {
-            print("New event: {}\n", .{some_event.t});
-        },
+    var count_down: i16 = 5;
+    var some_event: Event = undefined;
+    ctx.timer = 1000; // 1 second
+    while(true) {
+        some_event = try ctx.wait_event();
+        switch (some_event.t) {
+            .CONNECTION => {
+                print("New connection!\n", .{});
+                break;
+            },
+            .TIMER => {
+                print("Timer! ({})\n", .{count_down});
+                count_down -= 1;
+                if(count_down < 0) {
+                    print("STOP WAITING!\n", .{});
+                    break;
+                }
+            },
+            .EXTRA_SOCKET => {
+                print("Message received from a non IPC socket.", .{});
+                break;
+            },
+            .SWITCH => {
+                print("Message to send to a corresponding fd.", .{});
+                break;
+            },
+            .DISCONNECTION => {
+                print("User disconnected.", .{});
+                break;
+            },
+            .MESSAGE => {
+                print("New message.", .{});
+                break;
+            },
+            .LOOKUP => {
+                print("Client asking for a service through ipcd.", .{});
+                break;
+            },
+            .TX => {
+                print("Message sent.", .{});
+                break;
+            },
+            .NOT_SET => {
+                print("Event type not set.\n", .{});
+                break;
+            },
+            .ERROR => {
+                print("A problem occured.\n", .{});
+                break;
+            },
+        }
     }
+
 
     // Server.accept returns a net.Connection (handle = fd, addr = net.Address).
     // var client = try server.accept();

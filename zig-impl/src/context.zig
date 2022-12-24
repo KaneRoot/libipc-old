@@ -2,6 +2,7 @@ const std = @import("std");
 const hexdump = @import("./hexdump.zig");
 const testing = std.testing;
 const net = std.net;
+const os = std.os;
 const fmt = std.fmt;
 
 const print = std.debug.print;
@@ -16,7 +17,8 @@ const print_eq = @import("./util.zig").print_eq;
 const Messages = @import("./message.zig").Messages;
 const Switches = @import("./switch.zig").Switches;
 const Connections = @import("./connection.zig").Connections;
-pub const PollFD = std.ArrayList(i32);
+
+pub const PollFD = std.ArrayList(std.os.pollfd);
 
 // Context of the whole networking state.
 pub const Context = struct {
@@ -33,7 +35,7 @@ pub const Context = struct {
     //       so we can pass it to poll(2). Share indexes with 'connections'.
     //       For now, this list doesn't do anything.
     //       Can even be replaced in a near future.
-    pollfd: PollFD,      // File descriptors.
+    pollfd: PollFD,  // .fd (fd_t) + .events (i16) + .revents (i16)
 
     tx: Messages,        // Messages to send, once their fd is available.
     switchdb: ?Switches, // Relations between fd.
@@ -91,7 +93,9 @@ pub const Context = struct {
         var newcon = Connection.init(ctype, path);
         newcon.client = stream;
         try self.connections.append(newcon);
-        try self.pollfd.append(newfd);
+        try self.pollfd.append(.{ .fd = newfd
+                                , .events = std.os.linux.POLL.IN
+                                , .revents = 0 });
         return newfd;
     }
 
@@ -123,7 +127,9 @@ pub const Context = struct {
         var newcon = Connection.init(Connection.Type.SERVER, path);
         newcon.server = server;
         try self.connections.append(newcon);
-        try self.pollfd.append(newfd);
+        try self.pollfd.append(.{ .fd = newfd
+                                , .events = std.os.linux.POLL.IN
+                                , .revents = 0 });
         return server;
     }
 
@@ -137,8 +143,7 @@ pub const Context = struct {
             return error.IndexOutOfBounds;
         }
         print("read index {}\n", .{index});
-        var fd = self.pollfd[index];
-        return self.read_fd(fd);
+        return self.read_fd(self.pollfd.items[index].fd);
     }
 
     pub fn read_fd (self: *Self, fd: i32) !Message {
@@ -153,22 +158,47 @@ pub const Context = struct {
 
     // Wait an event.
     pub fn wait_event(self: *Self) !Event {
-        // TODO: remove these debug prints.
-        // for (self.pollfd.items) |fd| {
-        //     print("listening to fd {}\n", .{fd});
-        // }
-        if (self.timer) |t| { print("listening for MAXIMUM {} us\n", .{t}); }
+        var current_event: Event = undefined;
+        var wait_duration: i32 = -1; // -1 == unlimited
+
+        if (self.timer) |t| { wait_duration = t; }
         else                { print("listening (no timer)\n", .{});         }
 
-        // TODO: listening to these file descriptors.
-        var some_event = Event.init(Event.Type.CONNECTION, 5, 8, null);
-        return some_event;
+        // print("listening for MAXIMUM {} ms\n", .{wait_duration});
 
-        // TODO: set POLLIN & POLLOUT flags in the pollfd structure
-        //       for each fd
+        // Make sure we listen to the right file descriptors,
+        // setting POLLIN & POLLOUT flags.
+        for (self.pollfd.items) |*fd| {
+            // print("listening to fd {}\n", .{fd.fd});
+            fd.events = std.os.linux.POLL.IN; // just to make sure
+        }
+
+        for (self.tx.items) |m| {
+            print("wait for writing a message to fd {}\n", .{m.fd});
+            for (self.pollfd.items) |*fd| {
+                if (fd.fd == m.fd) {
+                    fd.events = std.os.linux.POLL.OUT; // just to make sure
+                }
+            }
+        }
+
         // TODO: before initiate a timer
-        // TODO: poll syscall
+
+        // Polling.
+        var count: usize = undefined;
+
+        // print("Let's wait for an event (either stdin or unix socket)\n", .{});
+        print("fds: {any}\n", .{self.pollfd.items});
+        count = try os.poll(self.pollfd.items, wait_duration);
+        print("fds NOW: {any}\n", .{self.pollfd.items});
+
         // TODO: timer = end - start; if 0 => return timer event
+
+        if (count == 0) {
+            current_event = Event.init(Event.Type.TIMER, 0, 0, null);
+            return current_event;
+        }
+
         // TODO: handle messages
         //   => loop over ctx.size
         //     => if pollfd[i].revents is set to POLLIN
@@ -184,6 +214,8 @@ pub const Context = struct {
 		//             close + remove fd from pollfd + return event
 		//        if fd revent is POLLERR or POLLNVAL
 		//          => return error event
+
+        return current_event;
     }
 
     pub fn close(self: *Self, index: usize) !void {
