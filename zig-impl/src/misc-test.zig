@@ -4,10 +4,12 @@ const testing = std.testing;
 const net = std.net;
 const fmt = std.fmt;
 
+const Timer = std.time.Timer;
+
 const print = std.debug.print;
 const P = std.ArrayList(std.os.pollfd);
 
-fn create_service() !void {
+fn arraylist_test() !void {
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
     defer _ = gpa.deinit();
@@ -21,7 +23,22 @@ fn create_service() !void {
     for(p.items) |i| { print("fd: {}\n", .{i.fd}); }
 }
 
+fn timer_test() !void {
+    var timer = try Timer.start();
+
+    var count: u64 = 0;
+    while (count < 100000) {
+        count += 1;
+        print("\rcount = {}", .{count});
+    }
+    print("\n", .{});
+
+    var duration = timer.read();
+    print("took {} us\n", .{duration / 1000});
+}
+
 pub fn main() !u8 {
-    try create_service();
+    // try arraylist_test();
+    try timer_test();
     return 0;
 }

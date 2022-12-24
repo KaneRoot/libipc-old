@@ -36,7 +36,7 @@ pub const Event = struct {
     pub const Type = enum {
         NOT_SET,       // Default. TODO: should we keep this?
         ERROR,         // A problem occured.
-        EXTRA_SOCKET,  // Message received from a non IPC socket.
+        EXTERNAL,      // Message received from a non IPC socket.
         SWITCH,        // Message to send to a corresponding fd.
         CONNECTION,    // New user.
         DISCONNECTION, // User disconnected.
@@ -47,17 +47,17 @@ pub const Event = struct {
     };
 
     t: Event.Type,
-    index: u32,
-    origin: usize, // socket fd
+    index: usize,
+    origin: i32, // socket fd
     m: ?*Message,  // message pointer
 
     const Self = @This();
 
-    pub fn init(t: Event.Type, index: u32, origin: usize, m: ?*Message) Self {
+    pub fn init(t: Event.Type, index: usize, origin: i32, m: ?*Message) Self {
         return Self { .t = t, .index = index, .origin = origin, .m = m, };
     }
 
-    pub fn set(self: *Self, t: Event.Type, index: u32, origin: usize, m: ?*Message) void {
+    pub fn set(self: *Self, t: Event.Type, index: usize, origin: i32, m: ?*Message) void {
         self.t = t;
         self.index = index;
         self.origin = origin;
@@ -66,8 +66,8 @@ pub const Event = struct {
 
     pub fn clean(self: *Self) void {
         self.t = Event.Type.NOT_SET;
-        self.index = @as(u8,0);
-        self.origin = @as(usize,0);
+        self.index = @as(usize,0);
+        self.origin = @as(i32,0);
         if (self.m) |message| {
             message.deinit();
         }

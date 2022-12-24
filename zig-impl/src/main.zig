@@ -54,7 +54,7 @@ fn create_service() !void {
 
     var count_down: i16 = 5;
     var some_event: Event = undefined;
-    ctx.timer = 1000; // 1 second
+    ctx.timer = 2000; // 1 second
     while(true) {
         some_event = try ctx.wait_event();
         switch (some_event.t) {
@@ -70,7 +70,7 @@ fn create_service() !void {
                     break;
                 }
             },
-            .EXTRA_SOCKET => {
+            .EXTERNAL => {
                 print("Message received from a non IPC socket.", .{});
                 break;
             },
