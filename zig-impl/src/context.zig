@@ -163,6 +163,27 @@ pub const Context = struct {
         // TODO: listening to these file descriptors.
         var some_event = Event.init(Event.Type.CONNECTION, 5, 8, null);
         return some_event;
+
+        // TODO: set POLLIN & POLLOUT flags in the pollfd structure
+        //       for each fd
+        // TODO: before initiate a timer
+        // TODO: poll syscall
+        // TODO: timer = end - start; if 0 => return timer event
+        // TODO: handle messages
+        //   => loop over ctx.size
+        //     => if pollfd[i].revents is set to POLLIN
+		//          => if fd is SERVER   => new connection
+		//          => if fd is SWITCHED => msg to exchange (or drop the switch)
+		//          => if fd is EXTERNAL => let user handle IO operations
+		//          => otherwise         => new message or disconnection
+        //     => if fd revent is POLLOUT
+		//          => if SWITCHED => write message for its switch buddy
+		//          => otherwise   => write message for the msg.fd
+		//        if fd revent is POLLHUP
+		//          => handle disconnection:
+		//             close + remove fd from pollfd + return event
+		//        if fd revent is POLLERR or POLLNVAL
+		//          => return error event
     }
 
     pub fn close(self: *Self, index: usize) !void {
