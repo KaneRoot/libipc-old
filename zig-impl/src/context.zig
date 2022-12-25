@@ -117,15 +117,35 @@ pub const Context = struct {
 //        return newfd;
 //    }
 
+    // TODO: find better error name
+    pub fn accept_new_client(self: *Self, event: *Event, server_index: usize) !void {
+        // net.StreamServer
+        var server = self.connections.items[server_index].server orelse return error.SocketLOL; // TODO
+        var client = try server.accept(); // net.StreamServer.Connection
+
+        const newfd = client.stream.handle;
+        var newcon = Connection.init(Connection.Type.IPC, null);
+        newcon.client = client;
+        try self.connections.append(newcon);
+        try self.pollfd.append(.{ .fd = newfd
+                                , .events = std.os.linux.POLL.IN
+                                , .revents = 0 });
+
+        const sfd = server.sockfd orelse return error.SocketLOL; // TODO
+        // WARNING: imply every new item is last
+        event.set(Event.Type.CONNECTION, self.pollfd.items.len - 1, sfd, null);
+    }
+
     // Create a unix socket.
     // Store std lib structures in the context.
+    // TODO: find better error name
     pub fn server_init(self: *Self, path: [] const u8) !net.StreamServer {
         // print("context server init {s}\n", .{path});
         var server = net.StreamServer.init(.{});
         var socket_addr = try net.Address.initUnix(path);
         try server.listen(socket_addr);
 
-        const newfd = server.sockfd orelse return error.SocketLOL;
+        const newfd = server.sockfd orelse return error.SocketLOL; // TODO
         var newcon = Connection.init(Connection.Type.SERVER, path);
         newcon.server = server;
         try self.connections.append(newcon);
@@ -221,8 +241,7 @@ pub const Context = struct {
             if(fd.revents & std.os.linux.POLL.IN > 0) {
 		        // SERVER = new connection
                 if (self.connections.items[i].t == .SERVER) {
-                    // TODO: ipc_accept_add
-                    current_event = Event.init(Event.Type.CONNECTION, i, fd.fd, null);
+                    try self.accept_new_client(&current_event, i);
                 }
 		        // SWITCHED = send message to the right dest (or drop the switch)
                 else if (self.connections.items[i].t == .SWITCHED) {

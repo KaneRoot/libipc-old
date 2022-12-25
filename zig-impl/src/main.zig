@@ -59,7 +59,7 @@ fn create_service() !void {
         some_event = try ctx.wait_event();
         switch (some_event.t) {
             .CONNECTION => {
-                print("New connection!\n", .{});
+                print("New connection: {}!\n", .{some_event});
                 break;
             },
             .TIMER => {

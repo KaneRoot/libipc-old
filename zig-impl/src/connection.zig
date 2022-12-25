@@ -39,7 +39,7 @@ pub const Connection = struct {
 
     pub fn deinit(self: *Self) void {
         if (self.server) |*s| { s.deinit(); }
-        // if (self.client) |*c| { c.deinit(); }
+        if (self.client) |*c| { c.deinit(); }
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
