@@ -49,15 +49,15 @@ pub const Event = struct {
     t: Event.Type,
     index: usize,
     origin: i32, // socket fd
-    m: ?*Message,  // message pointer
+    m: ?Message,  // message
 
     const Self = @This();
 
-    pub fn init(t: Event.Type, index: usize, origin: i32, m: ?*Message) Self {
+    pub fn init(t: Event.Type, index: usize, origin: i32, m: ?Message) Self {
         return Self { .t = t, .index = index, .origin = origin, .m = m, };
     }
 
-    pub fn set(self: *Self, t: Event.Type, index: usize, origin: i32, m: ?*Message) void {
+    pub fn set(self: *Self, t: Event.Type, index: usize, origin: i32, m: ?Message) void {
         self.t = t;
         self.index = index;
         self.origin = origin;

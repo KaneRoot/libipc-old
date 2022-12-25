@@ -18,7 +18,7 @@ pub const Message = struct {
     };
 
     t: Message.Type,      // Internal message type.
-    fd: usize,            // File descriptor concerned about this message.
+    fd: i32,              // File descriptor concerned about this message.
     payload: []const u8,
 
     allocator: std.mem.Allocator,  // Memory allocator.
@@ -26,7 +26,7 @@ pub const Message = struct {
     const Self = @This();
 
     // TODO
-    //pub fn initFromConnection(fd: usize) Self {
+    //pub fn initFromConnection(fd: i32) Self {
     //    return Self{
     //        .t        = Message.Type.ERROR,
     //        .fd       = fd,
@@ -34,7 +34,7 @@ pub const Message = struct {
     //    };
     //}
 
-    pub fn init(fd: usize, t: Message.Type
+    pub fn init(fd: i32, t: Message.Type
                , allocator: std.mem.Allocator
                , payload: []const u8) !Self {
         return Message { .fd = fd, .t = t
@@ -42,7 +42,7 @@ pub const Message = struct {
             , .payload = try allocator.dupe(u8, payload) };
     }
 
-    pub fn deinit(self: *Self) void {
+    pub fn deinit(self: Self) void {
         self.allocator.free(self.payload);
     }
 

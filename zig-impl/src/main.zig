@@ -60,7 +60,6 @@ fn create_service() !void {
         switch (some_event.t) {
             .CONNECTION => {
                 print("New connection: {}!\n", .{some_event});
-                break;
             },
             .TIMER => {
                 print("Timer! ({})\n", .{count_down});
@@ -71,27 +70,31 @@ fn create_service() !void {
                 }
             },
             .EXTERNAL => {
-                print("Message received from a non IPC socket.", .{});
+                print("Message received from a non IPC socket.\n", .{});
                 break;
             },
             .SWITCH => {
-                print("Message to send to a corresponding fd.", .{});
+                print("Message to send to a corresponding fd.\n", .{});
                 break;
             },
             .DISCONNECTION => {
-                print("User disconnected.", .{});
+                print("User disconnected.\n", .{});
                 break;
             },
             .MESSAGE => {
-                print("New message.", .{});
+                print("New message. {}\n", .{some_event});
+                if (some_event.m) |m| {
+                    print("message: {}\n", .{m});
+                    m.deinit();
+                }
                 break;
             },
             .LOOKUP => {
-                print("Client asking for a service through ipcd.", .{});
+                print("Client asking for a service through ipcd.\n", .{});
                 break;
             },
             .TX => {
-                print("Message sent.", .{});
+                print("Message sent.\n", .{});
                 break;
             },
             .NOT_SET => {
@@ -99,7 +102,7 @@ fn create_service() !void {
                 break;
             },
             .ERROR => {
-                print("A problem occured.\n", .{});
+                print("A problem occured, event: {}\n", .{some_event});
                 break;
             },
         }
