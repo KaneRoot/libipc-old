@@ -16,7 +16,7 @@ fn send_msg(stream: net.Stream) !usize {
     var fbs = std.io.fixedBufferStream(&buffer);
     var writer = fbs.writer();
 
-    try writer.writeByte(1); // DATA
+    try writer.writeByte(2); // DATA
 
     const message = "hello everyone";
     try writer.writeIntBig(u32, message.len);
