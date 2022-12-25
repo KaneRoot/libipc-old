@@ -4,6 +4,7 @@ const testing = std.testing;
 const net = std.net;
 const fmt = std.fmt;
 
+const print = std.debug.print;
 const print_eq = @import("./util.zig").print_eq;
 
 pub const Messages = std.ArrayList(Message);
@@ -46,7 +47,7 @@ pub const Message = struct {
         self.allocator.free(self.payload);
     }
 
-    pub fn read(buffer: []const u8, allocator: std.mem.Allocator) !Self {
+    pub fn read(fd: i32, buffer: []const u8, allocator: std.mem.Allocator) !Self {
 
         // var hexbuf: [4000]u8 = undefined;
         // var hexfbs = std.io.fixedBufferStream(&hexbuf);
@@ -54,16 +55,17 @@ pub const Message = struct {
         // try hexdump.hexdump(hexwriter, "Message.read input buffer", buffer);
         // print("{s}\n", .{hexfbs.getWritten()});
 
-        // var payload = allocator.
-        // defer allocator.free(payload);
         var fbs = std.io.fixedBufferStream(buffer);
         var reader = fbs.reader();
 
         const msg_type    = @intToEnum(Message.Type, try reader.readByte());
         const msg_len     = try reader.readIntBig(u32);
+        if (msg_len >= buffer.len) {
+            return error.wrongMessageLength;
+        }
         const msg_payload = buffer[5..5+msg_len];
 
-        return try Message.init(0, msg_type, allocator, msg_payload);
+        return try Message.init(fd, msg_type, allocator, msg_payload);
     }
 
     pub fn write(self: Self, writer: anytype) !usize {

@@ -79,15 +79,13 @@ fn create_service() !void {
             },
             .DISCONNECTION => {
                 print("User disconnected.\n", .{});
-                break;
             },
             .MESSAGE => {
                 print("New message. {}\n", .{some_event});
+                print("Let's echo, once\n", .{});
                 if (some_event.m) |m| {
-                    print("message: {}\n", .{m});
-                    m.deinit();
+                    try ctx.schedule(m);
                 }
-                break;
             },
             .LOOKUP => {
                 print("Client asking for a service through ipcd.\n", .{});

@@ -83,6 +83,10 @@ pub const Context = struct {
         self.allocator.free(self.rundir);
         self.connections.deinit();
         self.pollfd.deinit();
+        for (self.tx.items) |m| {
+            print("context deinit: removing message {}\n", .{m});
+            m.deinit();
+        }
         self.tx.deinit();
         if (self.switchdb) |sdb| { sdb.deinit(); }
     }
@@ -155,20 +159,39 @@ pub const Context = struct {
         return server;
     }
 
-    pub fn write (self: *Self, m: Message) !void {
-        print("write fd {}\n", .{m.fd});
-        self.tx.append(m);
+    pub fn write (_: *Self, m: Message) !void {
+        print("write msg on fd {}\n", .{m.fd});
+
+        // TODO
+        // Message contains the fd, no need to search for
+        // the right structure to copy, let's just recreate
+        // a Stream from the fd.
+        var stream = net.Stream { .handle = m.fd };
+
+        var buffer: [1000]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&buffer);
+        var writer = fbs.writer();
+
+        _ = try m.write(writer); // returns paylen
+
+        _ = try stream.write (fbs.getWritten());
     }
 
-    pub fn read (self: *Self, index: usize) !Message {
+    pub fn schedule (self: *Self, m: Message) !void {
+        print("schedule msg for fd {}\n", .{m.fd});
+        try self.tx.append(m);
+    }
+
+    pub fn read (self: *Self, index: usize) !?Message {
         if (index >= self.pollfd.items.len) {
             return error.IndexOutOfBounds;
         }
         print("read index {}\n", .{index});
 
         var buffer: [2000000]u8 = undefined; // TODO: FIXME??
-
         var origin: i32 = undefined;
+        var packet_size: usize = undefined;
+
         // TODO: this is a problem from the network API in Zig,
         //       servers and clients are different, they aren't just fds.
         //       Maybe there is something to change in the API.
@@ -177,17 +200,18 @@ pub const Context = struct {
                          orelse return error.NoClientHere;
             var stream: net.Stream = client.stream;
             origin = stream.handle;
-            _ = try stream.read(buffer[0..]);
+            packet_size = try stream.read(buffer[0..]);
         }
         else if (self.connections.items[index].t == .SERVER) {
             return error.messageOnServer;
         }
 
-        // var m = try self.allocator.create(Message);
-        // m.* = try Message.read(buffer[0..], self.allocator);
-        var m = try Message.read(buffer[0..], self.allocator);
-        m.fd = origin;
-        return m;
+        // Let's handle this as a disconnection.
+        if (packet_size <= 4) {
+            return null;
+        }
+
+        return try Message.read(origin, buffer[0..], self.allocator);
     }
 
     // Wait an event.
@@ -216,7 +240,7 @@ pub const Context = struct {
             }
         }
 
-        // TODO: before initiate a timer
+        // before initiate a timer
         var timer = try Timer.start();
 
         // Polling.
@@ -270,8 +294,13 @@ pub const Context = struct {
 		        else {
 		            // TODO: handle incoming message
 		            // TODO: handle_new_message
-		            var m = try self.read(i);
-                    return Event.init(Event.Type.MESSAGE, i, fd.fd, m);
+		            var maybe_message = try self.read(i);
+		            if (maybe_message) |m| {
+                        return Event.init(Event.Type.MESSAGE, i, fd.fd, m);
+                    }
+
+                    try self.close(i);
+                    return Event.init(Event.Type.DISCONNECTION, i, fd.fd, null);
 		        }
             }
 
@@ -287,6 +316,18 @@ pub const Context = struct {
                 else {
 		            // otherwise = write message for the msg.fd
 		            // TODO: handle_writing_message
+
+		            var index: usize = undefined;
+		            for (self.tx.items) |m, index_| {
+		                if (m.fd == self.pollfd.items[i].fd) {
+		                    index = index_;
+		                    break;
+		                }
+		            }
+
+                    var m = self.tx.swapRemove(index);
+		            try self.write (m);
+		            m.deinit();
                     return Event.init(Event.Type.TX, i, fd.fd, null);
                 }
             }
@@ -328,7 +369,24 @@ pub const Context = struct {
             // Close the client's socket.
             c.stream.close();
         }
-        _ = self.pollfd.swapRemove(index);
+        var pollfd = self.pollfd.swapRemove(index);
+        print("client at index {} removed\n", .{index});
+
+        // Remove all its non-sent messages.
+        var i: usize = 0;
+        while (true) {
+            if (i >= self.tx.items.len)
+                break;
+
+            if (self.tx.items[i].fd == pollfd.fd) {
+                var m = self.tx.swapRemove(i);
+                print("Removing message targeted to client {}: {}\n", .{index, m});
+                m.deinit();
+                continue;
+            }
+
+            i += 1;
+        }
     }
 
     pub fn close_all(self: *Self) !void {
