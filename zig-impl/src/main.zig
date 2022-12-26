@@ -38,6 +38,8 @@ test {
     _ = @import("./util.zig");
 }
 
+var should_quit: bool = false;
+
 fn create_service() !void {
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
@@ -52,7 +54,8 @@ fn create_service() !void {
     // SERVER SIDE: creating a service.
     _ = try ctx.server_init(path);
 
-    var count_down: i16 = 5;
+    // TODO: signal handler, to quit when asked
+
     var some_event: Event = undefined;
     ctx.timer = 2000; // 1 second
     while(true) {
@@ -62,19 +65,16 @@ fn create_service() !void {
                 print("New connection: {}!\n", .{some_event});
             },
             .TIMER => {
-                print("Timer! ({})\n", .{count_down});
-                count_down -= 1;
-                if(count_down < 0) {
-                    print("STOP WAITING!\n", .{});
-                    break;
-                }
+                print("Timer!\n", .{});
             },
             .EXTERNAL => {
                 print("Message received from a non IPC socket.\n", .{});
+                print("NOT IMPLEMENTED, YET. It's a suicide, then.\n", .{});
                 break;
             },
             .SWITCH => {
                 print("Message to send to a corresponding fd.\n", .{});
+                print("NOT IMPLEMENTED, YET. It's a suicide, then.\n", .{});
                 break;
             },
             .DISCONNECTION => {
@@ -89,20 +89,24 @@ fn create_service() !void {
             },
             .LOOKUP => {
                 print("Client asking for a service through ipcd.\n", .{});
+                print("NOT IMPLEMENTED, YET. It's a suicide, then.\n", .{});
                 break;
             },
             .TX => {
                 print("Message sent.\n", .{});
-                break;
             },
             .NOT_SET => {
-                print("Event type not set.\n", .{});
+                print("Event type not set. Something is wrong, let's suicide.\n", .{});
                 break;
             },
             .ERROR => {
-                print("A problem occured, event: {}\n", .{some_event});
+                print("A problem occured, event: {}, let's suicide\n", .{some_event});
                 break;
             },
+        }
+
+        if (should_quit) {
+            break;
         }
     }
 
