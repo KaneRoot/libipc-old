@@ -370,7 +370,6 @@ pub const Context = struct {
             c.stream.close();
         }
         var pollfd = self.pollfd.swapRemove(index);
-        print("client at index {} removed\n", .{index});
 
         // Remove all its non-sent messages.
         var i: usize = 0;
@@ -380,7 +379,6 @@ pub const Context = struct {
 
             if (self.tx.items[i].fd == pollfd.fd) {
                 var m = self.tx.swapRemove(i);
-                print("Removing message targeted to client {}: {}\n", .{index, m});
                 m.deinit();
                 continue;
             }
@@ -475,7 +473,13 @@ test "Context - creation, display and memory check" {
     var path = fbs.getWritten();
 
     // SERVER SIDE: creating a service.
-    var server = try c.server_init(path);
+    var server = c.server_init(path) catch |err| switch(err) {
+        error.FileNotFound => {
+            print ("\nError: cannot init server at {s}\n", .{path});
+            return err;
+        },
+        else => return err,
+    };
     defer server.deinit();
     defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
 
@@ -549,7 +553,13 @@ const ConnectThenSendMessageThread = struct {
      var path = fbs.getWritten();
 
      // SERVER SIDE: creating a service.
-     var server = try c.server_init(path);
+    var server = c.server_init(path) catch |err| switch(err) {
+        error.FileNotFound => {
+            print ("\nError: cannot init server at {s}\n", .{path});
+            return err;
+        },
+        else => return err,
+    };
      defer server.deinit();
      defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
 
@@ -561,7 +571,7 @@ const ConnectThenSendMessageThread = struct {
      defer client.stream.close();
      var buf: [1000]u8 = undefined;
      const n = try client.stream.reader().read(&buf);
-     var m = try Message.read(buf[0..n], allocator);
+     var m = try Message.read(8, buf[0..n], allocator); // 8 == random client's fd number
      defer m.deinit();
 
      try testing.expectEqual(@as(usize, 12), m.payload.len);

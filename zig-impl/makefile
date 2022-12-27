@@ -1,24 +1,24 @@
 all:
 
-ZIGBUSEOPTS ?= -OReleaseSmall
-ZIGUSROPTS  ?= -freference-trace
+ZIGMAKEDOC   = -femit-docs -fno-emit-bin
+ZIGOPTIM    ?= Debug
+ZIGBUSEOPTS ?= -O$(ZIGOPTIM) -freference-trace
+ZIGUSROPTS  ?=
 ZIGC        ?= zig
 ZIGOPTS     ?= $(ZIGBUSEOPTS) $(ZIGUSROPTS)
 
-c: src/send-msg.zig
+ipcd: src/ipcd.zig
 	$(ZIGC) build-exe $(ZIGOPTS) $^
 
-s: src/receive-msg.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-
-m: src/main.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-
-t: src/main.zig
+test-libipc: src/main.zig
 	$(ZIGC) test $(ZIGOPTS) $^
 
-d: src/main.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-
-o: $(SRC)
+test-ipcd: src/ipcd.zig
 	$(ZIGC) test $(ZIGOPTS) $^
+
+doc: src/ipcd.zig
+	$(ZIGC) build-exe $(ZIGOPTS) $(ZIGMAKEDOC) $^
+
+
+# You can add your specific instructions there.
+-include makefile.user

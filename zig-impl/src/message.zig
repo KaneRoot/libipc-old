@@ -123,7 +123,8 @@ test "Message - read and write" {
     var second_allocator = fba.allocator();
 
     // Read the buffer, similar to receiving a message on the network.
-    var second_message = try Message.read(buffer[0..count], second_allocator);
+    // (8 == random client's fd number)
+    var second_message = try Message.read(8, buffer[0..count], second_allocator);
     // var second_message = try Message.read(fbs.getWritten(), second_allocator);
     defer second_message.deinit();
 

@@ -91,7 +91,7 @@ test "Event - creation and display" {
     var s = "hello!!";
     var m = try Message.init(1, Message.Type.DATA, allocator, s); // fd type payload
     defer m.deinit();
-    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m); // type index origin message
+    var e = Event.init(Event.Type.CONNECTION, 5, 8, m); // type index origin message
 
     try print_eq("event.Event.Type.CONNECTION, origin: 8, index 5, message: [fd: 1, message.Message.Type.DATA, payload: [hello!!]]", e);
 }
