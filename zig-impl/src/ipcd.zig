@@ -9,7 +9,8 @@ const print = std.debug.print;
 const testing = std.testing;
 const print_eq = @import("./util.zig").print_eq;
 
-// TODO: file descriptors should have a specific type (but i32 is used in std.net...).
+// TODO: standard library is unecessary complex regarding networking.
+//       Should libipc drop it and use plain old file descriptors instead?
 
 // TODO: path => std.XXX.YYY, not simple [] const u8
 
@@ -38,48 +39,62 @@ fn create_service() !void {
     // TODO: signal handler, to quit when asked
 
     var some_event: ipc.Event = undefined;
-    ctx.timer = 2000; // 1 second
+    ctx.timer = 2000; // 2 seconds
     while(true) {
         some_event = try ctx.wait_event();
         switch (some_event.t) {
-            .CONNECTION => {
-                print("New connection: {}!\n", .{some_event});
-            },
             .TIMER => {
                 print("Timer!\n", .{});
             },
+
+            .CONNECTION => {
+                print("New connection: {} so far!\n", .{ctx.pollfd.items.len});
+            },
+
+            .DISCONNECTION => {
+                print("User {} disconnected, {} remainaing.\n"
+                    , .{some_event.origin, ctx.pollfd.items.len});
+            },
+
             .EXTERNAL => {
                 print("Message received from a non IPC socket.\n", .{});
                 print("NOT IMPLEMENTED, YET. It's a suicide, then.\n", .{});
                 break;
             },
+
             .SWITCH => {
                 print("Message to send to a corresponding fd.\n", .{});
                 print("NOT IMPLEMENTED, YET. It's a suicide, then.\n", .{});
                 break;
             },
-            .DISCONNECTION => {
-                print("User disconnected.\n", .{});
-            },
+
             .MESSAGE => {
-                print("New message. {}\n", .{some_event});
-                print("Let's echo, once\n", .{});
                 if (some_event.m) |m| {
+                    print("New message: {}\n", .{m});
+                    print("Let's echo it...\n", .{});
                     try ctx.schedule(m);
                 }
+                else {
+                    print("Error while receiving new message.\n", .{});
+                    print("Ignoring...\n", .{});
+                }
             },
+
             .LOOKUP => {
                 print("Client asking for a service through ipcd.\n", .{});
                 print("NOT IMPLEMENTED, YET. It's a suicide, then.\n", .{});
                 break;
             },
+
             .TX => {
                 print("Message sent.\n", .{});
             },
+
             .NOT_SET => {
                 print("Event type not set. Something is wrong, let's suicide.\n", .{});
                 break;
             },
+
             .ERROR => {
                 print("A problem occured, event: {}, let's suicide\n", .{some_event});
                 break;

@@ -247,9 +247,9 @@ pub const Context = struct {
         var count: usize = undefined;
 
         // print("Let's wait for an event (either stdin or unix socket)\n", .{});
-        print("fds:     {any}\n", .{self.pollfd.items});
+        // print("fds:     {any}\n", .{self.pollfd.items});
         count = try os.poll(self.pollfd.items, wait_duration);
-        print("fds NOW: {any}\n", .{self.pollfd.items});
+        // print("fds NOW: {any}\n", .{self.pollfd.items});
 
         if (count < 0) {
             print("there is a problem: poll < 0\n", .{});
@@ -259,7 +259,7 @@ pub const Context = struct {
 
         var duration = timer.read() / 1000000; // ns -> ms
         if (count == 0) {
-            print("wait: configured {} measured {}\n", .{wait_duration, duration});
+            // print("wait: configured {} measured {}\n", .{wait_duration, duration});
             if (duration >= wait_duration) {
                 current_event = Event.init(Event.Type.TIMER, 0, 0, null);
             }
