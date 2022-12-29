@@ -27,5 +27,8 @@ clean:
 mrproper: clean
 	@-rm -r docs zig-cache zig-out 2>/dev/null
 
+servedoc:
+	darkhttpd docs/ --addr 127.0.0.1 --port 35000
+
 # You can add your specific instructions there.
 -include makefile.user
