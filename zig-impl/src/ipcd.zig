@@ -2,9 +2,12 @@ const std = @import("std");
 const hexdump = @import("./hexdump.zig");
 const net = std.net;
 const fmt = std.fmt;
+const os = std.os;
 
 const ipc = @import("./main.zig");
 
+const builtin = @import("builtin");
+const native_os = builtin.target.os.tag;
 const print = std.debug.print;
 const testing = std.testing;
 const print_eq = @import("./util.zig").print_eq;
@@ -20,8 +23,6 @@ const print_eq = @import("./util.zig").print_eq;
 // TODO: API should completely obfuscate the inner structures.
 //       Only structures in this file should be necessary.
 
-var should_quit: bool = false;
-
 fn create_service() !void {
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
@@ -36,11 +37,39 @@ fn create_service() !void {
     // SERVER SIDE: creating a service.
     _ = try ctx.server_init(path);
 
-    // TODO: signal handler, to quit when asked
+    // signal handler, to quit when asked
+    const S = struct {
+        var should_quit: bool = false;
+
+        fn handler(sig: i32, info: *const os.siginfo_t, _: ?*const anyopaque) callconv(.C) void {
+            print ("A signal has been received: {}\n", .{sig});
+            // Check that we received the correct signal.
+            switch (native_os) {
+                .netbsd => {
+                    if (sig != os.SIG.HUP or sig != info.info.signo)
+                        return;
+                },
+                else => {
+                    if (sig != os.SIG.HUP and sig != info.signo)
+                        return;
+                },
+            }
+            should_quit = true;
+        }
+    };
+
+    var sa = os.Sigaction{
+        .handler = .{ .sigaction = &S.handler },
+        .mask = os.empty_sigset, // Do not mask any signal.
+        .flags = os.SA.SIGINFO,
+    };
+
+    // Quit on SIGHUP (kill -1).
+    try os.sigaction(os.SIG.HUP, &sa, null);
 
     var some_event: ipc.Event = undefined;
-    ctx.timer = 2000; // 2 seconds
-    while(true) {
+    ctx.timer = 10000; // 10 seconds
+    while(! S.should_quit) {
         some_event = try ctx.wait_event();
         switch (some_event.t) {
             .TIMER => {
@@ -100,21 +129,9 @@ fn create_service() !void {
                 break;
             },
         }
-
-        if (should_quit) {
-            break;
-        }
     }
 
-
-    // Server.accept returns a net.Connection (handle = fd, addr = net.Address).
-    // var client = try server.accept();
-    // var buf: [4096]u8 = undefined;
-    // const n = try ctx.read_ (client, &buf);
-
-    // print("new client: {}\n", .{client});
-    // print("{} bytes: {s}\n", .{n, buf});
-    print("End the create_service function\n", .{});
+    print("Goodbye\n", .{});
 }
 
 pub fn main() !u8 {
