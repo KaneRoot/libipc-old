@@ -105,10 +105,75 @@ pub const Context = struct {
         return newfd;
     }
 
+    fn connect_ipcd (self: *Self, service_name: []const u8) !?i32 {
+
+        const buffer_size = 10000;
+        var buffer: [buffer_size]u8 = undefined;
+        var fba = std.heap.fixedBufferAllocator(&buffer);
+
+        // Get IPC_NETWORK environment variable
+        // IPC_NETWORK is shared with the network service to choose the protocol stack,
+        // according to the target service.
+        //
+        // Example, connecting to 'audio' service through tor service:
+        //   IPC_NETWORK="audio tor://some.example.com/audio"
+        //
+        // Routing directives can be chained using " ;" separator:
+        //   IPC_NETWORK="audio https://example.com/audio ;pong tls://pong.example.com/pong"
+        var network_envvar = std.process.getEnvVarOwned(fba, "IPC_NETWORK") catch |err| switch(err) {
+            // error{ OutOfMemory, EnvironmentVariableNotFound, InvalidUtf8 } (ErrorSet)
+            .EnvironmentVariableNotFound => { return; }, // no need to contact IPCd
+            else => { return err; },
+        };
+
+        var lookupbuffer: [buffer_size]u8 = undefined;
+        var lookupfbs = std.heap.fixedBufferStream(&lookupbuffer);
+        var lookupwriter = lookupfbs.writer();
+        lookupwriter.print("{};{}", .{service_name, network_envvar});
+
+        // Try to connect to the IPCd service
+        var ipcdfd = try self.connect_service("ipcd");
+        defer self.close_fd (ipcdfd); // in any case, connection should be closed
+
+        // Send LOOKUP message
+        //   content: target service name;${IPC_NETWORK}
+        //   example: pong;pong tls://example.com:8998/pong
+
+        var m = try Message.init (ipcdfd, fba, Message.Type.LOOKUP, lookupfbs.getWritten());
+        try self.write (m);
+
+        // TODO
+        // var response = something like "try os.recvmsg"
+        // Read LOOKUP response
+        //   case error: ignore and move on
+        //   else: get fd sent by IPCd then close IPCd fd
+
+    }
+
+    fn fd_to_index (self: Self, fd: i32) !usize {
+        var i: usize = 0;
+        while(i < self.pollfd.items.len) {
+           if (self.pollfd.items[i].fd == fd) {
+               return i;
+           }
+        }
+        return error.IndexNotFound;
+    }
+
     // Return the new fd. Can be useful to the caller.
     pub fn connect(self: *Self, path: []const u8) !i32 {
         // print("connection to:\t{s}\n", .{path});
         return self.connect_ (Connection.Type.IPC, path);
+    }
+
+    pub fn connect_service (self: *Self, service_name: []const u8) !i32 {
+        var buffer: [1000]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&buffer);
+        var writer = fbs.writer();
+
+        try self.server_path(service_name, writer);
+        var path = fbs.getWritten();
+        return self.connect(path);
     }
 
     // Connection to a service, but with switched with the client fd.
@@ -349,6 +414,11 @@ pub const Context = struct {
         //       LOOKUP = Client asking for a service through ipcd.
 
         return current_event;
+    }
+
+    /// Remove a connection based on its file descriptor.
+    pub fn close_fd(self: *Self, fd: i32) !void {
+        try self.close(try self.fd_to_index (fd));
     }
 
     pub fn close(self: *Self, index: usize) !void {
