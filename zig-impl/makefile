@@ -19,6 +19,13 @@ test-ipcd: src/ipcd.zig
 doc: src/ipcd.zig
 	$(ZIGC) build-exe $(ZIGOPTS) $(ZIGMAKEDOC) $^
 
+TO_CLEAN != ls misc/*.zig | sed 's/.zig$\//' | sed 's_misc/__'
+TO_CLEAN += ipcd
+clean:
+	@-rm $(TO_CLEAN) 2>/dev/null
+
+mrproper: clean
+	@-rm -r docs zig-cache zig-out 2>/dev/null
 
 # You can add your specific instructions there.
 -include makefile.user
