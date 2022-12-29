@@ -21,6 +21,7 @@ doc: src/ipcd.zig
 
 TO_CLEAN != ls misc/*.zig | sed 's/.zig$\//' | sed 's_misc/__'
 TO_CLEAN += ipcd
+TO_CLEAN += *.o
 clean:
 	@-rm $(TO_CLEAN) 2>/dev/null
 
