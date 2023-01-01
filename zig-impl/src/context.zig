@@ -96,7 +96,7 @@ pub const Context = struct {
         var stream = try net.connectUnixSocket(path);
         const newfd = stream.handle;
         errdefer std.os.closeSocket(newfd);
-        var newcon = Connection.init(ctype, path);
+        var newcon = Connection.init(ctype, null);
         try self.connections.append(newcon);
         try self.pollfd.append(.{ .fd = newfd
                                 , .events = std.os.linux.POLL.IN
@@ -108,7 +108,7 @@ pub const Context = struct {
 
         const buffer_size = 10000;
         var buffer: [buffer_size]u8 = undefined;
-        var fba = std.heap.fixedBufferAllocator(&buffer);
+        var fba = std.heap.FixedBufferAllocator.init(&buffer);
 
         // Get IPC_NETWORK environment variable
         // IPC_NETWORK is shared with the network service to choose the protocol stack,
@@ -188,12 +188,18 @@ pub const Context = struct {
     // TODO: find better error name
     pub fn accept_new_client(self: *Self, event: *Event, server_index: usize) !void {
         // net.StreamServer
-        var server = self.connections.items[server_index].server orelse return error.SocketLOL; // TODO
+        var serverfd = self.pollfd.items[server_index].fd;
+        var path = self.connections.items[server_index].path orelse return error.ServerWithNoPath;
+        var server = net.StreamServer {
+              .sockfd = serverfd
+            , .kernel_backlog = 100
+            , .reuse_address  = false
+            , .listen_address = try net.Address.initUnix(path)
+        };
         var client = try server.accept(); // net.StreamServer.Connection
 
         const newfd = client.stream.handle;
         var newcon = Connection.init(Connection.Type.IPC, null);
-        newcon.client = client;
         try self.connections.append(newcon);
         try self.pollfd.append(.{ .fd = newfd
                                 , .events = std.os.linux.POLL.IN
@@ -214,8 +220,8 @@ pub const Context = struct {
         try server.listen(socket_addr);
 
         const newfd = server.sockfd orelse return error.SocketLOL; // TODO
-        var newcon = Connection.init(Connection.Type.SERVER, path);
-        newcon.server = server;
+        // Store the path in the Connection structure, so the UNIX socket file can be removed later.
+        var newcon = Connection.init(Connection.Type.SERVER, try self.allocator.dupeZ(u8, path));
         try self.connections.append(newcon);
         try self.pollfd.append(.{ .fd = newfd
                                 , .events = std.os.linux.POLL.IN
@@ -432,17 +438,13 @@ pub const Context = struct {
 
         // close the connection and remove it from the two structures
         var con = self.connections.swapRemove(index);
-        if (con.server) |s| {
-            // Remove service's UNIX socket file.
-            var addr = s.listen_address;
-            var path = std.mem.sliceTo(&addr.un.path, 0);
+        // Remove service's UNIX socket file.
+        if (con.path) |path| {
             std.fs.cwd().deleteFile(path) catch {};
-        }
-        if (con.client) |c| {
-            // Close the client's socket.
-            c.stream.close();
+            self.allocator.free(path);
         }
         var pollfd = self.pollfd.swapRemove(index);
+        std.os.close(pollfd.fd);
 
         // Remove all its non-sent messages.
         var i: usize = 0;
@@ -478,12 +480,6 @@ pub const Context = struct {
             try fmt.format(out_stream, "\n- ", .{});
             try tx.format(form, options, out_stream);
         }
-    }
-
-    // PRIVATE API
-
-    fn read_ (_: *Self, client: net.StreamServer.Connection, buf: [] u8) !usize {
-        return try client.stream.reader().read(buf);
     }
 };
 
