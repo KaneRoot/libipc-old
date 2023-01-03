@@ -24,7 +24,7 @@ int main (int argc, char *argv[])
 
 	T_PERROR_R (((fd = open (argv[1], O_CREAT | O_RDWR)) < 0), "cannot open the file", EXIT_FAILURE);
 
-	TEST_IPC_Q (usock_connect (&sock, "SOCKET_FD_EXCHANGE_TEST"), EXIT_FAILURE);
+	TEST_IPC_Q (usock_connect (&sock, "./SOCKET_FD_EXCHANGE_TEST"), EXIT_FAILURE);
 	TEST_IPC_Q (ipc_provide_fd (sock, fd), EXIT_FAILURE);
 
 	return EXIT_SUCCESS;

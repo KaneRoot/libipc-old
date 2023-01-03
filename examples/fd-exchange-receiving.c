@@ -24,7 +24,7 @@ int main (int argc, char *argv[])
 	int usockclient = 0;
 	int fd = 0;
 
-	TEST_IPC_Q (usock_init (&usock, "SOCKET_FD_EXCHANGE_TEST"), EXIT_FAILURE);
+	TEST_IPC_Q (usock_init (&usock, "./SOCKET_FD_EXCHANGE_TEST"), EXIT_FAILURE);
 	TEST_IPC_Q (usock_accept (usock, &usockclient), EXIT_FAILURE);
 	TEST_IPC_Q (ipc_receive_fd (usockclient, &fd), EXIT_FAILURE);
 
