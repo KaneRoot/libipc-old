@@ -119,7 +119,10 @@ pub const Context = struct {
         //   IPC_NETWORK="audio https://example.com/audio ;pong tls://pong.example.com/pong"
         var network_envvar = std.process.getEnvVarOwned(allocator, "IPC_NETWORK") catch |err| switch(err) {
             // error{ OutOfMemory, EnvironmentVariableNotFound, InvalidUtf8 } (ErrorSet)
-            error.EnvironmentVariableNotFound => { return null; }, // no need to contact IPCd
+            error.EnvironmentVariableNotFound => {
+                print("no IPC_NETWORK envvar: IPCd won't be contacted\n", .{});
+                return null;
+            }, // no need to contact IPCd
             else => { return err; },
         };
 
@@ -232,8 +235,15 @@ pub const Context = struct {
     // Create a unix socket.
     // Store std lib structures in the context.
     // TODO: find better error name
-    pub fn server_init(self: *Self, path: [] const u8) !net.StreamServer {
-        // print("context server init {s}\n", .{path});
+    pub fn server_init(self: *Self, service_name: [] const u8) !net.StreamServer {
+        var buffer: [1000]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&buffer);
+        var writer = fbs.writer();
+
+        try self.server_path(service_name, writer);
+        var path = fbs.getWritten();
+
+        print("context server init {s}\n", .{path});
         var server = net.StreamServer.init(.{});
         var socket_addr = try net.Address.initUnix(path);
         try server.listen(socket_addr);

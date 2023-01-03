@@ -37,10 +37,8 @@ fn create_service() !void {
     var ctx = try ipc.Context.init(allocator);
     defer ctx.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
-    const path = "/tmp/.TEST_USOCK";
-
     // SERVER SIDE: creating a service.
-    _ = try ctx.server_init(path);
+    _ = try ctx.server_init("ipcd");
 
     // signal handler, to quit when asked
     const S = struct {
@@ -132,16 +130,19 @@ fn create_service() !void {
                                        , allocator
                                        , "currently not implemented");
                     try ctx.write(response);
+                    response.deinit();
+                    m.deinit();
                 }
                 else {
                     // There is a problem: ipcd was contacted without providing
                     // a message, meaning there is nothing to do. This should be
                     // explicitely warned about.
-                    var m = try Message.init(some_event.origin
+                    var response = try Message.init(some_event.origin
                                 , Message.Type.ERROR
                                 , allocator
                                 , "lookup message without data");
-                    try ctx.write(m);
+                    try ctx.write(response);
+                    response.deinit();
                 }
             },
 
