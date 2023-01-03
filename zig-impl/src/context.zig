@@ -5,6 +5,8 @@ const net = std.net;
 const os = std.os;
 const fmt = std.fmt;
 
+const receive_fd = @import("./exchange-fd.zig").receive_fd;
+
 const Timer = std.time.Timer;
 
 const print = std.debug.print;
@@ -33,10 +35,7 @@ pub const Context = struct {
     allocator: std.mem.Allocator,  // Memory allocator.
     connections: Connections,      // Keep track of connections.
 
-    // TODO: List of "pollfd" structures within cinfos,
-    //       so we can pass it to poll(2). Share indexes with 'connections'.
-    //       For now, this list doesn't do anything.
-    //       Can even be replaced in a near future.
+    // "pollfd" structures passed to poll(2). Same indexes as "connections".
     pollfd: PollFD,  // .fd (fd_t) + .events (i16) + .revents (i16)
 
     tx: Messages,        // Messages to send, once their fd is available.
@@ -97,14 +96,12 @@ pub const Context = struct {
         const newfd = stream.handle;
         errdefer std.os.closeSocket(newfd);
         var newcon = Connection.init(ctype, null);
-        try self.connections.append(newcon);
-        try self.pollfd.append(.{ .fd = newfd
-                                , .events = std.os.linux.POLL.IN
-                                , .revents = 0 });
+        try self.add_ (newcon, newfd);
         return newfd;
     }
 
-    fn connect_ipcd (self: *Self, service_name: []const u8) !?i32 {
+    fn connect_ipcd (self: *Self, service_name: []const u8
+                    , connection_type: Connection.Type) !?i32 {
 
         const buffer_size = 10000;
         var buffer: [buffer_size]u8 = undefined;
@@ -138,15 +135,25 @@ pub const Context = struct {
         //   content: target service name;${IPC_NETWORK}
         //   example: pong;pong tls://example.com:8998/pong
 
-        var m = try Message.init (ipcdfd, fba, Message.Type.LOOKUP, lookupfbs.getWritten());
+        var m = try Message.init (ipcdfd, Message.Type.LOOKUP, fba, lookupfbs.getWritten());
         try self.write (m);
 
-        // TODO
-        // var response = something like "try os.recvmsg"
         // Read LOOKUP response
-        //   case error: ignore and move on
+        //   case error: ignore and move on (TODO)
         //   else: get fd sent by IPCd then close IPCd fd
+        var newfd = try receive_fd (ipcdfd);
+        var newcon = Connection.init(connection_type, null);
+        try self.add_ (newcon, newfd);
+    }
 
+    /// TODO: Add a new connection, but takes care of memory problems:
+    /// in case one of the arrays cannot sustain another entry, the other
+    /// won't be added.
+    fn add_ (self: *Self, new_connection: Connection, fd: os.socket_t) !void {
+        try self.connections.append(new_connection);
+        try self.pollfd.append(.{ .fd = fd
+                                , .events = std.os.linux.POLL.IN
+                                , .revents = 0 });
     }
 
     fn fd_to_index (self: Self, fd: i32) !usize {
@@ -200,10 +207,7 @@ pub const Context = struct {
 
         const newfd = client.stream.handle;
         var newcon = Connection.init(Connection.Type.IPC, null);
-        try self.connections.append(newcon);
-        try self.pollfd.append(.{ .fd = newfd
-                                , .events = std.os.linux.POLL.IN
-                                , .revents = 0 });
+        try self.add_ (newcon, newfd);
 
         const sfd = server.sockfd orelse return error.SocketLOL; // TODO
         // WARNING: imply every new item is last
@@ -222,10 +226,7 @@ pub const Context = struct {
         const newfd = server.sockfd orelse return error.SocketLOL; // TODO
         // Store the path in the Connection structure, so the UNIX socket file can be removed later.
         var newcon = Connection.init(Connection.Type.SERVER, try self.allocator.dupeZ(u8, path));
-        try self.connections.append(newcon);
-        try self.pollfd.append(.{ .fd = newfd
-                                , .events = std.os.linux.POLL.IN
-                                , .revents = 0 });
+        try self.add_ (newcon, newfd);
         return server;
     }
 

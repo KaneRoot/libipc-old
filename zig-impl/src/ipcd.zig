@@ -5,6 +5,11 @@ const fmt = std.fmt;
 const os = std.os;
 
 const ipc = @import("./main.zig");
+const Message = ipc.Message;
+
+// Import send_fd this way in order to produce docs for exchange-fd functions.
+const exchange_fd = @import("./exchange-fd.zig");
+const send_fd = exchange_fd.send_fd;
 
 const builtin = @import("builtin");
 const native_os = builtin.target.os.tag;
@@ -111,8 +116,33 @@ fn create_service() !void {
 
             .LOOKUP => {
                 print("Client asking for a service through ipcd.\n", .{});
-                print("NOT IMPLEMENTED, YET. It's a suicide, then.\n", .{});
-                break;
+                if (some_event.m) |m| {
+                    print("Message: {}\n", .{m});
+                    // 1. split message
+                    // TODO
+                    print("payload is: {s}\n", .{m.payload});
+                    // 2. find relevant part of the message
+                    // TODO
+                    // 3. connect whether asked to
+                    // TODO
+                    // 4. send_fd or send an error
+                    // TODO
+                    var response = try Message.init(some_event.origin
+                                       , Message.Type.ERROR
+                                       , allocator
+                                       , "currently not implemented");
+                    try ctx.write(response);
+                }
+                else {
+                    // There is a problem: ipcd was contacted without providing
+                    // a message, meaning there is nothing to do. This should be
+                    // explicitely warned about.
+                    var m = try Message.init(some_event.origin
+                                , Message.Type.ERROR
+                                , allocator
+                                , "lookup message without data");
+                    try ctx.write(m);
+                }
             },
 
             .TX => {

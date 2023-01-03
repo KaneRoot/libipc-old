@@ -72,6 +72,8 @@ test {
     std.testing.refAllDecls(Cmsghdr([3]std.os.fd_t));
 }
 
+/// Send a file descriptor and a message through a UNIX socket.
+/// TODO: currently voluntarily crashes if data isn't sent properly, should return an error instead.
 pub fn send_fd(sockfd: os.socket_t, msg: []const u8, fd: os.fd_t) void {
     var iov = [_]os.iovec_const{
         .{
@@ -107,7 +109,9 @@ pub fn send_fd(sockfd: os.socket_t, msg: []const u8, fd: os.fd_t) void {
     }
 }
 
-// WARNING: errors aren't RECEPTION errors.
+/// WARNING: recvmsg is a WIP.
+/// WARNING: errors aren't RECEPTION errors.
+/// WARNING: can only work on linux for now (recvmsg is lacking on other systems).
 pub fn recvmsg(
     /// The file descriptor of the sending socket.
     sockfd: os.socket_t,
@@ -180,13 +184,17 @@ pub fn recvmsg(
     }
 }
 
-pub fn receive_fd(sockfd: os.socket_t) !os.fd_t {
-    var buffer: [100]u8 = undefined;
+/// Receive a file descriptor through a UNIX socket.
+/// A message can be carried with it, copied into 'buffer'.
+/// WARNING: buffer must be at least 1500 bytes.
+pub fn receive_fd(sockfd: os.socket_t, buffer: []u8, msg_size: *usize) !os.fd_t {
+
+    var msg_buffer: [1500]u8 = undefined;
 
     var iov = [1]os.iovec{
         .{
-            .iov_base = buffer[0..],
-            .iov_len = buffer.len,
+              .iov_base = msg_buffer[0..]
+            , .iov_len  = buffer.len
         },
     };
 
@@ -204,14 +212,17 @@ pub fn receive_fd(sockfd: os.socket_t) !os.fd_t {
         .control = &cmsg,
         .controllen = @sizeOf(@TypeOf(cmsg)),
         .flags = 0,
-        };
+    };
 
-    const len = recvmsg(sockfd, msg, 0) catch |err| {
+    _ = recvmsg(sockfd, msg, 0) catch |err| {
         print("error sendmsg failed with {s}", .{@errorName(err)});
         return 0;
     };
 
-    print("received {} bytes, fd is {}\n", .{len, @as(i32, cmsg.dataPtr().*)});
-    print("iov base {s}\n", .{iov[0].iov_base[0..iov[0].iov_len - 1]});
-    return @as(i32, cmsg.dataPtr().*);
+    var received_fd = @as(i32, cmsg.dataPtr().*);
+    // print("received {} bytes, fd is {}\n", .{len, received_fd});
+    // print("payload (iov base) {s}\n", .{iov[0].iov_base[0..iov[0].iov_len - 1]});
+    std.mem.copy(u8, buffer, &msg_buffer);
+    msg_size.* = iov[0].iov_len;
+    return received_fd;
 }
