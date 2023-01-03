@@ -226,7 +226,7 @@ struct ipc_error usock_connect (int32_t * fd, const char *path)
 	int32_t sfd;
 	socklen_t peer_addr_size = sizeof (struct sockaddr_un);
 
-	T_PERROR_RIPC (((sfd = socket (AF_UNIX, SOCK_SEQPACKET, 0)) == -1), "socket", IPC_ERROR_USOCK_CONNECT__SOCKET);
+	T_PERROR_RIPC (((sfd = socket (AF_UNIX, SOCK_STREAM, 0)) == -1), "socket", IPC_ERROR_USOCK_CONNECT__SOCKET);
 	strncpy (my_addr.sun_path, path, (strlen (path) < PATH_MAX) ? strlen (path) : PATH_MAX);
 
 	TEST_IPC_RETURN_ON_ERROR(directory_setup_ (path));
@@ -260,7 +260,7 @@ struct ipc_error usock_init (int32_t * fd, const char *path)
 
 	TEST_IPC_RETURN_ON_ERROR(directory_setup_ (path));
 
-	T_PERROR_RIPC (((sfd = socket (AF_UNIX, SOCK_SEQPACKET, 0)) == -1)
+	T_PERROR_RIPC (((sfd = socket (AF_UNIX, SOCK_STREAM, 0)) == -1)
 		, "socket", IPC_ERROR_USOCK_INIT__WRONG_FILE_DESCRIPTOR);
 
 	// delete the unix socket if already created
