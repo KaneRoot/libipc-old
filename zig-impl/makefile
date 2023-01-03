@@ -20,7 +20,7 @@ doc: src/ipcd.zig
 	$(ZIGC) build-exe $(ZIGOPTS) $(ZIGMAKEDOC) $^
 
 TO_CLEAN != ls misc/*.zig | sed 's/.zig$\//' | sed 's_misc/__'
-TO_CLEAN += ipcd pong pongd
+TO_CLEAN += ipcd pong pongd snd-*
 TO_CLEAN += *.o
 clean:
 	@-rm $(TO_CLEAN) 2>/dev/null

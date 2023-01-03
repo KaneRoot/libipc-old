@@ -106,6 +106,7 @@ pub const Context = struct {
         const buffer_size = 10000;
         var buffer: [buffer_size]u8 = undefined;
         var fba = std.heap.FixedBufferAllocator.init(&buffer);
+        var allocator = fba.allocator();
 
         // Get IPC_NETWORK environment variable
         // IPC_NETWORK is shared with the network service to choose the protocol stack,
@@ -116,34 +117,37 @@ pub const Context = struct {
         //
         // Routing directives can be chained using " ;" separator:
         //   IPC_NETWORK="audio https://example.com/audio ;pong tls://pong.example.com/pong"
-        var network_envvar = std.process.getEnvVarOwned(fba, "IPC_NETWORK") catch |err| switch(err) {
+        var network_envvar = std.process.getEnvVarOwned(allocator, "IPC_NETWORK") catch |err| switch(err) {
             // error{ OutOfMemory, EnvironmentVariableNotFound, InvalidUtf8 } (ErrorSet)
-            .EnvironmentVariableNotFound => { return; }, // no need to contact IPCd
+            error.EnvironmentVariableNotFound => { return null; }, // no need to contact IPCd
             else => { return err; },
         };
 
         var lookupbuffer: [buffer_size]u8 = undefined;
-        var lookupfbs = std.heap.fixedBufferStream(&lookupbuffer);
+        var lookupfbs = std.io.fixedBufferStream(&lookupbuffer);
         var lookupwriter = lookupfbs.writer();
-        lookupwriter.print("{};{}", .{service_name, network_envvar});
+        try lookupwriter.print("{s};{s}", .{service_name, network_envvar});
 
         // Try to connect to the IPCd service
         var ipcdfd = try self.connect_service("ipcd");
-        defer self.close_fd (ipcdfd); // in any case, connection should be closed
+        defer self.close_fd (ipcdfd) catch {}; // in any case, connection should be closed
 
         // Send LOOKUP message
         //   content: target service name;${IPC_NETWORK}
         //   example: pong;pong tls://example.com:8998/pong
 
-        var m = try Message.init (ipcdfd, Message.Type.LOOKUP, fba, lookupfbs.getWritten());
+        var m = try Message.init (ipcdfd, Message.Type.LOOKUP, allocator, lookupfbs.getWritten());
         try self.write (m);
 
         // Read LOOKUP response
         //   case error: ignore and move on (TODO)
         //   else: get fd sent by IPCd then close IPCd fd
-        var newfd = try receive_fd (ipcdfd);
+        var reception_buffer: [1500]u8 = undefined;
+        var reception_size: usize = 0;
+        var newfd = try receive_fd (ipcdfd, &reception_buffer, &reception_size);
         var newcon = Connection.init(connection_type, null);
         try self.add_ (newcon, newfd);
+        return newfd;
     }
 
     /// TODO: Add a new connection, but takes care of memory problems:
@@ -179,7 +183,18 @@ pub const Context = struct {
 
         try self.server_path(service_name, writer);
         var path = fbs.getWritten();
+
         return self.connect(path);
+    }
+
+    pub fn connect_ipc (self: *Self, service_name: []const u8) !i32 {
+        // First, try ipcd.
+        if (try self.connect_ipcd (service_name, Connection.Type.IPC)) |fd| {
+            print("Connected via IPCd, fd is {}\n", .{fd});
+            return fd;
+        }
+        // In case this doesn't work, connect directly.
+        return try self.connect_service (service_name);
     }
 
     // Connection to a service, but with switched with the client fd.
@@ -371,6 +386,9 @@ pub const Context = struct {
                         else => { return err; },
                     };
                     if (maybe_message) |m| {
+                        if (m.t == .LOOKUP) {
+                            return Event.init(Event.Type.LOOKUP, i, fd.fd, m);
+                        }
                         return Event.init(Event.Type.MESSAGE, i, fd.fd, m);
                     }
 
@@ -419,9 +437,6 @@ pub const Context = struct {
                 return Event.init(Event.Type.ERROR, i, fd.fd, null);
             }
         }
-
-        // TODO: check for LOOKUP events.
-        //       LOOKUP = Client asking for a service through ipcd.
 
         return current_event;
     }

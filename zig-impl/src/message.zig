@@ -15,7 +15,7 @@ pub const Message = struct {
         SERVER_CLOSE,
         ERROR,
         DATA,
-        NETWORK_LOOKUP,
+        LOOKUP,
     };
 
     t: Message.Type,      // Internal message type.
