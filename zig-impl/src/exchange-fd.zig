@@ -208,21 +208,20 @@ pub fn receive_fd(sockfd: os.socket_t, buffer: []u8, msg_size: *usize) !os.fd_t 
         .name = undefined,
         .namelen = 0,
         .iov = &iov,
-        .iovlen = iov.len,
+        .iovlen = 1,
         .control = &cmsg,
         .controllen = @sizeOf(@TypeOf(cmsg)),
         .flags = 0,
     };
 
-    _ = recvmsg(sockfd, msg, 0) catch |err| {
-        print("error sendmsg failed with {s}", .{@errorName(err)});
+    var msglen = recvmsg(sockfd, msg, 0) catch |err| {
+        print("error recvmsg failed with {s}", .{@errorName(err)});
         return 0;
     };
 
     var received_fd = @as(i32, cmsg.dataPtr().*);
-    // print("received {} bytes, fd is {}\n", .{len, received_fd});
-    // print("payload (iov base) {s}\n", .{iov[0].iov_base[0..iov[0].iov_len - 1]});
     std.mem.copy(u8, buffer, &msg_buffer);
-    msg_size.* = iov[0].iov_len;
+    msg_size.* = msglen;
+
     return received_fd;
 }
