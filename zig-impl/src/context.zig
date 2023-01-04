@@ -385,16 +385,15 @@ pub const Context = struct {
                 }
                 // otherwise = new message or disconnection
                 else {
-                    // TODO: handle incoming message
-                    // TODO: handle_new_message
                     var maybe_message = self.read(i) catch |err| switch(err) {
                         error.ConnectionResetByPeer => {
                             print("connection reset by peer\n", .{});
                             try self.close(i);
-		                    return Event.init(Event.Type.DISCONNECTION, i, fd.fd, null);
+                            return Event.init(Event.Type.DISCONNECTION, i, fd.fd, null);
                         },
                         else => { return err; },
                     };
+
                     if (maybe_message) |m| {
                         if (m.t == .LOOKUP) {
                             return Event.init(Event.Type.LOOKUP, i, fd.fd, m);
