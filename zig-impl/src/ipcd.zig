@@ -158,6 +158,8 @@ fn create_service() !void {
                         try ctx.close_fd (newfd);
                         print("FDs removed\n" , .{});
                     }
+
+                    m.deinit();
                 }
                 else {
                     // There is a problem: ipcd was contacted without providing
