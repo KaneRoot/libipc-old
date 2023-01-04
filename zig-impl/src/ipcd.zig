@@ -71,7 +71,7 @@ fn create_service() !void {
     try os.sigaction(os.SIG.HUP, &sa, null);
 
     var some_event: ipc.Event = undefined;
-    ctx.timer = 10000; // 10 seconds
+    ctx.timer = 1000; // 1 second
     var count: u32 = 0;
     while(! S.should_quit) {
         some_event = try ctx.wait_event();
@@ -117,23 +117,22 @@ fn create_service() !void {
             .LOOKUP => {
                 print("Client asking for a service through ipcd.\n", .{});
                 if (some_event.m) |m| {
-                    print("Message: {}\n", .{m});
+                    print("{}\n", .{m});
 
                     // 1. split message
-                    print("payload is: {s}\n", .{m.payload});
                     var iterator = std.mem.split(u8, m.payload, ";");
                     var service_to_contact = iterator.first();
-                    print("service to contact: {s}\n", .{service_to_contact});
+                    // print("service to contact: {s}\n", .{service_to_contact});
                     var final_destination: ?[]const u8 = null;
 
                     // 2. find relevant part of the message
                     while (iterator.next()) |next| {
-                        print("next part: {s}\n", .{next});
+                        // print("next part: {s}\n", .{next});
                         var iterator2 = std.mem.split(u8, next, " ");
                         var sname = iterator2.first();
                         var target = iterator2.next();
                         if (target) |t| {
-                            print ("sname: {s} - target: {s}\n", .{sname, t});
+                            // print ("sname: {s} - target: {s}\n", .{sname, t});
                             if (std.mem.eql(u8, service_to_contact, sname)) {
                                 final_destination = t;
                             }
@@ -147,16 +146,13 @@ fn create_service() !void {
                     //       Should include TCP connections in a near future.
 
                     if (final_destination) |dest| {
-                        print("service IPCd should contact for the client: {s}, via {s}\n"
-                            , .{service_to_contact, dest});
+                        print("Let's contact {s} (original service requested: {s})\n"
+                            , .{dest, service_to_contact});
 
                         var newfd = try ctx.connect_service (dest);
                         send_fd (some_event.origin, "ok", newfd);
-                        print("fd sent\n" , .{});
                         try ctx.close_fd (some_event.origin);
-                        print("FD 1 removed\n" , .{});
                         try ctx.close_fd (newfd);
-                        print("FDs removed\n" , .{});
                     }
 
                     m.deinit();

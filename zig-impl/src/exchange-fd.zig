@@ -194,7 +194,7 @@ pub fn receive_fd(sockfd: os.socket_t, buffer: []u8, msg_size: *usize) !os.fd_t 
     var iov = [1]os.iovec{
         .{
               .iov_base = msg_buffer[0..]
-            , .iov_len  = buffer.len
+            , .iov_len  = msg_buffer.len
         },
     };
 
@@ -205,13 +205,13 @@ pub fn receive_fd(sockfd: os.socket_t, buffer: []u8, msg_size: *usize) !os.fd_t 
     });
 
     var msg: std.os.msghdr = .{
-        .name = undefined,
-        .namelen = 0,
-        .iov = &iov,
-        .iovlen = 1,
-        .control = &cmsg,
-        .controllen = @sizeOf(@TypeOf(cmsg)),
-        .flags = 0,
+          .name = undefined
+        , .namelen = 0
+        , .iov = &iov
+        , .iovlen = 2
+        , .control = &cmsg
+        , .controllen = @sizeOf(@TypeOf(cmsg))
+        , .flags = 0
     };
 
     var msglen = recvmsg(sockfd, msg, 0) catch |err| {
