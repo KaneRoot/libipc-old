@@ -72,11 +72,13 @@ fn create_service() !void {
 
     var some_event: ipc.Event = undefined;
     ctx.timer = 10000; // 10 seconds
+    var count: u32 = 0;
     while(! S.should_quit) {
         some_event = try ctx.wait_event();
         switch (some_event.t) {
             .TIMER => {
-                print("Timer!\n", .{});
+                print("\rTimer! ({})", .{count});
+                count += 1;
             },
 
             .CONNECTION => {
@@ -116,22 +118,46 @@ fn create_service() !void {
                 print("Client asking for a service through ipcd.\n", .{});
                 if (some_event.m) |m| {
                     print("Message: {}\n", .{m});
+
                     // 1. split message
-                    // TODO
                     print("payload is: {s}\n", .{m.payload});
+                    var iterator = std.mem.split(u8, m.payload, ";");
+                    var service_to_contact = iterator.first();
+                    print("service to contact: {s}\n", .{service_to_contact});
+                    var final_destination: ?[]const u8 = null;
+
                     // 2. find relevant part of the message
-                    // TODO
-                    // 3. connect whether asked to
-                    // TODO
-                    // 4. send_fd or send an error
-                    // TODO
-                    var response = try Message.init(some_event.origin
-                                       , Message.Type.ERROR
-                                       , allocator
-                                       , "currently not implemented");
-                    try ctx.write(response);
-                    response.deinit();
-                    m.deinit();
+                    while (iterator.next()) |next| {
+                        print("next part: {s}\n", .{next});
+                        var iterator2 = std.mem.split(u8, next, " ");
+                        var sname = iterator2.first();
+                        var target = iterator2.next();
+                        if (target) |t| {
+                            print ("sname: {s} - target: {s}\n", .{sname, t});
+                            if (std.mem.eql(u8, service_to_contact, sname)) {
+                                final_destination = t;
+                            }
+                        }
+                        else {
+                            print("ERROR: no target in: {s}\n", .{next});
+                        }
+                    }
+                    // 3. connect whether asked to and send a message
+                    // TODO: currently only switching with other UNIX sockets ^^'.
+                    //       Should include TCP connections in a near future.
+
+                    if (final_destination) |dest| {
+                        print("service IPCd should contact for the client: {s}, via {s}\n"
+                            , .{service_to_contact, dest});
+
+                        var newfd = try ctx.connect_service (dest);
+                        send_fd (some_event.origin, "ok", newfd);
+                        print("fd sent\n" , .{});
+                        try ctx.close_fd (some_event.origin);
+                        print("FD 1 removed\n" , .{});
+                        try ctx.close_fd (newfd);
+                        print("FDs removed\n" , .{});
+                    }
                 }
                 else {
                     // There is a problem: ipcd was contacted without providing

@@ -148,6 +148,15 @@ pub const Context = struct {
         var reception_buffer: [1500]u8 = undefined;
         var reception_size: usize = 0;
         var newfd = try receive_fd (ipcdfd, &reception_buffer, &reception_size);
+        var response = reception_buffer[0..reception_size - 1];
+        if (response.len > 0) {
+            print ("receive_fd:message received: {s} (len: {}\n)\n", .{response, response.len});
+        }
+        const ok = "ok";
+        if (! std.mem.eql(u8, response[0..1], ok[0..1])) {
+            print("THIS IS NOT OKAY :O\n", .{}); // DEBUG TODO FIXME
+            return error.IPCdFailed;
+        }
         var newcon = Connection.init(connection_type, null);
         try self.add_ (newcon, newfd);
         return newfd;
@@ -169,6 +178,7 @@ pub const Context = struct {
            if (self.pollfd.items[i].fd == fd) {
                return i;
            }
+           i += 1;
         }
         return error.IndexNotFound;
     }
@@ -461,6 +471,8 @@ pub const Context = struct {
             return error.IndexOutOfBounds;
         }
 
+        print("closing client/server at index {}\n", .{index});
+
         // close the connection and remove it from the two structures
         var con = self.connections.swapRemove(index);
         // Remove service's UNIX socket file.
@@ -470,6 +482,8 @@ pub const Context = struct {
         }
         var pollfd = self.pollfd.swapRemove(index);
         std.os.close(pollfd.fd);
+
+        print("closing client at index {}\n", .{index});
 
         // Remove all its non-sent messages.
         var i: usize = 0;
