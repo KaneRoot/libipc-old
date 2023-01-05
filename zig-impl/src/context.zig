@@ -130,7 +130,7 @@ pub const Context = struct {
         try lookupwriter.print("{s};{s}", .{service_name, network_envvar});
 
         // Try to connect to the IPCd service
-        var ipcdfd = try self.connect_service("ipcd");
+        var ipcdfd = try self.connect_service("ipc");
         defer self.close_fd (ipcdfd) catch {}; // in any case, connection should be closed
 
         // Send LOOKUP message

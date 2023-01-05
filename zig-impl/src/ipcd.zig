@@ -17,16 +17,14 @@ const print = std.debug.print;
 const testing = std.testing;
 const print_eq = @import("./util.zig").print_eq;
 
-// TODO: standard library is unecessary complex regarding networking.
-//       Should libipc drop it and use plain old file descriptors instead?
+// Standard library is unecessary complex regarding networking.
+// libipc drops it and uses plain old file descriptors instead.
 
-// TODO: path => std.XXX.YYY, not simple [] const u8
+// API should completely obfuscate the inner structures.
+// Only libipc structures should be necessary to write any networking code,
+// users should only work with Context and Message, mostly.
 
-// TODO: both Connection and pollfd store file descriptors.
-//       Connection stores either Stream (server) or Address (client).
-
-// TODO: API should completely obfuscate the inner structures.
-//       Only structures in this file should be necessary.
+// QUESTION: should libipc use std.fs.path and not simple [] const u8?
 
 fn create_service() !void {
     const config = .{.safety = true};
@@ -38,7 +36,7 @@ fn create_service() !void {
     defer ctx.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
     // SERVER SIDE: creating a service.
-    _ = try ctx.server_init("ipcd");
+    _ = try ctx.server_init("ipc");
 
     // signal handler, to quit when asked
     const S = struct {
