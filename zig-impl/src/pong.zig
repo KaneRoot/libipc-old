@@ -30,7 +30,7 @@ pub fn main() !u8 {
     }
 
     var pongfd = try ctx.connect_ipc(service_to_contact);
-    var message = try Message.init(pongfd, Message.Type.DATA, allocator, "bounce me");
+    var message = try Message.init(pongfd, allocator, "bounce me");
     try ctx.schedule(message);
 
     var some_event: ipc.Event = undefined;

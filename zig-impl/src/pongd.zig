@@ -60,7 +60,7 @@ fn create_service() !void {
     try os.sigaction(os.SIG.HUP, &sa, null);
 
     var some_event: ipc.Event = undefined;
-    ctx.timer = 10000; // 10 seconds
+    ctx.timer = 20000; // 2 seconds
     var count: u32 = 0;
     while(! S.should_quit) {
         some_event = try ctx.wait_event();

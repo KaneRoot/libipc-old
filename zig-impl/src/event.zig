@@ -34,14 +34,12 @@ pub const Event = struct {
     //    to it. This is a lookup.
 
     pub const Type = enum {
-        NOT_SET,       // Default. TODO: should we keep this?
         ERROR,         // A problem occured.
         EXTERNAL,      // Message received from a non IPC socket.
         SWITCH,        // Message to send to a corresponding fd.
         CONNECTION,    // New user.
         DISCONNECTION, // User disconnected.
         MESSAGE,       // New message.
-        LOOKUP,        // Client asking for a service through ipcd.
         TIMER,         // Timeout in the poll(2) function.
         TX,            // Message sent.
     };
@@ -65,7 +63,7 @@ pub const Event = struct {
     }
 
     pub fn clean(self: *Self) void {
-        self.t = Event.Type.NOT_SET;
+        self.t = Event.Type.ERROR;
         self.index = @as(usize,0);
         self.origin = @as(i32,0);
         if (self.m) |message| {
@@ -89,9 +87,9 @@ test "Event - creation and display" {
     const allocator = gpa.allocator();
 
     var s = "hello!!";
-    var m = try Message.init(1, Message.Type.DATA, allocator, s); // fd type payload
+    var m = try Message.init(1, allocator, s); // fd type payload
     defer m.deinit();
     var e = Event.init(Event.Type.CONNECTION, 5, 8, m); // type index origin message
 
-    try print_eq("event.Event.Type.CONNECTION, origin: 8, index 5, message: [fd: 1, message.Message.Type.DATA, payload: [hello!!]]", e);
+    try print_eq("event.Event.Type.CONNECTION, origin: 8, index 5, message: [fd: 1, payload: [hello!!]]", e);
 }

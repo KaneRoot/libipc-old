@@ -103,18 +103,6 @@ fn create_service() !void {
             },
 
             .MESSAGE => {
-                if (some_event.m) |m| {
-                    print("New message: {}\n", .{m});
-                    print("Let's echo it...\n", .{});
-                    try ctx.schedule(m);
-                }
-                else {
-                    print("Error while receiving new message.\n", .{});
-                    print("Ignoring...\n", .{});
-                }
-            },
-
-            .LOOKUP => {
                 print("Client asking for a service through ipcd.\n", .{});
                 if (some_event.m) |m| {
                     print("{}\n", .{m});
@@ -162,7 +150,6 @@ fn create_service() !void {
                     // a message, meaning there is nothing to do. This should be
                     // explicitely warned about.
                     var response = try Message.init(some_event.origin
-                                , Message.Type.ERROR
                                 , allocator
                                 , "lookup message without data");
                     try ctx.write(response);
@@ -172,11 +159,6 @@ fn create_service() !void {
 
             .TX => {
                 print("Message sent.\n", .{});
-            },
-
-            .NOT_SET => {
-                print("Event type not set. Something is wrong, let's suicide.\n", .{});
-                break;
             },
 
             .ERROR => {

@@ -137,7 +137,7 @@ pub const Context = struct {
         //   content: target service name;${IPC_NETWORK}
         //   example: pong;pong tls://example.com:8998/pong
 
-        var m = try Message.init (ipcdfd, Message.Type.LOOKUP, allocator, lookupfbs.getWritten());
+        var m = try Message.init (ipcdfd, allocator, lookupfbs.getWritten());
         try self.write (m);
 
         // Read LOOKUP response
@@ -310,7 +310,7 @@ pub const Context = struct {
 
     // Wait an event.
     pub fn wait_event(self: *Self) !Event {
-        var current_event: Event = Event.init(Event.Type.NOT_SET, 0, 0, null);
+        var current_event: Event = Event.init(Event.Type.ERROR, 0, 0, null);
         var wait_duration: i32 = -1; // -1 == unlimited
 
         if (self.timer) |t| { wait_duration = t; }
@@ -389,9 +389,6 @@ pub const Context = struct {
                     };
 
                     if (maybe_message) |m| {
-                        if (m.t == .LOOKUP) {
-                            return Event.init(Event.Type.LOOKUP, i, fd.fd, m);
-                        }
                         return Event.init(Event.Type.MESSAGE, i, fd.fd, m);
                     }
 
@@ -505,7 +502,7 @@ pub const Context = struct {
 //    var s = Switch.init(3,8);
 //    var payload = "hello!!";
 //    // fd type payload
-//    var m = Message.init(0, Message.Type.DATA, payload);
+//    var m = Message.init(0, allocator, payload);
 //
 //    // type index origin message
 //    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
@@ -610,7 +607,7 @@ const ConnectThenSendMessageThread = struct {
         var message_writer = message_fbs.writer();
         // 'fd' parameter is not taken into account here (no loop)
 
-        var m = try Message.init(0, Message.Type.DATA, allocator, "Hello world!");
+        var m = try Message.init(0, allocator, "Hello world!");
         defer m.deinit();
         _ = try m.write(message_writer);
 

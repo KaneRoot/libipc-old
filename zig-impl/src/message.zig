@@ -11,14 +11,6 @@ pub const Messages = std.ArrayList(Message);
 
 pub const Message = struct {
 
-    pub const Type = enum {
-        SERVER_CLOSE,
-        ERROR,
-        DATA,
-        LOOKUP,
-    };
-
-    t: Message.Type,      // Internal message type.
     fd: i32,              // File descriptor concerned about this message.
     payload: []const u8,
 
@@ -26,19 +18,10 @@ pub const Message = struct {
 
     const Self = @This();
 
-    // TODO
-    //pub fn initFromConnection(fd: i32) Self {
-    //    return Self{
-    //        .t        = Message.Type.ERROR,
-    //        .fd       = fd,
-    //        .payload  = "hello",
-    //    };
-    //}
-
-    pub fn init(fd: i32, t: Message.Type
+    pub fn init(fd: i32
                , allocator: std.mem.Allocator
                , payload: []const u8) !Self {
-        return Message { .fd = fd, .t = t
+        return Message { .fd = fd
             , .allocator = allocator
             , .payload = try allocator.dupe(u8, payload) };
     }
@@ -49,34 +32,26 @@ pub const Message = struct {
 
     pub fn read(fd: i32, buffer: []const u8, allocator: std.mem.Allocator) !Self {
 
-        // var hexbuf: [4000]u8 = undefined;
-        // var hexfbs = std.io.fixedBufferStream(&hexbuf);
-        // var hexwriter = hexfbs.writer();
-        // try hexdump.hexdump(hexwriter, "Message.read input buffer", buffer);
-        // print("{s}\n", .{hexfbs.getWritten()});
-
         var fbs = std.io.fixedBufferStream(buffer);
         var reader = fbs.reader();
 
-        const msg_type    = @intToEnum(Message.Type, try reader.readByte());
         const msg_len     = try reader.readIntBig(u32);
-        if (msg_len >= buffer.len) {
+        if (msg_len >= buffer.len - 4) {
             return error.wrongMessageLength;
         }
-        const msg_payload = buffer[5..5+msg_len];
+        const msg_payload = buffer[4..4+msg_len];
 
-        return try Message.init(fd, msg_type, allocator, msg_payload);
+        return try Message.init(fd, allocator, msg_payload);
     }
 
     pub fn write(self: Self, writer: anytype) !usize {
-        try writer.writeByte(@enumToInt(self.t));
         try writer.writeIntBig(u32, @truncate(u32, self.payload.len));
-        return 5 + try writer.write(self.payload);
+        return 4 + try writer.write(self.payload);
     }
 
     pub fn format(self: Self, comptime _: []const u8, _: fmt.FormatOptions, out_stream: anytype) !void {
-        try fmt.format(out_stream, "fd: {}, {}, payload: [{s}]",
-            .{self.fd, self.t, self.payload} );
+        try fmt.format(out_stream, "fd: {}, payload: [{s}]",
+            .{self.fd, self.payload} );
     }
 };
 
@@ -88,10 +63,10 @@ test "Message - creation and display" {
     const allocator = gpa.allocator();
 
     var s = "hello!!";
-    var m = try Message.init(1, Message.Type.DATA, allocator, s);
+    var m = try Message.init(1, allocator, s);
     defer m.deinit();
 
-    try print_eq("fd: 1, message.Message.Type.DATA, payload: [hello!!]", m);
+    try print_eq("fd: 1, payload: [hello!!]", m);
 }
 
 test "Message - read and write" {
@@ -103,7 +78,7 @@ test "Message - read and write" {
 
     // First, create a message.
     var s = "hello!!";
-    var first_message = try Message.init(1, Message.Type.DATA, allocator, s);
+    var first_message = try Message.init(1, allocator, s);
     defer first_message.deinit();
 
     // Test its content.
