@@ -4,13 +4,9 @@ const net = std.net;
 const fmt = std.fmt;
 const os = std.os;
 
-const ipc = @import("./main.zig");
-
-const builtin = @import("builtin");
-const native_os = builtin.target.os.tag;
 const print = std.debug.print;
-const testing = std.testing;
-const print_eq = @import("./util.zig").print_eq;
+const ipc = @import("./main.zig");
+const Message = ipc.Message;
 
 pub fn main() !u8 {
     const config = .{.safety = true};
@@ -21,36 +17,49 @@ pub fn main() !u8 {
     var ctx = try ipc.Context.init(allocator);
     defer ctx.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
-    // TODO: currently using a bullshit path.
-    const path = "/tmp/.TEST_USOCK";
+    // The service to contact, either provided with the SERVICE envvar
+    // or simply using "pong".
+    var should_free_service_to_contact: bool = true;
+    var service_to_contact = std.process.getEnvVarOwned(allocator, "SERVICE") catch blk: {
+        should_free_service_to_contact = false;
+        break :blk "pong";
+    };
+    defer {
+        if (should_free_service_to_contact)
+            allocator.free(service_to_contact);
+    }
 
-    // CLIENT SIDE: connecting to a service.
-    var sfd = try ctx.connect (path);
-
-    var first_msg = try ipc.Message.init(sfd, ipc.Message.Type.DATA, allocator, "hello this is pong!!");
-    try ctx.write(first_msg);
-    first_msg.deinit();
+    var pongfd = try ctx.connect_ipc(service_to_contact);
+    var message = try Message.init(pongfd, Message.Type.DATA, allocator, "bounce me");
+    try ctx.schedule(message);
 
     var some_event: ipc.Event = undefined;
-    ctx.timer = 10000; // 10 seconds
+    ctx.timer = 2000; // 2 seconds
     while(true) {
         some_event = try ctx.wait_event();
         switch (some_event.t) {
             .TIMER => {
                 print("Timer!\n", .{});
             },
+
             .MESSAGE => {
                 if (some_event.m) |m| {
-                    print("Message received: {}\n", .{m});
+                    print("message has been bounced: {}\n", .{m});
                     m.deinit();
+                    break;
                 }
                 else {
-                    print("A message should have been received, weird\n", .{});
+                    print("Received empty message, ERROR.\n", .{});
+                    break;
                 }
-                break;
             },
+
+            .TX => {
+                print("Message sent.\n", .{});
+            },
+
             else => {
-                print("Unexpected message: {s}\n", .{some_event});
+                print("Unexpected event: {}, let's suicide\n", .{some_event});
                 break;
             },
         }
