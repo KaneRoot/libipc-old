@@ -24,13 +24,13 @@ const Connections = @import("./connection.zig").Connections;
 
 pub const PollFD = std.ArrayList(std.os.pollfd);
 
+pub const IPC_HEADER_SIZE = 5; // Size (5 bytes) then content.
+pub const IPC_BASE_SIZE = 2000000; // 2 MB, plenty enough space for messages
+pub const IPC_MAX_MESSAGE_SIZE = IPC_BASE_SIZE-IPC_HEADER_SIZE;
+pub const IPC_VERSION = 1;
+
 // Context of the whole networking state.
 pub const Context = struct {
-    pub const IPC_HEADER_SIZE = 5; // Size (5 bytes) then content.
-    pub const IPC_BASE_SIZE = 2000000; // 2 MB, plenty enough space for messages
-    pub const IPC_MAX_MESSAGE_SIZE = IPC_BASE_SIZE-IPC_HEADER_SIZE;
-    pub const IPC_VERSION = 1;
-
     rundir: [] u8,
     allocator: std.mem.Allocator,  // Memory allocator.
     connections: Connections,      // Keep track of connections.
@@ -38,8 +38,8 @@ pub const Context = struct {
     // "pollfd" structures passed to poll(2). Same indexes as "connections".
     pollfd: PollFD,  // .fd (fd_t) + .events (i16) + .revents (i16)
 
-    tx: Messages,        // Messages to send, once their fd is available.
-    switchdb: ?Switches, // Relations between fd.
+    tx: Messages,       // Messages to send, once their fd is available.
+    switchdb: Switches, // Relations between fd.
 
     timer: ?i32 = null,  // No timer by default (no TIMER event).
 
@@ -62,7 +62,7 @@ pub const Context = struct {
            , .connections = Connections.init(allocator)
            , .pollfd = PollFD.init(allocator)
            , .tx = Messages.init(allocator)
-           , .switchdb = null
+           , .switchdb = try Switches.init(allocator)
            , .allocator = allocator
         };
     }
@@ -85,7 +85,7 @@ pub const Context = struct {
             m.deinit();
         }
         self.tx.deinit();
-        if (self.switchdb) |sdb| { sdb.deinit(); }
+        self.switchdb.deinit();
     }
 
     // Both simple connection and the switched one share this code.
@@ -249,7 +249,7 @@ pub const Context = struct {
         try self.server_path(service_name, writer);
         var path = fbs.getWritten();
 
-        print("context server init {s}\n", .{path});
+        // print("context server init {s}\n", .{path});
         var server = net.StreamServer.init(.{});
         var socket_addr = try net.Address.initUnix(path);
         try server.listen(socket_addr);
@@ -267,7 +267,7 @@ pub const Context = struct {
         // a Stream from the fd.
         var stream = net.Stream { .handle = m.fd };
 
-        var buffer: [1000]u8 = undefined;
+        var buffer: [IPC_MAX_MESSAGE_SIZE]u8 = undefined;
         var fbs = std.io.fixedBufferStream(&buffer);
         var writer = fbs.writer();
 
@@ -285,7 +285,7 @@ pub const Context = struct {
             return error.IndexOutOfBounds;
         }
 
-        var buffer: [2000000]u8 = undefined; // TODO: FIXME??
+        var buffer: [IPC_MAX_MESSAGE_SIZE]u8 = undefined; // TODO: FIXME??
         var packet_size: usize = undefined;
 
         // TODO: this is a problem from the network API in Zig,
@@ -556,14 +556,13 @@ test "Context - creation, display and memory check" {
     var path = fbs.getWritten();
 
     // SERVER SIDE: creating a service.
-    var server = c.server_init(path) catch |err| switch(err) {
+    var server = c.server_init("simple-context-test") catch |err| switch(err) {
         error.FileNotFound => {
             print ("\nError: cannot init server at {s}\n", .{path});
             return err;
         },
         else => return err,
     };
-    defer server.deinit();
     defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
 
     const t = try std.Thread.spawn(.{}, CommunicationTestThread.clientFn, .{});
@@ -616,45 +615,43 @@ const ConnectThenSendMessageThread = struct {
 };
 
 
- test "Context - creation, echo once" {
-     const config = .{.safety = true};
-     var gpa = std.heap.GeneralPurposeAllocator(config){};
-     defer _ = gpa.deinit();
+test "Context - creation, echo once" {
+    const config = .{.safety = true};
+    var gpa = std.heap.GeneralPurposeAllocator(config){};
+    defer _ = gpa.deinit();
 
-     const allocator = gpa.allocator();
+    const allocator = gpa.allocator();
 
-     var c = try Context.init(allocator);
-     defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
+    var c = try Context.init(allocator);
+    defer c.deinit(); // There. Can't leak. Isn't Zig wonderful?
 
-     var buffer: [1000]u8 = undefined;
-     var fbs = std.io.fixedBufferStream(&buffer);
-     var writer = fbs.writer();
-     try c.server_path("simple-context-test", writer);
-     var path = fbs.getWritten();
+    var buffer: [1000]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buffer);
+    var writer = fbs.writer();
+    try c.server_path("simple-context-test", writer);
+    var path = fbs.getWritten();
 
      // SERVER SIDE: creating a service.
-    var server = c.server_init(path) catch |err| switch(err) {
+    var server = c.server_init("simple-context-test") catch |err| switch(err) {
         error.FileNotFound => {
             print ("\nError: cannot init server at {s}\n", .{path});
             return err;
         },
         else => return err,
     };
-     defer server.deinit();
-     defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
+    defer std.fs.cwd().deleteFile(path) catch {}; // Once done, remove file.
 
-     const t = try std.Thread.spawn(.{}, ConnectThenSendMessageThread.clientFn, .{});
-     defer t.join();
+    const t = try std.Thread.spawn(.{}, ConnectThenSendMessageThread.clientFn, .{});
+    defer t.join();
 
-     // Server.accept returns a net.StreamServer.Connection.
-     var client = try server.accept();
-     defer client.stream.close();
-     var buf: [1000]u8 = undefined;
-     const n = try client.stream.reader().read(&buf);
-     var m = try Message.read(8, buf[0..n], allocator); // 8 == random client's fd number
-     defer m.deinit();
+    // Server.accept returns a net.StreamServer.Connection.
+    var client = try server.accept();
+    defer client.stream.close();
+    var buf: [1000]u8 = undefined;
+    const n = try client.stream.reader().read(&buf);
+    var m = try Message.read(8, buf[0..n], allocator); // 8 == random client's fd number
+    defer m.deinit();
 
-     try testing.expectEqual(@as(usize, 12), m.payload.len);
-     try testing.expectEqualSlices(u8, m.payload, "Hello world!");
- }
-
+    try testing.expectEqual(@as(usize, 12), m.payload.len);
+    try testing.expectEqualSlices(u8, m.payload, "Hello world!");
+}

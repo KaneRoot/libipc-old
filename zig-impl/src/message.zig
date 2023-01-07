@@ -35,8 +35,8 @@ pub const Message = struct {
         var fbs = std.io.fixedBufferStream(buffer);
         var reader = fbs.reader();
 
-        const msg_len     = try reader.readIntBig(u32);
-        if (msg_len >= buffer.len - 4) {
+        const msg_len = try reader.readIntBig(u32);
+        if (msg_len > buffer.len - 4) {
             return error.wrongMessageLength;
         }
         const msg_payload = buffer[4..4+msg_len];
@@ -56,21 +56,20 @@ pub const Message = struct {
 };
 
 test "Message - creation and display" {
-    // fd type payload
+    // fd payload
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var s = "hello!!";
-    var m = try Message.init(1, allocator, s);
+    var m = try Message.init(1, allocator, "hello!!");
     defer m.deinit();
 
     try print_eq("fd: 1, payload: [hello!!]", m);
 }
 
 test "Message - read and write" {
-    // fd type payload
+    // fd payload
     const config = .{.safety = true};
     var gpa = std.heap.GeneralPurposeAllocator(config){};
     defer _ = gpa.deinit();
