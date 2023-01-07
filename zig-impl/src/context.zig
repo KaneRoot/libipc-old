@@ -308,7 +308,7 @@ pub const Context = struct {
         return try Message.read(fd, buffer[0..], self.allocator);
     }
 
-    // Wait an event.
+    // Wait for an event.
     pub fn wait_event(self: *Self) !Event {
         var current_event: Event = Event.init(Event.Type.ERROR, 0, 0, null);
         var wait_duration: i32 = -1; // -1 == unlimited
@@ -370,7 +370,7 @@ pub const Context = struct {
                 }
                 // SWITCHED = send message to the right dest (or drop the switch)
                 else if (self.connections.items[i].t == .SWITCHED) {
-                    // TODO: send message to SWITCH dest
+                    // TODO: read message from fd.fd + schedule read message
                     return Event.init(Event.Type.SWITCH, i, fd.fd, null);
                 }
                 // EXTERNAL = user handles IO
@@ -403,7 +403,7 @@ pub const Context = struct {
 
                 // SWITCHED = write message for its switch buddy (callbacks)
                 if (self.connections.items[i].t == .SWITCHED) {
-                    // TODO: handle_writing_switched_message
+                    // TODO: write message
                     return Event.init(Event.Type.SWITCH, i, fd.fd, null);
                 }
                 else {

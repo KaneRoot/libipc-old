@@ -18,19 +18,69 @@ const Event = ipc.Event;
 pub const Switches = struct {
     const Self = @This();
 
-    // db: std.HashList(i32, ManagedConnection),
+    db: std.AutoArrayHashMap(i32, ManagedConnection),
 
-    pub fn init (_: Allocator) !Self {
+    pub fn init (allocator: Allocator) Self {
         return Self {
-            // .db = try std.HashList(i32, ManagedConnection).init(allocator),
+            .db = std.AutoArrayHashMap(i32, ManagedConnection).init(allocator),
         };
     }
 
-    pub fn deinit (_: *Self) void {
+    pub fn deinit (self: *Self) void {
+        self.deinit();
     }
 
+    // read message from switched fd
+    pub fn read (self: *Self, fd: i32) !?Message
+    {
+        // If the socket is associated to another one for ipcd:
+        // read and write automatically and provide a new IPC_EVENT_TYPE indicating the switch.
 
-    // pub fn read(fd: i32)
+        var managedconnection = self.db.get(fd);
+        var message: Message = undefined;
+
+        var r: CBEventType = managedconnection.in(fd, &message);
+
+        switch (r) {
+            // The message should be ignored (protocol specific).
+            .IGNORE => { return null; },
+            // No error. A message was generated.
+            .NO_ERROR => {
+                message.fd = managedconnection.dest;
+                return message;
+            },
+            .FD_CLOSING => { return error.closeFD; },
+            // Generic error, or the message was read but with errors.
+            .FD_ERROR
+            .PARSING_ERROR => {
+                return error.generic;
+            },
+        };
+    }
+
+    // fd_switching_write enables to write a message to a switched fd.
+    pub fn write (message: Message) !void {
+
+        var managedconnection = self.db.get(message.fd);
+        var r = managedconnection.out(managedconnection.dest, message);
+
+        switch (r) {
+            // The message should be ignored (protocol specific).
+            // No error. A message was generated.
+            .NO_ERROR => {
+                return;
+            },
+            .FD_CLOSING => { return error.closeFD; },
+            // Generic error, or the message was read but with errors.
+            .IGNORE
+            .FD_ERROR
+            .PARSING_ERROR => {
+                return error.generic;
+            },
+        };
+
+        unreachable;
+    }
 };
 
 pub const ManagedConnection = struct {
@@ -50,6 +100,19 @@ pub const ManagedConnection = struct {
 //    }
 };
 
+test "creation and display" {
+   const config = .{.safety = true};
+   var gpa = std.heap.GeneralPurposeAllocator(config){};
+   defer _ = gpa.deinit();
+   const allocator = gpa.allocator();
+
+   var switchdb = Switches.init(allocator);
+   defer switchdb.deinit();
+
+   switchdb.db.put(5, ManagedConnection {.dest = 6});
+   switchdb.db.put(6, ManagedConnection {.dest = 5});
+}
+
 // For IO callbacks (switching).
 // pub const Type = enum {
 //     NO_ERROR,      // No error. A message was generated.
@@ -60,7 +123,7 @@ pub const ManagedConnection = struct {
 // };
 
 fn default_in (origin: i32, m: *Message) CBEventType {
-    print ("receiving a message originated by {}\n", .{origin});
+    print ("receiving a message originated from {}\n", .{origin});
     var buffer: [2000000]u8 = undefined; // TODO: FIXME??
     var packet_size: usize = undefined;
 
@@ -73,15 +136,15 @@ fn default_in (origin: i32, m: *Message) CBEventType {
         return CBEventType.FD_CLOSING;
     }
 
+    // TODO: handle memory errors.
     m.* = Message.read(origin, buffer[0..], std.heap.c_allocator)
           catch return CBEventType.FD_ERROR;
 
-    //** There is a message, send it to the corresponding fd **/
     return CBEventType.NO_ERROR;
 }
 
 fn default_out (origin: i32, m: *Message) CBEventType {
-    print ("sending a message originated by {}\n", .{origin});
+    print ("sending a message originated from {}\n", .{origin});
     // Message contains the fd, no need to search for
     // the right structure to copy, let's just recreate
     // a Stream from the fd.
