@@ -34,3 +34,9 @@
 # Errors
 
 Double returning type => no need for specific return structures.
+
+# Timer
+
+	const Timer = std.time.Timer;
+	var timer = try Timer.start();
+	var duration = timer.read() / 1000000; // ns -> ms
