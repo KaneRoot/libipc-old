@@ -36,7 +36,8 @@ pub const Event = struct {
     pub const Type = enum {
         ERROR,         // A problem occured.
         EXTERNAL,      // Message received from a non IPC socket.
-        SWITCH,        // Message to send to a corresponding fd.
+        SWITCH_RX,     // Message received from a switched FD.
+        SWITCH_TX,     // Message sent to a switched fd.
         CONNECTION,    // New user.
         DISCONNECTION, // User disconnected.
         MESSAGE,       // New message.

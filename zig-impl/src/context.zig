@@ -62,7 +62,7 @@ pub const Context = struct {
            , .connections = Connections.init(allocator)
            , .pollfd = PollFD.init(allocator)
            , .tx = Messages.init(allocator)
-           , .switchdb = try Switches.init(allocator)
+           , .switchdb = Switches.init(allocator)
            , .allocator = allocator
         };
     }
@@ -370,7 +370,10 @@ pub const Context = struct {
                 }
                 // SWITCHED = send message to the right dest (or drop the switch)
                 else if (self.connections.items[i].t == .SWITCHED) {
-                    // TODO: read message from fd.fd + schedule read message
+                    self.swichdb.handle_event_read (&current_event, i, fd.fd);
+                    if (current_event.t == .SWITCH_RX) {
+                        self.schedule(current_event.message.?);
+                    }
                     return Event.init(Event.Type.SWITCH, i, fd.fd, null);
                 }
                 // EXTERNAL = user handles IO
@@ -403,8 +406,7 @@ pub const Context = struct {
 
                 // SWITCHED = write message for its switch buddy (callbacks)
                 if (self.connections.items[i].t == .SWITCHED) {
-                    // TODO: write message
-                    return Event.init(Event.Type.SWITCH, i, fd.fd, null);
+                    return self.swichdb.handle_event_write (&current_event, i, fd.fd);
                 }
                 else {
                     // otherwise = write message for the msg.fd
