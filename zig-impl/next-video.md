@@ -30,3 +30,7 @@
 	ACCESS_LOGS ?= ./access.log
 	servedoc:
 		darkhttpd docs/ --addr 127.0.0.1 --port 35000 --log $(ACCESS_LOGS)
+
+# Errors
+
+Double returning type => no need for specific return structures.
