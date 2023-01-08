@@ -19,7 +19,7 @@ const Switch = @import("./switch.zig").Switch;
 const print_eq = @import("./util.zig").print_eq;
 
 const Messages = @import("./message.zig").Messages;
-const Switches = @import("./switch.zig").Switches;
+const SwitchDB = @import("./switch.zig").SwitchDB;
 const Connections = @import("./connection.zig").Connections;
 
 pub const PollFD = std.ArrayList(std.os.pollfd);
@@ -39,7 +39,7 @@ pub const Context = struct {
     pollfd: PollFD,  // .fd (fd_t) + .events (i16) + .revents (i16)
 
     tx: Messages,       // Messages to send, once their fd is available.
-    switchdb: Switches, // Relations between fd.
+    switchdb: SwitchDB, // Relations between fd.
 
     timer: ?i32 = null,  // No timer by default (no TIMER event).
 
@@ -62,7 +62,7 @@ pub const Context = struct {
            , .connections = Connections.init(allocator)
            , .pollfd = PollFD.init(allocator)
            , .tx = Messages.init(allocator)
-           , .switchdb = Switches.init(allocator)
+           , .switchdb = SwitchDB.init(allocator)
            , .allocator = allocator
         };
     }
@@ -207,16 +207,6 @@ pub const Context = struct {
         // In case this doesn't work, connect directly.
         return try self.connect_service (service_name);
     }
-
-    // Connection to a service, but with switched with the client fd.
-//    pub fn connection_switched(self: *Self
-//            , path: [] const u8
-//            , clientfd: i32) !i32 {
-//        // print("connection switched from {} to path {s}\n", .{clientfd, path});
-//        var newfd = try self.connect_ (Connection.Type.SWITCHED, path);
-//        // TODO: record switch.
-//        return newfd;
-//    }
 
     pub fn accept_new_client(self: *Self, event: *Event, server_index: usize) !void {
         // net.StreamServer
@@ -370,7 +360,7 @@ pub const Context = struct {
                 }
                 // SWITCHED = send message to the right dest (or drop the switch)
                 else if (self.connections.items[i].t == .SWITCHED) {
-                    self.swichdb.handle_event_read (&current_event, i, fd.fd);
+                    current_event = self.swichdb.handle_event_read (i, fd.fd);
                     if (current_event.t == .SWITCH_RX) {
                         self.schedule(current_event.message.?);
                     }
@@ -404,21 +394,25 @@ pub const Context = struct {
             if(fd.revents & std.os.linux.POLL.OUT > 0) {
                 fd.events &= ~ @as(i16, std.os.linux.POLL.OUT);
 
+                var index: usize = undefined;
+                for (self.tx.items) |m, index_| {
+                    if (m.fd == self.pollfd.items[i].fd) {
+                        index = index_;
+                        break;
+                    }
+                }
+
+                var m = self.tx.swapRemove(index);
+
                 // SWITCHED = write message for its switch buddy (callbacks)
                 if (self.connections.items[i].t == .SWITCHED) {
-                    return self.swichdb.handle_event_write (&current_event, i, fd.fd);
+                    current_event = self.swichdb.handle_event_write (i, fd.fd, m);
+                    // TODO: remove the message from the tx array.
+                    // Message inner memory is already freed.
+                    return current_event;
                 }
                 else {
                     // otherwise = write message for the msg.fd
-                    var index: usize = undefined;
-                    for (self.tx.items) |m, index_| {
-                        if (m.fd == self.pollfd.items[i].fd) {
-                            index = index_;
-                            break;
-                        }
-                    }
-
-                    var m = self.tx.swapRemove(index);
                     try self.write (m);
                     m.deinit();
                     return Event.init(Event.Type.TX, i, fd.fd, null);
