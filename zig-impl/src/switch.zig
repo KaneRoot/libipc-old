@@ -16,6 +16,7 @@ const print = std.debug.print;
 const Event = ipc.Event;
 
 /// SwitchDB 
+/// Functions read and write: handle 
 
 pub const SwitchDB = struct {
     const Self = @This();
@@ -38,20 +39,21 @@ pub const SwitchDB = struct {
         }
     }
 
-    // Read message from a switched fd.
+    /// Dig the "db" hashmap, perform "in" fn, may provide a message.
+    /// Errors from the "in" fn are reported as Zig errors.
     pub fn read (self: *Self, fd: i32) !?Message {
-        // TODO: assert there is an entry with this fd as a key.
-        var managedconnection = self.db.get(fd);
+        // assert there is an entry with this fd as a key.
+        var managedconnection = self.db.get(fd) orelse return error.unregisteredFD;
         var message: Message = undefined;
 
-        var r: CBEventType = managedconnection.?.in(fd, &message);
+        var r: CBEventType = managedconnection.in(fd, &message);
 
         switch (r) {
             // The message should be ignored (protocol specific).
             CBEventType.IGNORE => { return null; },
             // No error. A message was generated.
             CBEventType.NO_ERROR => {
-                message.fd = managedconnection.?.dest;
+                message.fd = managedconnection.dest;
                 return message;
             },
             CBEventType.FD_CLOSING => { return error.closeFD; },
@@ -64,11 +66,12 @@ pub const SwitchDB = struct {
         unreachable;
     }
 
-    // Write a message to a switched fd.
+    /// Dig the "db" hashmap and perform "out" fn.
+    /// Errors from the "out" fn are reported as Zig errors.
     pub fn write (self: *Self, message: Message) !void {
-        // TODO: assert there is an entry with this fd as a key.
-        var managedconnection = self.db.get(message.fd);
-        var r = managedconnection.?.out(managedconnection.?.dest, &message);
+        // assert there is an entry with this fd as a key.
+        var managedconnection = self.db.get(message.fd) orelse return error.unregisteredFD;
+        var r = managedconnection.out(managedconnection.dest, &message);
 
         switch (r) {
             // The message should be ignored (protocol specific).
@@ -87,12 +90,14 @@ pub const SwitchDB = struct {
         unreachable;
     }
 
+    /// TODO: remove relevant info in the db when there is an error.
     pub fn handle_event_read (self: *Self, index: usize, fd: i32) Event {
         var message: ?Message = null;
         message = self.read (fd) catch |err| switch(err) {
             error.closeFD => {
                 return Event.init(Event.Type.DISCONNECTION, index, fd, null);
             },
+            error.unregisteredFD,
             error.generic => {
                 return Event.init(Event.Type.ERROR, index, fd, null);
             },
@@ -100,6 +105,7 @@ pub const SwitchDB = struct {
         return Event.init(Event.Type.SWITCH_RX, index, fd, message);
     }
 
+    /// TODO: remove relevant info in the db when there is an error.
     pub fn handle_event_write (self: *Self, index: usize, message: Message) Event {
         defer message.deinit();
         var fd = message.fd;
@@ -107,11 +113,18 @@ pub const SwitchDB = struct {
             error.closeFD => {
                 return Event.init(Event.Type.DISCONNECTION, index, fd, null);
             },
+            error.unregisteredFD,
             error.generic => {
                 return Event.init(Event.Type.ERROR, index, fd, null);
             },
         };
         return Event.init(Event.Type.SWITCH_TX, index, fd, null);
+    }
+
+    fn nuke (self: *Self, fd: i32) void {
+        if (self.db.fetchSwapRemove(fd)) |kv| {
+            _ = self.db.swapRemove(kv.value.dest);
+        }
     }
 };
 
@@ -205,6 +218,23 @@ test "unsuccessful exchanges" {
     var message = try Message.init(6, allocator, "coucou");
     var event_3 = switchdb.handle_event_write (5, message);
     if (event_3.m) |_| { return error.ShouldNotCarryMessage; }
+}
+
+test "nuke 'em" {
+    const config = .{.safety = true};
+    var gpa = std.heap.GeneralPurposeAllocator(config){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var switchdb = SwitchDB.init(allocator);
+    defer switchdb.deinit();
+
+    try switchdb.db.put(5, ManagedConnection {.dest = 6, .in = unsuccessful_in, .out = unsuccessful_out});
+    try switchdb.db.put(6, ManagedConnection {.dest = 5, .in = unsuccessful_in, .out = unsuccessful_out});
+
+    switchdb.nuke(5);
+
+    try testing.expect(switchdb.db.count() == 0);
 }
 
 fn default_in (origin: i32, m: *Message) CBEventType {
