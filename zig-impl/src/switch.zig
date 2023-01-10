@@ -39,6 +39,15 @@ pub const SwitchDB = struct {
         }
     }
 
+    pub fn set_callbacks(self: *Self, fd: i32
+        , in  : *const fn (origin: i32, m: *Message) CBEventType
+        , out : *const fn (origin: i32, m: *const Message) CBEventType) !void {
+
+        var managedconnection = self.db.get(fd) orelse return error.unregisteredFD;
+        managedconnection.in = in;
+        managedconnection.out = out;
+    }
+
     /// Dig the "db" hashmap, perform "in" fn, may provide a message.
     /// Errors from the "in" fn are reported as Zig errors.
     pub fn read (self: *Self, fd: i32) !?Message {
@@ -90,7 +99,6 @@ pub const SwitchDB = struct {
         unreachable;
     }
 
-    /// TODO: remove relevant info in the db when there is an error.
     pub fn handle_event_read (self: *Self, index: usize, fd: i32) Event {
         var message: ?Message = null;
         message = self.read (fd) catch |err| switch(err) {
@@ -105,7 +113,7 @@ pub const SwitchDB = struct {
         return Event.init(Event.Type.SWITCH_RX, index, fd, message);
     }
 
-    /// TODO: remove relevant info in the db when there is an error.
+    /// Message is free'd in any case.
     pub fn handle_event_write (self: *Self, index: usize, message: Message) Event {
         defer message.deinit();
         var fd = message.fd;
@@ -121,7 +129,12 @@ pub const SwitchDB = struct {
         return Event.init(Event.Type.SWITCH_TX, index, fd, null);
     }
 
-    fn nuke (self: *Self, fd: i32) void {
+    /// Simple wrapper around self.db.get.
+    pub fn getDest (self: *Self, fd: i32) !i32 {
+        return self.db.get(fd).?.dest;
+    }
+
+    pub fn nuke (self: *Self, fd: i32) void {
         if (self.db.fetchSwapRemove(fd)) |kv| {
             _ = self.db.swapRemove(kv.value.dest);
         }
@@ -232,8 +245,8 @@ test "nuke 'em" {
     try switchdb.db.put(5, ManagedConnection {.dest = 6, .in = unsuccessful_in, .out = unsuccessful_out});
     try switchdb.db.put(6, ManagedConnection {.dest = 5, .in = unsuccessful_in, .out = unsuccessful_out});
 
+    try testing.expect(switchdb.db.count() == 2);
     switchdb.nuke(5);
-
     try testing.expect(switchdb.db.count() == 0);
 }
 

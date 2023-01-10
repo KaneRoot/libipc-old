@@ -94,8 +94,14 @@ fn create_service() !void {
                 break;
             },
 
-            .SWITCH => {
-                print("Message to send to a corresponding fd.\n", .{});
+            .SWITCH_RX => {
+                print("Message has been received (SWITCH).\n", .{});
+                print("NOT IMPLEMENTED, YET. It's a suicide, then.\n", .{});
+                break;
+            },
+
+            .SWITCH_TX => {
+                print("Message has been sent (SWITCH).\n", .{});
                 print("NOT IMPLEMENTED, YET. It's a suicide, then.\n", .{});
                 break;
             },

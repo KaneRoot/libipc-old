@@ -298,6 +298,18 @@ pub const Context = struct {
         return try Message.read(fd, buffer[0..], self.allocator);
     }
 
+    /// Before closing the fd, test it via the 'fcntl' syscall.
+    /// This is useful for switched connections: FDs could be closed without libipc being informed.
+    fn safe_close_fd (self: *Self, fd: i32) void {
+        var should_close = true;
+        _ = std.os.fcntl(fd, std.os.F.GETFD, 0) catch {
+            should_close = false;
+        };
+        if (should_close) {
+            self.close_fd(fd) catch {};
+        }
+    }
+
     // Wait for an event.
     pub fn wait_event(self: *Self) !Event {
         var current_event: Event = Event.init(Event.Type.ERROR, 0, 0, null);
@@ -360,11 +372,32 @@ pub const Context = struct {
                 }
                 // SWITCHED = send message to the right dest (or drop the switch)
                 else if (self.connections.items[i].t == .SWITCHED) {
-                    current_event = self.swichdb.handle_event_read (i, fd.fd);
-                    if (current_event.t == .SWITCH_RX) {
-                        self.schedule(current_event.message.?);
+                    current_event = self.switchdb.handle_event_read (i, fd.fd);
+                    switch (current_event.t) {
+                        .SWITCH_RX => {
+                            try self.schedule(current_event.m.?);
+                        },
+                        // TODO: DISCONNECTION and ERROR do not handle errors.
+                        .DISCONNECTION => {
+                            var dest = try self.switchdb.getDest(fd.fd);
+                            print("disconnection from {} -> removing {}, too\n", .{fd.fd, dest});
+                            self.switchdb.nuke(fd.fd);
+                            self.safe_close_fd(fd.fd);
+                            self.safe_close_fd(dest);
+                        },
+                        .ERROR => {
+                            var dest = try self.switchdb.getDest(fd.fd);
+                            print("error from {} -> removing {}, too\n", .{fd.fd, dest});
+                            self.switchdb.nuke(fd.fd);
+                            self.safe_close_fd(fd.fd);
+                            self.safe_close_fd(dest);
+                        },
+                        else => {
+                            print("switch rx incoherent error: {}\n", .{current_event.t});
+                            return error.incoherentSwitchError;
+                        },
                     }
-                    return Event.init(Event.Type.SWITCH, i, fd.fd, null);
+                    return Event.init(Event.Type.SWITCH_RX, i, fd.fd, null);
                 }
                 // EXTERNAL = user handles IO
                 else if (self.connections.items[i].t == .EXTERNAL) {
@@ -406,9 +439,25 @@ pub const Context = struct {
 
                 // SWITCHED = write message for its switch buddy (callbacks)
                 if (self.connections.items[i].t == .SWITCHED) {
-                    current_event = self.swichdb.handle_event_write (i, fd.fd, m);
+                    current_event = self.switchdb.handle_event_write (i, m);
                     // TODO: remove the message from the tx array.
                     // Message inner memory is already freed.
+                    switch (current_event.t) {
+                        .SWITCH_TX => {
+                            try self.schedule(current_event.m.?);
+                        },
+                        .ERROR => {
+                            var dest = try self.switchdb.getDest(fd.fd);
+                            print("error from {} -> removing {}, too\n", .{fd.fd, dest});
+                            self.switchdb.nuke(fd.fd);
+                            self.safe_close_fd(fd.fd);
+                            self.safe_close_fd(dest);
+                        },
+                        else => {
+                            print("switch tx incoherent error: {}\n", .{current_event.t});
+                            return error.incoherentSwitchError;
+                        },
+                    }
                     return current_event;
                 }
                 else {
@@ -492,23 +541,6 @@ pub const Context = struct {
         }
     }
 };
-
-//test "Simple structures - init, display and memory check" {
-//    // origin destination
-//    var s = Switch.init(3,8);
-//    var payload = "hello!!";
-//    // fd type payload
-//    var m = Message.init(0, allocator, payload);
-//
-//    // type index origin message
-//    var e = Event.init(Event.Type.CONNECTION, 5, 8, &m);
-
-//    // CLIENT SIDE: connection to a service.
-//    _ = try c.connect(path);
-
-//    // TODO: connection to a server, but switched with clientfd "3".
-//    _ = try c.connection_switched(path, 3);
-//}
 
 // Creating a new thread: testing UNIX communication.
 // This is a client sending a raw "Hello world!" bytestring,
