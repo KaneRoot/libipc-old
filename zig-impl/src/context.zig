@@ -209,6 +209,14 @@ pub const Context = struct {
         return try self.connect_service (service_name);
     }
 
+    /// Add a new file descriptor to follow, labeled as EXTERNAL.
+    /// Useful for protocol daemons (ex: TCPd) listening to a socket for external connections,
+    /// clients trying to reach a libipc service.
+    pub fn add_external (self: *Self, newfd: i32) !void {
+        var newcon = Connection.init(Connection.Type.EXTERNAL, null);
+        try self.add_ (newcon, newfd);
+    }
+
     pub fn accept_new_client(self: *Self, event: *Event, server_index: usize) !void {
         // net.StreamServer
         var serverfd = self.pollfd.items[server_index].fd;
