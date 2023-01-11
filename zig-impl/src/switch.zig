@@ -39,6 +39,11 @@ pub const SwitchDB = struct {
         }
     }
 
+    pub fn add_switch(self: *Self, fd1: i32, fd2: i32) !void {
+        try self.db.put(fd1, ManagedConnection {.dest = fd2});
+        try self.db.put(fd2, ManagedConnection {.dest = fd1});
+    }
+
     pub fn set_callbacks(self: *Self, fd: i32
         , in  : *const fn (origin: i32, m: *Message) CBEventType
         , out : *const fn (origin: i32, m: *const Message) CBEventType) !void {

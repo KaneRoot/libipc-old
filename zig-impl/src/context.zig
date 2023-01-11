@@ -21,6 +21,7 @@ const print_eq = @import("./util.zig").print_eq;
 const Messages = @import("./message.zig").Messages;
 const SwitchDB = @import("./switch.zig").SwitchDB;
 const Connections = @import("./connection.zig").Connections;
+const CBEventType = @import("./main.zig").CBEvent.Type;
 
 pub const PollFD = std.ArrayList(std.os.pollfd);
 
@@ -268,6 +269,29 @@ pub const Context = struct {
 
     pub fn schedule (self: *Self, m: Message) !void {
         try self.tx.append(m);
+    }
+
+    /// Read from a client (indexed by a FD).
+    pub fn read_fd (self: *Self, fd: i32) !?Message {
+        return try self.read(try self.fd_to_index (fd));
+    }
+
+    pub fn add_switch(self: *Self, fd1: i32, fd2: i32) !void {
+        var index_origin = try self.fd_to_index(fd1);
+        var index_destinataire = try self.fd_to_index(fd2);
+
+        self.connections.items[index_origin].t = Connection.Type.SWITCHED;
+        self.connections.items[index_destinataire].t = Connection.Type.SWITCHED;
+
+        try self.switchdb.add_switch(fd1,fd2);
+        print("ADD SWITCH\n", .{});
+        print("self: {}\n", .{self});
+    }
+
+    pub fn set_switch_callbacks(self: *Self, fd: i32
+        , in  : *const fn (origin: i32, m: *Message) CBEventType
+        , out : *const fn (origin: i32, m: *const Message) CBEventType) !void {
+        try self.switchdb.set_callbacks(fd,in, out);
     }
 
     pub fn read (self: *Self, index: usize) !?Message {
