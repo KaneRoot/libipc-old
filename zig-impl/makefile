@@ -2,12 +2,17 @@ all:
 
 ZIGMAKEDOC   = -femit-docs -fno-emit-bin
 ZIGOPTIM    ?= Debug
-ZIGBUSEOPTS ?= -O$(ZIGOPTIM) -freference-trace
+# Linking against libc is almost mandatory, C allocator is used
+# for switching (default reception and emission functions).
+ZIGBUSEOPTS ?= -O$(ZIGOPTIM) -freference-trace -lc
 ZIGUSROPTS  ?=
 ZIGC        ?= zig
 ZIGOPTS     ?= $(ZIGBUSEOPTS) $(ZIGUSROPTS)
 
 ipcd: src/ipcd.zig
+	$(ZIGC) build-exe $(ZIGOPTS) $^
+
+tcpd: src/tcpd.zig
 	$(ZIGC) build-exe $(ZIGOPTS) $^
 
 test-libipc: src/main.zig
