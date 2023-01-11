@@ -256,7 +256,7 @@ test "nuke 'em" {
 }
 
 fn default_in (origin: i32, m: *Message) CBEventType {
-    print ("receiving a message originated from {}\n", .{origin});
+    // print ("receiving a message originated from {}\n", .{origin});
     var buffer: [2000000]u8 = undefined; // TODO: FIXME??
     var packet_size: usize = undefined;
 
@@ -275,8 +275,8 @@ fn default_in (origin: i32, m: *Message) CBEventType {
     return CBEventType.NO_ERROR;
 }
 
-fn default_out (origin: i32, m: *const Message) CBEventType {
-    print ("sending a message originated from {}\n", .{origin});
+fn default_out (_: i32, m: *const Message) CBEventType {
+    // print ("sending a message originated from {}\n", .{origin});
     // Message contains the fd, no need to search for
     // the right structure to copy, let's just recreate
     // a Stream from the fd.

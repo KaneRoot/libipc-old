@@ -284,8 +284,6 @@ pub const Context = struct {
         self.connections.items[index_destinataire].t = Connection.Type.SWITCHED;
 
         try self.switchdb.add_switch(fd1,fd2);
-        print("ADD SWITCH\n", .{});
-        print("self: {}\n", .{self});
     }
 
     pub fn set_switch_callbacks(self: *Self, fd: i32

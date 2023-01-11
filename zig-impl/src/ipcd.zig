@@ -16,6 +16,7 @@ const native_os = builtin.target.os.tag;
 const print = std.debug.print;
 const testing = std.testing;
 const print_eq = @import("./util.zig").print_eq;
+const URI = @import("./util.zig").URI;
 
 // Standard library is unecessary complex regarding networking.
 // libipc drops it and uses plain old file descriptors instead.
@@ -135,33 +136,28 @@ fn create_service() !void {
                             print("ERROR: no target in: {s}\n", .{next});
                         }
                     }
-                    // 3. connect whether asked to and send a message
-                    // TODO: currently only switching with other UNIX sockets ^^'.
-                    //       Should contact <protocol>d.
 
+                    // 3. connect whether asked to and send a message
                     if (final_destination) |dest| {
-                        print("Let's contact {s} (original service requested: {s})\n"
+                        print("Let's contact {s} (service requested: {s})\n"
                             , .{dest, service_to_contact});
 
-                        var iterator3 = std.mem.split(u8, dest, "://");
-                        var protocol = iterator3.first();
-                        print("Protocol: {s}\n" , .{protocol});
+                        var uri = URI.read(dest);
 
                         // 1. in case there is no URI
-                        if (std.mem.eql(u8, protocol, dest)) {
+                        if (std.mem.eql(u8, uri.protocol, dest)) {
                             var newfd = try ctx.connect_service (dest);
                             send_fd (some_event.origin, "ok", newfd);
                             try ctx.close_fd (newfd);
                         }
-                        else if (std.mem.eql(u8, protocol, "unix")) {
-                            var newfd = try ctx.connect_service (iterator3.next().?);
+                        else if (std.mem.eql(u8, uri.protocol, "unix")) {
+                            var newfd = try ctx.connect_service (uri.address);
                             send_fd (some_event.origin, "ok", newfd);
                             try ctx.close_fd (newfd);
                         }
                         // 2. else, contact <protocol>d or directly the dest in case there is none.
                         else {
-                            print("should contact {s}d: TODO\n", .{protocol});
-                            var servicefd = try ctx.connect_service (protocol);
+                            var servicefd = try ctx.connect_service (uri.protocol);
                             defer ctx.close_fd (servicefd) catch {};
                             // TODO: make a simple protocol between IPCd and <protocol>d
                             //       NEED inform about the connection (success or fail)
@@ -178,7 +174,7 @@ fn create_service() !void {
                                 defer r.deinit();
                                 if (std.mem.eql(u8, r.payload, "ok")) {
                                     // OK
-                                    print("service has established the connection\n", .{});
+                                    // print("service has established the connection\n", .{});
                                     send_fd (some_event.origin, "ok", servicefd);
                                 }
                                 else if (std.mem.eql(u8, r.payload, "ne")) {
