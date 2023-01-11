@@ -40,3 +40,11 @@ Double returning type => no need for specific return structures.
 	const Timer = std.time.Timer;
 	var timer = try Timer.start();
 	var duration = timer.read() / 1000000; // ns -> ms
+
+var value = db.get(key) orelse return error.notHere;
+
+# There is still room for improvement.
+
+When the result actually is a single value (anonymous hash).
+	src/switch.zig:125:37: error: binary operator `|` has whitespace on one side, but not the other.
+	        self.db.fetchSwapRemove(fd) |k,v|{
