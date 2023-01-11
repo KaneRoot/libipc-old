@@ -199,7 +199,8 @@ fn create_service() !void {
                     print("Finally, add switching\n", .{});
                     // Let's switch the connections!
                     try ctx.add_switch(some_event.origin, stream.handle);
-                    // TODO: should probably invoke: ctx.set_switch_callbacks ();
+                    // Could invoke ctx.set_switch_callbacks but TCP sockets are
+                    // working pretty well with default functions.
                 }
                 else {
                     // TCPd was contacted without providing a message, nothing to do.
