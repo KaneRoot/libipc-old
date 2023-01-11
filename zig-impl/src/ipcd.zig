@@ -175,6 +175,7 @@ fn create_service() !void {
                             try ctx.write(message);
                             var response_from_service = try ctx.read_fd(servicefd);
                             if (response_from_service) |r| {
+                                defer r.deinit();
                                 if (std.mem.eql(u8, r.payload, "ok")) {
                                     // OK
                                     print("service has established the connection\n", .{});

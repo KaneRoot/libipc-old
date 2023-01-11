@@ -464,11 +464,9 @@ pub const Context = struct {
                 // SWITCHED = write message for its switch buddy (callbacks)
                 if (self.connections.items[i].t == .SWITCHED) {
                     current_event = self.switchdb.handle_event_write (i, m);
-                    // TODO: remove the message from the tx array.
                     // Message inner memory is already freed.
                     switch (current_event.t) {
                         .SWITCH_TX => {
-                            try self.schedule(current_event.m.?);
                         },
                         .ERROR => {
                             var dest = try self.switchdb.getDest(fd.fd);

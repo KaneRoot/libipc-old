@@ -289,6 +289,5 @@ fn default_out (origin: i32, m: *const Message) CBEventType {
     // returning basic errors, no details.
     _ = m.write(writer) catch return CBEventType.ERROR;
     _ = stream.write (fbs.getWritten()) catch return CBEventType.ERROR;
-
     return CBEventType.NO_ERROR;
 }
