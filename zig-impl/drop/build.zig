@@ -7,11 +7,13 @@ pub fn build(b: *std.build.Builder) void {
 
     const lib = b.addStaticLibrary("ipc", "src/main.zig");
     lib.setOutputDir("build");
+    lib.linkLibC();
     lib.setBuildMode(mode);
     lib.install();
 
     const solib = b.addSharedLibrary("ipc", "src/main.zig", b.version(0, 0, 1));
     solib.setOutputDir("build");
+    solib.linkLibC();
     solib.setBuildMode(mode);
     solib.install();
 
