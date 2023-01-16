@@ -35,11 +35,18 @@ int main(void) {
 		return 1;
 	}
 
-#if 0
+	char message[10000];
+	unsigned int size = 10000;
+#if 1
+	ret = ipc_read_fd (ctx, servicefd, message, &size);
+
+	if (ret != 0) {
+		printf ("Cannot read from the service fd: %d.\n", ret);
+		return 1;
+	}
+#else
 	// TODO: loop over ipc_wait
 	int event_type, index, originfd = 0;
-	unsigned int size = 0;
-	char message[10000];
 	printf ("Wait for a response.\n", ret);
 	ret = ipc_wait (&event_type, &index, &originfd, &size, message);
 
@@ -47,6 +54,7 @@ int main(void) {
 		printf ("Error while waiting for an event.\n");
 		return 1;
 	}
+#endif
 
 	if (size == 0) {
 		printf ("No message returned.\n");
@@ -55,7 +63,6 @@ int main(void) {
 
 	message[size] = '\0';
 	printf ("Response: %s.\n", message);
-#endif
 
 	printf ("Deinit context\n");
 	ipc_context_deinit (ctx);

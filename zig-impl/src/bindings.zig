@@ -32,6 +32,7 @@ export fn ipc_context_deinit (ctx: *Context) callconv(.C) void {
 
 export fn ipc_write (ctx: *Context, servicefd: i32, mcontent: [*]const u8, mlen: u32) i32 {
 
+    // TODO: better default length.
     var buffer: [100000]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buffer);
 
@@ -40,8 +41,19 @@ export fn ipc_write (ctx: *Context, servicefd: i32, mcontent: [*]const u8, mlen:
     return 0;
 }
 
+export fn ipc_read_fd (ctx: *Context, fd: i32, buffer: [*]u8, buflen: *usize) i32 {
+    var m = ctx.read_fd (fd) catch {return -1;} orelse return -2;
+    if (m.payload.len > buflen.*) return -3;
+    buflen.* = m.payload.len;
+
+    var fbs = std.io.fixedBufferStream(buffer[0..buflen.*]);
+    var writer = fbs.writer();
+    _ = writer.write(m.payload) catch return -4;
+
+    return 0;
+}
+
 // pub fn schedule (ctx: *Context, m: Message) !void
-// pub fn read_fd (ctx: *Context, fd: i32) !?Message
 // pub fn read (ctx: *Context, index: usize) !?Message
 // 
 // pub fn wait_event(ctx: *Context) !Event
