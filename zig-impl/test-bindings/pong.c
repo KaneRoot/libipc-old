@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(void) {
 	int ret = 0;
@@ -12,6 +13,9 @@ int main(void) {
 		return 1;
 	}
 
+	printf ("Context initiated.\n");
+
+#if 0
 	printf ("Connect to a 'pong' service.\n");
 	ret = ipc_connect_service (ctx, &servicefd, "pong");
 
@@ -47,6 +51,13 @@ int main(void) {
 
 	message[size] = '\0';
 	printf ("Response: %s.\n", message);
+#endif
 
+	printf ("Deinit context\n");
+	ipc_context_deinit (ctx);
+
+	free(ctx);
+
+	printf ("Context freed.\n");
 	return 0;
 }

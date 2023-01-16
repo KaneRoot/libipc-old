@@ -183,11 +183,8 @@ pub const Context = struct {
         return error.IndexNotFound;
     }
 
-    // Return the new fd. Can be useful to the caller.
-    pub fn connect(self: *Self, path: []const u8) !i32 {
-        return self.connect_ (Connection.Type.IPC, path);
-    }
-
+    /// Connect to the service directly, without reaching IPCd first.
+    /// Return the connection FD.
     pub fn connect_service (self: *Self, service_name: []const u8) !i32 {
         var buffer: [1000]u8 = undefined;
         var fbs = std.io.fixedBufferStream(&buffer);
@@ -196,9 +193,11 @@ pub const Context = struct {
         try self.server_path(service_name, writer);
         var path = fbs.getWritten();
 
-        return self.connect(path);
+        return self.connect_ (Connection.Type.IPC, path);
     }
 
+    /// Tries to connect to IPCd first, then the service (if needed).
+    /// Return the connection FD.
     pub fn connect_ipc (self: *Self, service_name: []const u8) !i32 {
         // First, try ipcd.
         if (try self.connect_ipcd (service_name, Connection.Type.IPC)) |fd| {
@@ -217,7 +216,7 @@ pub const Context = struct {
         try self.add_ (newcon, newfd);
     }
 
-    pub fn accept_new_client(self: *Self, event: *Event, server_index: usize) !void {
+    fn accept_new_client(self: *Self, event: *Event, server_index: usize) !void {
         // net.StreamServer
         var serverfd = self.pollfd.items[server_index].fd;
         var path = self.connections.items[server_index].path orelse return error.ServerWithNoPath;
