@@ -1,42 +1,34 @@
 const std = @import("std");
+const fmt = std.fmt;
+const heap = std.heap;
 const testing = std.testing;
 
 const print = std.debug.print;
 
-const SOMESTRUCT = packed struct {
-    somevalue: i32,
+pub const Context = struct {
+    rundir: [] u8,
     const Self = @This();
 
-    fn update(self: *Self) callconv(.C) i32 {
-        self.somevalue += 1;
-        return self.somevalue;
+    pub fn init() !Self {
+        var rundir = try std.heap.c_allocator.dupeZ(u8, "/tmp/libipc-run/");
+        return Self { .rundir = rundir };
+    }
+
+    pub fn deinit(self: *Self) void {
+        std.heap.c_allocator.free(self.rundir);
     }
 };
 
-export fn some_struct_bidouillage_init(ptr: *anyopaque) callconv(.C) void {
-    var pointer = @ptrCast(*SOMESTRUCT, @alignCast(@alignOf(SOMESTRUCT),ptr));
-    var somestruct = std.heap.c_allocator.create(SOMESTRUCT) catch null;
+export fn ipc_context_init (ptr: **Context) callconv(.C) i32 {
+    ptr.* = std.heap.c_allocator.create(Context) catch return 1;
 
-    print ("hello we just did something\n", .{});
-    if (somestruct) |s| {
-        s.somevalue = 2;
-        print ("just changed a value\n", .{});
-        pointer.* = s.*;
-    }
-    print ("hello again\n", .{});
-//    else {
-//        pointer.* = null;
-//    }
+    ptr.*.* = Context.init() catch |err| {
+        print ("libipc: error while init context: {}\n", .{err});
+        return 1;
+    };
+    return 0;
 }
 
-export fn some_struct_bidouillage_update(s: *SOMESTRUCT) callconv(.C) i32 {
-    return s.update();
-}
-
-export fn someipc(a: i32, b: i32) callconv(.C) i32 {
-    return a + b;
-}
-
-test "basic add functionality" {
-    try testing.expect(someipc(3, 7) == 10);
+export fn ipc_context_deinit (ctx: *Context) callconv(.C) void {
+    ctx.deinit();
 }

@@ -30,3 +30,9 @@ zigcompilation: build.zig src/*.zig
 compilation: src/main.c
 	@echo the following compilation will produce errors despite actually working
 	$(CC) -o app -o main build/libipc.so $(CFLAGS) $^ $(LDFLAGS)
+
+run:
+	LD_LIBRARY_PATH=build ./main
+
+valgrind:
+	LD_LIBRARY_PATH=build valgrind --suppressions=./suppress-stuff.suppr --gen-suppressions=all -v --leak-check=full ./main
