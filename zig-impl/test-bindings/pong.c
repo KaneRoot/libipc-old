@@ -1,8 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define SERVICE "pong"
+#define SERVICE_LEN 4
+
 int main(void) {
 	int ret = 0;
+	int servicefd = 0;
 
 	printf ("Init context.\n");
 	void *ctx = NULL;
@@ -15,23 +19,23 @@ int main(void) {
 
 	printf ("Context initiated.\n");
 
-#if 0
 	printf ("Connect to a 'pong' service.\n");
-	ret = ipc_connect_service (ctx, &servicefd, "pong");
+	ret = ipc_connect_service (ctx, &servicefd, SERVICE, SERVICE_LEN);
 
 	if (ret != 0) {
 		printf ("Cannot connect to a service.\n");
 		return 1;
 	}
 
-	printf ("Let's send a message.\n", ret);
-	ret = ipc_write (ctx, servicefd, "hello, plz bounce me");
+	printf ("Let's send a message.\n");
+	ret = ipc_write (ctx, servicefd, "hello, plz bounce me", 21);
 
 	if (ret != 0) {
 		printf ("Cannot write to the service.\n");
 		return 1;
 	}
 
+#if 0
 	// TODO: loop over ipc_wait
 	int event_type, index, originfd = 0;
 	unsigned int size = 0;
