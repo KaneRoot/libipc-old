@@ -31,7 +31,6 @@ export fn ipc_context_deinit (ctx: *Context) callconv(.C) void {
 }
 
 export fn ipc_write (ctx: *Context, servicefd: i32, mcontent: [*]const u8, mlen: u32) i32 {
-
     // TODO: better default length.
     var buffer: [100000]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buffer);
@@ -53,10 +52,33 @@ export fn ipc_read_fd (ctx: *Context, fd: i32, buffer: [*]u8, buflen: *usize) i3
     return 0;
 }
 
-// pub fn schedule (ctx: *Context, m: Message) !void
+export fn ipc_schedule (ctx: *Context, servicefd: i32, mcontent: [*]const u8, mlen: u32) i32 {
+    var message = Message.init(servicefd, ctx.allocator, mcontent[0..mlen]) catch return -1;
+    ctx.schedule(message) catch return -2;
+    return 0;
+}
+
+export fn ipc_wait_event(ctx: *Context, t: *u8, index: *usize, originfd: *i32, buffer: [*]u8, buflen: *usize) i32 {
+    var event = ctx.wait_event() catch return -1;
+    t.* = @enumToInt(event.t);
+    index.* = event.index;
+    originfd.* = event.origin;
+
+    if (event.m) |m| {
+        var fbs = std.io.fixedBufferStream(buffer[0..buflen.*]);
+        var writer = fbs.writer();
+        _ = writer.write(m.payload) catch return -4;
+        buflen.* = m.payload.len;
+    }
+    else {
+        buflen.* = 0;
+    }
+
+    return 0;
+}
+
 // pub fn read (ctx: *Context, index: usize) !?Message
 // 
-// pub fn wait_event(ctx: *Context) !Event
 // 
 // pub fn close_fd(ctx: *Context, fd: i32) !void
 // pub fn close(ctx: *Context, index: usize) !void
