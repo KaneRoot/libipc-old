@@ -29,7 +29,7 @@ zigcompilation: build.zig src/*.zig
 
 compilation: src/main.c
 	@echo the following compilation will produce errors despite actually working
-	$(CC) -o app -o main build/libipc.so $(CFLAGS) $^ $(LDFLAGS)
+	$(CC) -o main build/libipc.so $(CFLAGS) $^ $(LDFLAGS)
 
 run:
 	LD_LIBRARY_PATH=build ./main
