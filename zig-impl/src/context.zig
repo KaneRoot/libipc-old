@@ -25,8 +25,8 @@ const CBEventType = @import("./main.zig").CBEvent.Type;
 
 pub const PollFD = std.ArrayList(std.os.pollfd);
 
-pub const IPC_HEADER_SIZE = 5; // Size (5 bytes) then content.
-pub const IPC_BASE_SIZE = 2000000; // 2 MB, plenty enough space for messages
+pub const IPC_HEADER_SIZE = 4; // Size (4 bytes) then content.
+pub const IPC_BASE_SIZE = 100000; // 100 KB, plenty enough space for messages
 pub const IPC_MAX_MESSAGE_SIZE = IPC_BASE_SIZE-IPC_HEADER_SIZE;
 pub const IPC_VERSION = 1;
 
@@ -265,7 +265,7 @@ pub const Context = struct {
         // a Stream from the fd.
         var stream = net.Stream { .handle = m.fd };
 
-        var buffer: [IPC_MAX_MESSAGE_SIZE]u8 = undefined;
+        var buffer = [_]u8{0} ** IPC_MAX_MESSAGE_SIZE;
         var fbs = std.io.fixedBufferStream(&buffer);
         var writer = fbs.writer();
 
@@ -304,7 +304,7 @@ pub const Context = struct {
             return error.IndexOutOfBounds;
         }
 
-        var buffer: [IPC_MAX_MESSAGE_SIZE]u8 = undefined; // TODO: FIXME??
+        var buffer = [_]u8{0} ** IPC_MAX_MESSAGE_SIZE;
         var packet_size: usize = undefined;
 
         // TODO: this is a problem from the network API in Zig,

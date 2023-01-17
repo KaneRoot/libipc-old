@@ -28,14 +28,14 @@ export fn ipc_connect_service (ctx: *Context, servicefd: *i32, service_name: [*]
     return 0;
 }
 
-export fn ipc_context_deinit (ctx: *Context) callconv(.C) callconv(.C) void {
+export fn ipc_context_deinit (ctx: *Context) callconv(.C) void {
     ctx.deinit();
 }
 
 /// Write a message (no waiting).
 export fn ipc_write (ctx: *Context, servicefd: i32, mcontent: [*]const u8, mlen: u32) callconv(.C) i32 {
     // TODO: better default length.
-    var buffer: [100000]u8 = undefined;
+    var buffer = [_]u8{0} ** 100000;
     var fba = std.heap.FixedBufferAllocator.init(&buffer);
 
     var message = Message.init(servicefd, fba.allocator(), mcontent[0..mlen]) catch return -1;
@@ -61,6 +61,7 @@ export fn ipc_read_fd (ctx: *Context, fd: i32, buffer: [*]u8, buflen: *usize) ca
     var fbs = std.io.fixedBufferStream(buffer[0..buflen.*]);
     var writer = fbs.writer();
     _ = writer.write(m.payload) catch return -4;
+    m.deinit();
 
     return 0;
 }
@@ -75,6 +76,7 @@ export fn ipc_read (ctx: *Context, index: usize, buffer: [*]u8, buflen: *usize) 
     var fbs = std.io.fixedBufferStream(buffer[0..buflen.*]);
     var writer = fbs.writer();
     _ = writer.write(m.payload) catch return -4;
+    m.deinit();
 
     return 0;
 }
@@ -92,6 +94,7 @@ export fn ipc_wait_event(ctx: *Context, t: *u8, index: *usize, originfd: *i32, b
         var writer = fbs.writer();
         _ = writer.write(m.payload) catch return -4;
         buflen.* = m.payload.len;
+        m.deinit();
     }
     else {
         buflen.* = 0;

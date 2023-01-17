@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../libipc.h"
 
@@ -32,6 +33,9 @@ int direct_write_then_read(void) {
 
 	if (ret != 0) {
 		printf ("Cannot connect to a service.\n");
+		printf ("Deinit context\n");
+		ipc_context_deinit (ctx);
+		free(ctx);
 		return 1;
 	}
 
@@ -40,6 +44,9 @@ int direct_write_then_read(void) {
 
 	if (ret != 0) {
 		printf ("Cannot write to the service.\n");
+		printf ("Deinit context\n");
+		ipc_context_deinit (ctx);
+		free(ctx);
 		return 1;
 	}
 
@@ -50,11 +57,17 @@ int direct_write_then_read(void) {
 
 	if (ret != 0) {
 		printf ("Cannot read from the service fd: %d.\n", ret);
+		printf ("Deinit context\n");
+		ipc_context_deinit (ctx);
+		free(ctx);
 		return 1;
 	}
 
 	if (size == 0) {
 		printf ("No message returned.\n");
+		printf ("Deinit context\n");
+		ipc_context_deinit (ctx);
+		free(ctx);
 		return 1;
 	}
 
@@ -74,6 +87,7 @@ int wait_event(void) {
 	int ret = 0;
 	int servicefd = 0;
 	char message[10000];
+	memset (message, 0, 1000);
 	size_t size = 10000;
 	char event_type;
 	size_t index = 0;
@@ -85,6 +99,9 @@ int wait_event(void) {
 
 	if (ret != 0) {
 		printf ("Cannot init context.\n");
+		printf ("Deinit context\n");
+		ipc_context_deinit (ctx);
+		free(ctx);
 		return 1;
 	}
 
@@ -93,6 +110,9 @@ int wait_event(void) {
 
 	if (ret != 0) {
 		printf ("Cannot connect to a service.\n");
+		printf ("Deinit context\n");
+		ipc_context_deinit (ctx);
+		free(ctx);
 		return 1;
 	}
 
@@ -101,6 +121,9 @@ int wait_event(void) {
 
 	if (ret != 0) {
 		printf ("Cannot schedule a message.\n");
+		printf ("Deinit context\n");
+		ipc_context_deinit (ctx);
+		free(ctx);
 		return 1;
 	}
 
@@ -160,7 +183,7 @@ int wait_event(void) {
 				}
 
 				message[size] = '\0';
-				printf ("Response: %s.\n", message);
+				printf ("Response (size %lu): %s.\n", size, message);
 				// We received the response, quitting.
 				should_continue = 0;
 				break;

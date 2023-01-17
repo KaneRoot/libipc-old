@@ -7,7 +7,7 @@
 #define SERVICE_LEN 4
 
 
-int main(void) {
+int main(int argc, char**argv) {
 	int ret = 0;
 	int servicefd = 0;
 	char message[10000];
@@ -16,6 +16,13 @@ int main(void) {
 	size_t index = 0;
 	int originfd = 0;
 	void *ctx = NULL;
+
+	int max_count = 0;
+
+	if (argc > 1) {
+		max_count = atoi(argv[1]);
+		printf ("Wait for %d timer events.\n", max_count);
+	}
 
 	printf ("Init context.\n");
 	ret = ipc_context_init (&ctx);
@@ -80,6 +87,11 @@ int main(void) {
 		case TIMER: {
 				printf ("\rTIMER (%lu).", count_timer++);
 				fflush(stdout);
+				if (max_count && count_timer >= (size_t) max_count) {
+					printf ("waited for %lu timer events: quitting\n", count_timer);
+					should_continue = 0;
+				}
+
 				break;
 			}
 		case TX: {
@@ -92,8 +104,8 @@ int main(void) {
 					should_continue = 0;
 				}
 				else {
-					message[size] = '\0';
-					printf ("Message received: %s.\n", message);
+					message[size+1] = '\0';
+					printf ("Message received (size %lu): %s.\n", size, message);
 					printf ("Scheduling this message.\n");
 
 					ret = ipc_schedule (ctx, originfd, message, size);
