@@ -14,12 +14,14 @@ export fn ipc_context_init (ptr: **Context) callconv(.C) i32 {
     return 0;
 }
 
-export fn ipc_server_init(ctx: *Context, servicefd: *i32, service_name: [*]const u8, service_name_len: u16) callconv(.C) i32 {
+/// Start a libipc service.
+export fn ipc_service_init(ctx: *Context, servicefd: *i32, service_name: [*]const u8, service_name_len: u16) callconv(.C) i32 {
     var streamserver = ctx.server_init (service_name[0..service_name_len]) catch return -1;
     servicefd.* = streamserver.sockfd.?;
     return 0;
 }
 
+/// Connect to a libipc service, possibly through IPCd.
 export fn ipc_connect_service (ctx: *Context, servicefd: *i32, service_name: [*]const u8, service_name_len: u16) i32 {
     var fd = ctx.connect_ipc (service_name[0..service_name_len]) catch return -1;
     servicefd.* = fd;
@@ -30,6 +32,7 @@ export fn ipc_context_deinit (ctx: *Context) callconv(.C) void {
     ctx.deinit();
 }
 
+/// Write a message (no waiting).
 export fn ipc_write (ctx: *Context, servicefd: i32, mcontent: [*]const u8, mlen: u32) i32 {
     // TODO: better default length.
     var buffer: [100000]u8 = undefined;
@@ -40,6 +43,16 @@ export fn ipc_write (ctx: *Context, servicefd: i32, mcontent: [*]const u8, mlen:
     return 0;
 }
 
+/// Schedule a message.
+/// Use the same allocator as the context.
+export fn ipc_schedule (ctx: *Context, servicefd: i32, mcontent: [*]const u8, mlen: u32) i32 {
+    var message = Message.init(servicefd, ctx.allocator, mcontent[0..mlen]) catch return -1;
+    ctx.schedule(message) catch return -2;
+    return 0;
+}
+
+/// Read a message from a file descriptor.
+/// Buffer length will be changed to the size of the received message.
 export fn ipc_read_fd (ctx: *Context, fd: i32, buffer: [*]u8, buflen: *usize) i32 {
     var m = ctx.read_fd (fd) catch {return -1;} orelse return -2;
     if (m.payload.len > buflen.*) return -3;
@@ -52,12 +65,22 @@ export fn ipc_read_fd (ctx: *Context, fd: i32, buffer: [*]u8, buflen: *usize) i3
     return 0;
 }
 
-export fn ipc_schedule (ctx: *Context, servicefd: i32, mcontent: [*]const u8, mlen: u32) i32 {
-    var message = Message.init(servicefd, ctx.allocator, mcontent[0..mlen]) catch return -1;
-    ctx.schedule(message) catch return -2;
+/// Read a message.
+/// Buffer length will be changed to the size of the received message.
+export fn ipc_read (ctx: *Context, index: usize, buffer: [*]u8, buflen: *usize) i32 {
+    var m = ctx.read (index) catch {return -1;} orelse return -2;
+    if (m.payload.len > buflen.*) return -3;
+    buflen.* = m.payload.len;
+
+    var fbs = std.io.fixedBufferStream(buffer[0..buflen.*]);
+    var writer = fbs.writer();
+    _ = writer.write(m.payload) catch return -4;
+
     return 0;
 }
 
+/// Wait for an event.
+/// Buffer length will be changed to the size of the received message.
 export fn ipc_wait_event(ctx: *Context, t: *u8, index: *usize, originfd: *i32, buffer: [*]u8, buflen: *usize) i32 {
     var event = ctx.wait_event() catch return -1;
     t.* = @enumToInt(event.t);
@@ -77,20 +100,33 @@ export fn ipc_wait_event(ctx: *Context, t: *u8, index: *usize, originfd: *i32, b
     return 0;
 }
 
-// pub fn read (ctx: *Context, index: usize) !?Message
-// 
-// 
-// pub fn close_fd(ctx: *Context, fd: i32) !void
-// pub fn close(ctx: *Context, index: usize) !void
+/// Change the timer (ms).
+export fn ipc_context_timer (ctx: *Context, timer: i32) void {
+    ctx.timer = timer;
+}
 
+export fn ipc_close_fd (ctx: *Context, fd: i32) i32 {
+    ctx.close_fd (fd) catch return -1;
+    return 0;
+}
 
-// // TODO (specifically in the bindings, not in the structure).
-// //change_timer
-// 
-// // Later.
-// // pub fn add_external (ctx: *Context, newfd: i32) !void
-// // pub fn add_switch(ctx: *Context, fd1: i32, fd2: i32) !void
-// // pub fn set_switch_callbacks(ctx: *Context, fd: i
-// 
-// // doubt it could really be useful
-// //pub fn close_all(ctx: *Context) !void
+export fn ipc_close (ctx: *Context, index: usize) i32 {
+    ctx.close (index) catch return -1;
+    return 0;
+}
+
+/// Add a new file descriptor to listen to.
+/// The FD is marked as "external"; it isn't a simple libipc connection.
+/// You may want to handle any operation on it by yourself.
+export fn ipc_add_external (ctx: *Context, newfd: i32) i32 {
+    ctx.add_external (newfd) catch return -1;
+    return 0;
+}
+
+export fn ipc_add_switch (ctx: *Context, fd1: i32, fd2: i32) i32 {
+    ctx.add_switch (fd1, fd2) catch return -1;
+    return 0;
+}
+
+// Later.
+// pub fn set_switch_callbacks
