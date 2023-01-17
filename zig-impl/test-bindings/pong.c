@@ -6,6 +6,8 @@
 #define SERVICE "pong"
 #define SERVICE_LEN 4
 
+int direct_write_then_read(void);
+int wait_event(void);
 
 int main(void) {
 	direct_write_then_read();
@@ -42,7 +44,7 @@ int direct_write_then_read(void) {
 	}
 
 	char message[10000];
-	unsigned int size = 10000;
+	size_t size = 10000;
 
 	ret = ipc_read_fd (ctx, servicefd, message, &size);
 
@@ -72,9 +74,9 @@ int wait_event(void) {
 	int ret = 0;
 	int servicefd = 0;
 	char message[10000];
-	unsigned int size = 10000;
+	size_t size = 10000;
 	char event_type;
-	unsigned int index = 0;
+	size_t index = 0;
 	int originfd = 0;
 	void *ctx = NULL;
 
@@ -107,7 +109,7 @@ int wait_event(void) {
 
 	printf ("Let's loop over events.\n");
 	char should_continue = 1;
-	unsigned int count = 0;
+	size_t count = 0;
 	while(should_continue) {
 		size = 10000;
 		ret = ipc_wait_event (ctx, &event_type, &index, &originfd, message, &size);
@@ -116,7 +118,7 @@ int wait_event(void) {
 			return 1;
 		}
 
-		printf ("EVENT %u\t", count++);
+		printf ("EVENT %lu\t", count++);
 
 		switch ((enum event_types) event_type) {
 		case ERROR: {

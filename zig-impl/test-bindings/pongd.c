@@ -11,9 +11,9 @@ int main(void) {
 	int ret = 0;
 	int servicefd = 0;
 	char message[10000];
-	unsigned int size = 10000;
+	size_t size = 10000;
 	char event_type;
-	unsigned int index = 0;
+	size_t index = 0;
 	int originfd = 0;
 	void *ctx = NULL;
 
@@ -38,8 +38,8 @@ int main(void) {
 
 	printf ("Loop over events.\n");
 	char should_continue = 1;
-	unsigned int count = 0;
-	unsigned int count_timer = 0;
+	size_t count = 0;
+	size_t count_timer = 0;
 	while(should_continue) {
 		size = 10000;
 		ret = ipc_wait_event (ctx, &event_type, &index, &originfd, message, &size);
@@ -49,7 +49,7 @@ int main(void) {
 		}
 
 		if ((enum event_types) event_type != TIMER) {
-			printf ("EVENT %u\t", count++);
+			printf ("EVENT %lu\t", count++);
 		}
 
 		switch ((enum event_types) event_type) {
@@ -78,7 +78,7 @@ int main(void) {
 				break;
 			}
 		case TIMER: {
-				printf ("\rTIMER (%d).", count_timer++);
+				printf ("\rTIMER (%lu).", count_timer++);
 				fflush(stdout);
 				break;
 			}
