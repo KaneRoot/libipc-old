@@ -1,5 +1,5 @@
 const std = @import("std");
-const hexdump = @import("./hexdump.zig");
+// const hexdump = @import("./hexdump.zig");
 const testing = std.testing;
 const net = std.net;
 const os = std.os;
@@ -152,7 +152,6 @@ pub const Context = struct {
         }
 
         var response: []u8 = reception_buffer[0..reception_size];
-        // print ("receive_fd:message received: {s} (len: {})\n", .{response, reception_size});
 
         if (! std.mem.eql(u8, response, "ok")) {
             return error.IPCdFailedNotOk;
@@ -247,7 +246,6 @@ pub const Context = struct {
         try self.server_path(service_name, writer);
         var path = fbs.getWritten();
 
-        // print("context server init {s}\n", .{path});
         var server = net.StreamServer.init(.{});
         var socket_addr = try net.Address.initUnix(path);
         try server.listen(socket_addr);
@@ -275,7 +273,6 @@ pub const Context = struct {
     }
 
     pub fn schedule (self: *Self, m: Message) !void {
-        print ("scheduling new message {}\n", .{m});
         try self.tx.append(m);
     }
 
@@ -368,9 +365,7 @@ pub const Context = struct {
         // Polling.
         var count: usize = undefined;
 
-        // print("fds:     {any}\n", .{self.pollfd.items});
         count = try os.poll(self.pollfd.items, wait_duration);
-        // print("fds NOW: {any}\n", .{self.pollfd.items});
 
         if (count < 0) {
             print("there is a problem: poll < 0\n", .{});
@@ -407,7 +402,6 @@ pub const Context = struct {
                         .SWITCH_RX => {
                             try self.schedule(current_event.m.?);
                         },
-                        // TODO: DISCONNECTION and ERROR do not handle errors.
                         .DISCONNECTION => {
                             var dest = try self.switchdb.getDest(fd.fd);
                             print("disconnection from {} -> removing {}, too\n", .{fd.fd, dest});
