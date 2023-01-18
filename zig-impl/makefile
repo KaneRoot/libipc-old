@@ -9,6 +9,21 @@ ZIGUSROPTS  ?=
 ZIGC        ?= zig
 ZIGOPTS     ?= $(ZIGBUSEOPTS) $(ZIGUSROPTS)
 
+# Debug with valgrind.
+ifdef VG_SUPPRESS_WARNINGS
+VALGRIND_SUPPRESS_WARNINGS ?= --suppressions=./valgrind.suppr
+endif
+ifdef VG_GENERATE_SUPPRESSION
+VALGRIND_GEN_SUPPRESSION ?= --gen-suppressions=all
+endif
+ifdef USE_VALGRIND
+VALGRIND ?= valgrind $(VALGRIND_SUPPRESS_WARNINGS) $(VALGRIND_GEN_SUPPRESSION) -v --leak-check=full
+endif
+# Optional parameters (copied here to help with autocompletion).
+VG_SUPPRESS_WARNINGS ?=
+VG_GENERATE_SUPPRESSION ?=
+USE_VALGRIND ?=
+
 ipcd: src/ipcd.zig
 	$(ZIGC) build-exe $(ZIGOPTS) $^
 
