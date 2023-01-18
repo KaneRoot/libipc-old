@@ -275,6 +275,7 @@ pub const Context = struct {
     }
 
     pub fn schedule (self: *Self, m: Message) !void {
+        print ("scheduling new message {}\n", .{m});
         try self.tx.append(m);
     }
 
@@ -426,7 +427,7 @@ pub const Context = struct {
                             return error.incoherentSwitchError;
                         },
                     }
-                    return Event.init(Event.Type.SWITCH_RX, i, fd.fd, null);
+                    return current_event;
                 }
                 // EXTERNAL = user handles IO
                 else if (self.connections.items[i].t == .EXTERNAL) {

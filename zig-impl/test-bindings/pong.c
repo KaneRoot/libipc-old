@@ -7,6 +7,8 @@
 #define SERVICE "pong"
 #define SERVICE_LEN 4
 
+#define MAX_MSG_SIZE 10000
+
 int direct_write_then_read(void);
 int wait_event(void);
 
@@ -50,8 +52,8 @@ int direct_write_then_read(void) {
 		return 1;
 	}
 
-	char message[10000];
-	size_t size = 10000;
+	char message[MAX_MSG_SIZE];
+	size_t size = MAX_MSG_SIZE;
 
 	ret = ipc_read_fd (ctx, servicefd, message, &size);
 
@@ -86,9 +88,9 @@ int direct_write_then_read(void) {
 int wait_event(void) {
 	int ret = 0;
 	int servicefd = 0;
-	char message[10000];
+	char message[MAX_MSG_SIZE];
 	memset (message, 0, 1000);
-	size_t size = 10000;
+	size_t size = MAX_MSG_SIZE;
 	char event_type;
 	size_t index = 0;
 	int originfd = 0;
@@ -134,7 +136,7 @@ int wait_event(void) {
 	char should_continue = 1;
 	size_t count = 0;
 	while(should_continue) {
-		size = 10000;
+		size = MAX_MSG_SIZE;
 		ret = ipc_wait_event (ctx, &event_type, &index, &originfd, message, &size);
 		if (ret != 0) {
 			printf ("Error while waiting for an event.\n");

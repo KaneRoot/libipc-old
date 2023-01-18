@@ -98,10 +98,16 @@ fn create_service() !void {
     try ctx.add_external (serverfd);
 
     var some_event: ipc.Event = undefined;
+    var previous_event: ipc.Event.Type = ipc.Event.Type.ERROR;
     ctx.timer = 1000; // 1 second
     var count: u32 = 0;
     while(! S.should_quit) {
         some_event = try ctx.wait_event();
+
+        // For clarity in the output.
+        if (some_event.t != .TIMER and previous_event == .TIMER ) { print("\n", .{}); }
+        previous_event = some_event.t;
+
         switch (some_event.t) {
             .TIMER => {
                 print ("\rTimer! ({})", .{count});
@@ -151,6 +157,16 @@ fn create_service() !void {
 
             .SWITCH_RX => {
                 print ("Message has been received (SWITCH fd {}).\n", .{some_event.origin});
+                // if (some_event.m) |m| {
+                //     var hexbuf: [4000]u8 = undefined;
+                //     var hexfbs = std.io.fixedBufferStream(&hexbuf);
+                //     var hexwriter = hexfbs.writer();
+                //     try hexdump.hexdump(hexwriter, "Received", m.payload);
+                //     print("{s}\n", .{hexfbs.getWritten()});
+                // }
+                // else {
+                //     print ("Message received without actually a message?! {}", .{some_event});
+                // }
             },
 
             .SWITCH_TX => {

@@ -1,4 +1,5 @@
 const std = @import("std");
+const hexdump = @import("./hexdump.zig");
 const testing = std.testing;
 const fmt = std.fmt;
 
@@ -79,19 +80,22 @@ pub const SwitchDB = struct {
         var message_size: u32 = @truncate(u32, buffer.len);
         var r: CBEventType = managedconnection.in(fd, &buffer, &message_size);
 
-        // TODO: read message
-        // TODO: better allocator?
-        // TODO: better errors?
-        var message: Message = Message.init(managedconnection.dest
-                                           , std.heap.c_allocator
-                                           , buffer[0..message_size]) catch {
-            return error.generic;
-        };
-
+        print ("MESSAGE READ: {} (from {} to {})\n", .{r, fd, managedconnection.dest});
         switch (r) {
             // The message should be ignored (protocol specific).
             CBEventType.IGNORE     => { return null; },
-            CBEventType.NO_ERROR   => { return message; },
+            CBEventType.NO_ERROR   => {
+                // TODO: read message
+                // TODO: better allocator?
+                // TODO: better errors?
+                var message: Message
+                    = Message.init(managedconnection.dest
+                                  , std.heap.c_allocator
+                                  , buffer[0..message_size]) catch {
+                    return error.generic;
+                };
+                return message;
+            },
             CBEventType.FD_CLOSING => { return error.closeFD; },
             // Generic error, or the message was read but with errors.
             CBEventType.ERROR      => { return error.generic; },
@@ -113,7 +117,8 @@ pub const SwitchDB = struct {
         // returning basic errors, no details.
         _ = message.write(writer) catch return error.generic;
         var written = fbs.getWritten();
-        var r = managedconnection.out(managedconnection.dest, written.ptr, @truncate(u32, written.len));
+
+        var r = managedconnection.out(message.fd, written.ptr, @truncate(u32, written.len));
 
         switch (r) {
             // The message should be ignored (protocol specific).
@@ -298,10 +303,18 @@ fn default_in (origin: i32, mcontent: [*]u8, mlen: *u32) CBEventType {
 
     // Let's handle this as a disconnection.
     if (packet_size < 4) {
+        print("message is less than 4 bytes ({} bytes)\n", .{packet_size});
         return CBEventType.FD_CLOSING;
     }
 
     mlen.* = @truncate(u32, packet_size);
+
+    var hexbuf: [4000]u8 = undefined;
+    var hexfbs = std.io.fixedBufferStream(&hexbuf);
+    var hexwriter = hexfbs.writer();
+    hexdump.hexdump(hexwriter, "DEFAULT IN: MESSAGE RECEIVED", mcontent[0..packet_size]) catch unreachable;
+    print("{s}\n", .{hexfbs.getWritten()});
+    print("packet_size {}, mlen.* {}\n", .{packet_size, mlen.*});
 
     return CBEventType.NO_ERROR;
 }
@@ -310,7 +323,16 @@ fn default_out (fd: i32, mcontent: [*]const u8, mlen: u32) CBEventType {
     // print ("sending a message originated from {}\n", .{origin});
     // Message contains the fd, no need to search for the right structure to copy,
     // let's just recreate a Stream from the fd.
+
+    var to_send = mcontent[0..mlen];
+    var hexbuf: [4000]u8 = undefined;
+    var hexfbs = std.io.fixedBufferStream(&hexbuf);
+    var hexwriter = hexfbs.writer();
+    hexdump.hexdump(hexwriter, "DEFAULT OUT: MESSAGE TO SEND", to_send) catch unreachable;
+    print("{s}\n", .{hexfbs.getWritten()});
+
     var stream = net.Stream { .handle = fd };
-    _ = stream.write (mcontent[0..mlen]) catch return CBEventType.ERROR;
+    var bytes_sent = stream.write (to_send) catch return CBEventType.ERROR;
+    print("sent {} to {}\n", .{bytes_sent, fd});
     return CBEventType.NO_ERROR;
 }

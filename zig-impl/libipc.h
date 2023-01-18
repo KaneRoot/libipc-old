@@ -18,6 +18,14 @@ enum event_types {
 	, TX = 8            // Message sent.
 };
 
+// Return type of callback functions when switching.
+enum cb_event_types {
+	  NO_ERROR = 0,      // No error. A message was generated.
+	, ERROR = 1,         // Generic error.
+	, FD_CLOSING = 2,    // The fd is closing.
+	, IGNORE = 3,        // The message should be ignored (protocol specific).
+};
+
 int ipc_context_init (void** ptr);
 int ipc_service_init (void* ctx, int* servicefd, const char* service_name, unsigned short service_name_len);
 int ipc_connect_service (void* ctx, int* servicefd, const char* service_name, unsigned short service_name_len);
@@ -30,7 +38,13 @@ int ipc_wait_event(void* ctx, char* t, size_t* index, int* originfd, char* buffe
 void ipc_context_timer (void* ctx, int timer);
 int ipc_close_fd (void* ctx, int fd);
 int ipc_close (void* ctx, size_t index);
+
+// Switch functions (for "protocol" services, such as TCPd).
 int ipc_add_external (void* ctx, int newfd);
 int ipc_add_switch (void* ctx, int fd1, int fd2);
+
+int ipc_set_switch_callbacks (void* ctx, int fd
+  , enum cb_event_types (*in (int orig, const char *payload, unsigned int *mlen))
+  , enum cb_event_types (*out(int dest,       char *payload, unsigned int  mlen)));
 
 #endif

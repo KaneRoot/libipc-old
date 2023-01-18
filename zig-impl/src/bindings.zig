@@ -132,7 +132,6 @@ export fn ipc_add_switch (ctx: *Context, fd1: i32, fd2: i32) callconv(.C) i32 {
     return 0;
 }
 
-/// TODO: change the functions in the switch code, not to take a Message as a parameter.
 export fn ipc_set_switch_callbacks(ctx: *Context, fd: i32
     , in  : *const fn (origin: i32, mcontent: [*]u8,       mlen: *u32) CBEventType
     , out : *const fn (origin: i32, mcontent: [*]const u8, mlen: u32)  CBEventType) callconv(.C) i32 {
