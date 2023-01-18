@@ -201,14 +201,14 @@ pub fn receive_fd(sockfd: os.socket_t, buffer: []u8, msg_size: *usize) !os.fd_t 
     var cmsg = Cmsghdr(os.fd_t).init(.{
         .level = os.SOL.SOCKET,
         .@"type" = SCM_RIGHTS,
-        .data = undefined,
+        .data = 0,
     });
 
     var msg: std.os.msghdr = .{
-          .name = undefined
+          .name = null
         , .namelen = 0
         , .iov = &iov
-        , .iovlen = 2
+        , .iovlen = 1
         , .control = &cmsg
         , .controllen = @sizeOf(@TypeOf(cmsg))
         , .flags = 0
