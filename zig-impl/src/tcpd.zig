@@ -135,8 +135,20 @@ fn create_service() !void {
                 var size = try client.stream.read(&buffer);
                 var service_to_contact = buffer[0..size];
 
+                if (service_to_contact.len == 0) {
+                    print("Error, no service provided, closing the connection.\n", .{});
+                    client.stream.close();
+                    continue;
+                }
+
                 print ("Ask to connect to service [{s}].\n", .{service_to_contact});
-                var servicefd = try ctx.connect_service (service_to_contact);
+                var servicefd = ctx.connect_service (service_to_contact) catch |err| {
+                    print("Error while connecting to the service {s}: {}.\n"
+                         , .{service_to_contact, err});
+                    print ("Closing the connection.\n", .{});
+                    client.stream.close();
+                    continue;
+                };
                 errdefer ctx.close_fd (servicefd) catch {};
 
                 print ("Send a message to inform remote TCPd that the connection is established.\n", .{});

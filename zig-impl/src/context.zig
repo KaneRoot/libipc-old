@@ -681,7 +681,7 @@ test "Context - creation, echo once" {
     try c.server_path("simple-context-test", writer);
     var path = fbs.getWritten();
 
-     // SERVER SIDE: creating a service.
+    // SERVER SIDE: creating a service.
     var server = c.server_init("simple-context-test") catch |err| switch(err) {
         error.FileNotFound => {
             print ("\nError: cannot init server at {s}\n", .{path});

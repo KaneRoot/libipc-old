@@ -1,6 +1,9 @@
 const std = @import("std");
-// const hexdump = @import("./hexdump.zig");
+const hexdump = @import("./hexdump.zig");
 const testing = std.testing;
+
+const print = std.debug.print;
+const Message = @import("./message.zig").Message;
 
 /// A VERY LIGHT and INCOMPLETE way of decoding URI.
 /// DO NOT USE IT UNLESS YOU KNOW WHAT TO EXPECT.
@@ -32,6 +35,18 @@ test "URI simple decoding" {
     try testing.expectEqualSlices(u8, uri.protocol, "tcp");
     try testing.expectEqualSlices(u8, uri.address, "127.0.0.1:8000");
     try testing.expectEqualSlices(u8, uri.path, "some-path");
+}
+
+pub fn print_buffer (header: []const u8, buffer: []const u8) void {
+    var hexbuf: [4000]u8 = undefined;
+    var hexfbs = std.io.fixedBufferStream(&hexbuf);
+    var hexwriter = hexfbs.writer();
+    hexdump.hexdump(hexwriter, header, buffer) catch unreachable;
+    print("{s}\n", .{hexfbs.getWritten()});
+}
+
+pub fn print_message (header: []const u8, m: Message) void {
+   print_buffer (header, m.payload);
 }
 
 pub fn print_eq(expected: anytype, obj: anytype) !void {

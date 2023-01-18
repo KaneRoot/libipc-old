@@ -15,7 +15,7 @@ const builtin = @import("builtin");
 const native_os = builtin.target.os.tag;
 const print = std.debug.print;
 const testing = std.testing;
-const print_eq = @import("./util.zig").print_eq;
+const util = @import("./util.zig");
 
 fn create_service() !void {
     const config = .{.safety = true};
@@ -81,8 +81,9 @@ fn create_service() !void {
 
             .MESSAGE => {
                 if (some_event.m) |m| {
-                    print("New message: {}\n", .{m});
-                    print("Let's echo it...\n", .{});
+                    print("New message ({} bytes)\n", .{m.payload.len});
+                    util.print_message ("RECEIVED MESSAGE", m);
+                    print("Echoing it...\n", .{});
                     try ctx.schedule(m);
                 }
                 else {

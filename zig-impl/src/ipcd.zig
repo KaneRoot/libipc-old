@@ -139,7 +139,7 @@ fn create_service() !void {
 
                     // 3. connect whether asked to and send a message
                     if (final_destination) |dest| {
-                        print("Let's contact {s} (service requested: {s})\n"
+                        print("Connecting to {s} (service requested: {s})\n"
                             , .{dest, service_to_contact});
 
                         var uri = URI.read(dest);

@@ -11,7 +11,8 @@ const CBEventType = ipc.CBEvent.Type;
 
 const Allocator = std.mem.Allocator;
 
-const print_eq = @import("./util.zig").print_eq;
+const util = @import("./util.zig");
+const print_eq = util.print_eq;
 const print = std.debug.print;
 
 const Event = ipc.Event;
@@ -80,7 +81,6 @@ pub const SwitchDB = struct {
         var message_size: u32 = @truncate(u32, buffer.len);
         var r: CBEventType = managedconnection.in(fd, &buffer, &message_size);
 
-        print ("MESSAGE READ: {} (from {} to {})\n", .{r, fd, managedconnection.dest});
         switch (r) {
             // The message should be ignored (protocol specific).
             CBEventType.IGNORE     => { return null; },
@@ -89,9 +89,9 @@ pub const SwitchDB = struct {
                 // TODO: better allocator?
                 // TODO: better errors?
                 var message: Message
-                    = Message.init(managedconnection.dest
-                                  , std.heap.c_allocator
-                                  , buffer[0..message_size]) catch {
+                    = Message.read(managedconnection.dest
+                                  , buffer[0..message_size]
+                                  , std.heap.c_allocator) catch {
                     return error.generic;
                 };
                 return message;
@@ -295,44 +295,27 @@ test "nuke 'em" {
 }
 
 fn default_in (origin: i32, mcontent: [*]u8, mlen: *u32) CBEventType {
-    // print ("receiving a message originated from {}\n", .{origin});
-
     // This may be kinda hacky, idk.
     var stream: net.Stream = .{ .handle = origin };
     var packet_size: usize = stream.read(mcontent[0..mlen.*]) catch return CBEventType.ERROR;
 
     // Let's handle this as a disconnection.
     if (packet_size < 4) {
-        print("message is less than 4 bytes ({} bytes)\n", .{packet_size});
+        // print("message is less than 4 bytes ({} bytes)\n", .{packet_size});
         return CBEventType.FD_CLOSING;
     }
 
     mlen.* = @truncate(u32, packet_size);
 
-    var hexbuf: [4000]u8 = undefined;
-    var hexfbs = std.io.fixedBufferStream(&hexbuf);
-    var hexwriter = hexfbs.writer();
-    hexdump.hexdump(hexwriter, "DEFAULT IN: MESSAGE RECEIVED", mcontent[0..packet_size]) catch unreachable;
-    print("{s}\n", .{hexfbs.getWritten()});
-    print("packet_size {}, mlen.* {}\n", .{packet_size, mlen.*});
-
     return CBEventType.NO_ERROR;
 }
 
 fn default_out (fd: i32, mcontent: [*]const u8, mlen: u32) CBEventType {
-    // print ("sending a message originated from {}\n", .{origin});
     // Message contains the fd, no need to search for the right structure to copy,
     // let's just recreate a Stream from the fd.
 
     var to_send = mcontent[0..mlen];
-    var hexbuf: [4000]u8 = undefined;
-    var hexfbs = std.io.fixedBufferStream(&hexbuf);
-    var hexwriter = hexfbs.writer();
-    hexdump.hexdump(hexwriter, "DEFAULT OUT: MESSAGE TO SEND", to_send) catch unreachable;
-    print("{s}\n", .{hexfbs.getWritten()});
-
     var stream = net.Stream { .handle = fd };
-    var bytes_sent = stream.write (to_send) catch return CBEventType.ERROR;
-    print("sent {} to {}\n", .{bytes_sent, fd});
+    _ = stream.write (to_send) catch return CBEventType.ERROR;
     return CBEventType.NO_ERROR;
 }
