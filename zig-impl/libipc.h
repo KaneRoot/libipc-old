@@ -3,11 +3,6 @@
 
 #include <stdint.h>
 
-struct message {
-	uint32_t size;
-	char* payload;
-};
-
 enum event_types {
 	  ERROR = 0         // A problem occured.
 	, EXTERNAL = 1      // Message received from a non IPC socket.
@@ -29,11 +24,11 @@ enum cb_event_types {
 };
 
 int ipc_context_init (void** ptr);
-int ipc_service_init (void* ctx, int* servicefd, const char* service_name, unsigned short service_name_len);
-int ipc_connect_service (void* ctx, int* servicefd, const char* service_name, unsigned short service_name_len);
+int ipc_service_init (void* ctx, int* servicefd, const char* service_name, uint16_t service_name_len);
+int ipc_connect_service (void* ctx, int* servicefd, const char* service_name, uint16_t service_name_len);
 void ipc_context_deinit (void* ctx);
-int ipc_write (void* ctx, int servicefd, char* mcontent, unsigned int mlen);
-int ipc_schedule (void* ctx, int servicefd, const char* mcontent, unsigned int mlen);
+int ipc_write (void* ctx, int servicefd, char* mcontent, uint32_t mlen);
+int ipc_schedule (void* ctx, int servicefd, const char* mcontent, uint32_t mlen);
 int ipc_read_fd (void* ctx, int fd, char* buffer, size_t* buflen);
 int ipc_read (void* ctx, size_t index, char* buffer, size_t* buflen);
 int ipc_wait_event(void* ctx, char* t, size_t* index, int* originfd, char* buffer, size_t* buflen);
@@ -46,7 +41,7 @@ int ipc_add_external (void* ctx, int newfd);
 int ipc_add_switch (void* ctx, int fd1, int fd2);
 
 int ipc_set_switch_callbacks (void* ctx, int fd
-  , enum cb_event_types (*in (int orig, const char *payload, unsigned int *mlen))
-  , enum cb_event_types (*out(int dest,       char *payload, unsigned int  mlen)));
+  , enum cb_event_types (*in (int orig, const char *payload, uint32_t *mlen))
+  , enum cb_event_types (*out(int dest,       char *payload, uint32_t  mlen)));
 
 #endif
