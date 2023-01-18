@@ -1,6 +1,8 @@
 #ifndef LIBIPC
 #define LIBIPC
 
+#include <stdint.h>
+
 struct message {
 	uint32_t size;
 	char* payload;
@@ -20,10 +22,10 @@ enum event_types {
 
 // Return type of callback functions when switching.
 enum cb_event_types {
-	  NO_ERROR = 0,      // No error. A message was generated.
-	, ERROR = 1,         // Generic error.
-	, FD_CLOSING = 2,    // The fd is closing.
-	, IGNORE = 3,        // The message should be ignored (protocol specific).
+	  CB_NO_ERROR = 0      // No error. A message was generated.
+	, CB_ERROR = 1         // Generic error.
+	, CB_FD_CLOSING = 2    // The fd is closing.
+	, CB_IGNORE = 3        // The message should be ignored (protocol specific).
 };
 
 int ipc_context_init (void** ptr);
