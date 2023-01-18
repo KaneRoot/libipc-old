@@ -59,7 +59,7 @@ buildrun-tcpd-alternative: tcpd
 	IPC_SERVICE_NAME=tcpdup ADDRESS=$(TCP_SERVICE_ALT) $(VALGRIND) ./tcpd
 
 SERVICE_NAME ?= p
-IPC_NETWORK  ?= p pong
+IPC_NETWORK  ?= p unix://pong
 buildrun-pong: pong
 	@#Force pong to contact IPCd.
 	@#SERVICE is the service to contact and IPC_NETWORK is the IPCd
