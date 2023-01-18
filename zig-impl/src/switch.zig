@@ -197,11 +197,11 @@ test "creation and display" {
    try print_eq("{ (5,6)(6,5) }", .{switchdb});
 }
 
-fn successful_in (_: i32, mcontent: [*]const u8, mlen: *u32) CBEventType {
+fn successful_in (_: i32, mcontent: [*]u8, mlen: *u32) CBEventType {
     var m = Message.init(8, std.heap.c_allocator, "coucou") catch unreachable;
     defer m.deinit();
 
-    var fbs = std.io.fixedBufferStream(mcontent);
+    var fbs = std.io.fixedBufferStream(mcontent[0..mlen.*]);
     var writer = fbs.writer();
     _ = m.write (writer) catch unreachable;
     mlen.* = @truncate(u32, m.payload.len);
