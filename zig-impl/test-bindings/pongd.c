@@ -40,8 +40,8 @@ int main(int argc, char**argv) {
 		return 1;
 	}
 
-	printf ("Set the timer to ten seconds.\n");
-	ipc_context_timer (ctx, 10000);
+	printf ("Set the timer to two seconds.\n");
+	ipc_context_timer (ctx, 2000);
 
 	printf ("Loop over events.\n");
 	char should_continue = 1;

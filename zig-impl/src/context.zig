@@ -294,8 +294,8 @@ pub const Context = struct {
     }
 
     pub fn set_switch_callbacks(self: *Self, fd: i32
-        , in  : *const fn (origin: i32, m: *Message) CBEventType
-        , out : *const fn (origin: i32, m: *const Message) CBEventType) !void {
+        , in  : *const fn (origin: i32, mcontent: [*]u8, mlen: *u32) CBEventType
+        , out : *const fn (origin: i32, mcontent: [*]const u8, mlen: u32) CBEventType) !void {
         try self.switchdb.set_callbacks(fd,in, out);
     }
 

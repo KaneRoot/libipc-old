@@ -1,6 +1,11 @@
 #ifndef LIBIPC
 #define LIBIPC
 
+struct message {
+	uint32_t size;
+	char* payload;
+};
+
 enum event_types {
 	  ERROR = 0         // A problem occured.
 	, EXTERNAL = 1      // Message received from a non IPC socket.

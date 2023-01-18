@@ -3,6 +3,7 @@ const print = std.debug.print;
 const ipc = @import("./main.zig");
 const Context = ipc.Context;
 const Message = ipc.Message;
+const CBEventType = ipc.CBEvent.Type;
 
 export fn ipc_context_init (ptr: **Context) callconv(.C) i32 {
     ptr.* = std.heap.c_allocator.create(Context) catch return -1;
@@ -131,5 +132,10 @@ export fn ipc_add_switch (ctx: *Context, fd1: i32, fd2: i32) callconv(.C) i32 {
     return 0;
 }
 
-// Later.
-// pub fn set_switch_callbacks
+/// TODO: change the functions in the switch code, not to take a Message as a parameter.
+export fn ipc_set_switch_callbacks(ctx: *Context, fd: i32
+    , in  : *const fn (origin: i32, mcontent: [*]u8,       mlen: *u32) CBEventType
+    , out : *const fn (origin: i32, mcontent: [*]const u8, mlen: u32)  CBEventType) callconv(.C) i32 {
+    ctx.set_switch_callbacks (fd, in, out) catch return -1;
+    return 0;
+}
