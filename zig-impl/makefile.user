@@ -121,8 +121,10 @@ init-websocket-client:
 
 build-all:
 	$(ZIGC) build-exe src/write-tcpd-pong-messages.zig -lc
+	$(ZIGC) build-exe $(ZIGOPTS) src/ipcd.zig
 	$(ZIGC) build-exe $(ZIGOPTS) src/tcpd.zig
 	$(ZIGC) build-exe $(ZIGOPTS) src/pong.zig
+	$(ZIGC) build-exe $(ZIGOPTS) src/pongd.zig
 
 serve:
-	find . | entr make build-all
+	find src/ | entr make build-all

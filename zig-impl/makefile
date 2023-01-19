@@ -16,8 +16,11 @@ endif
 ifdef VG_GENERATE_SUPPRESSION
 VALGRIND_GEN_SUPPRESSION ?= --gen-suppressions=all
 endif
+VALGRIND_OPTS=-v --leak-check=full --track-origins=yes
 ifdef USE_VALGRIND
-VALGRIND ?= valgrind $(VALGRIND_SUPPRESS_WARNINGS) $(VALGRIND_GEN_SUPPRESSION) -v --leak-check=full
+VALGRIND ?= valgrind $(VALGRIND_SUPPRESS_WARNINGS) \
+	$(VALGRIND_GEN_SUPPRESSION) \
+	$(VALGRIND_OPTS)
 endif
 # Optional parameters (copied here to help with autocompletion).
 VG_SUPPRESS_WARNINGS ?=
