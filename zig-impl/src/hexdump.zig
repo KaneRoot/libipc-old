@@ -2,7 +2,6 @@ const std = @import("std");
 const print = std.debug.print;
 
 pub fn hexdump(stream: anytype, header: [] const u8, buffer: [] const u8) std.os.WriteError!void {
-// pub fn hexdump(_: anytype, _: [] const u8, _: [] const u8) !void {
     try stream.writeAll("\n");
 
     if (header.len > 0) {
@@ -48,7 +47,7 @@ pub fn hexdump(stream: anytype, header: [] const u8, buffer: [] const u8) std.os
                     try stream.writeAll("   ");
                 }
 
-                try stream.print("{s}\n", .{ ascii[0..(i % 16)] });
+                try stream.print(" {s}\n", .{ ascii[0..((i+1) % 16)] });
             }
         }
     }
@@ -57,23 +56,13 @@ pub fn hexdump(stream: anytype, header: [] const u8, buffer: [] const u8) std.os
 }
 
 // test "simple hexdump test" {
-//     var buffer: [5]u8 = undefined;
-//     buffer[0] = 1;
-//     buffer[1] = 2;
-//     buffer[2] = 4;
-//     buffer[3] = 8;
-//     buffer[4] = 16;
+//     print("\n\nPrint hexdump, NO AUTOMATIC VERIFICATION, READ SOURCE CODE\n\n", .{});
 // 
-//     print("\n\nLet's print the full hexdump\n\n", .{});
+//     var buffer = "hello this is a simple text to print";
 //     var hexbuf: [2000]u8 = undefined;
 //     var hexfbs = std.io.fixedBufferStream(&hexbuf);
 //     var hexwriter = hexfbs.writer();
-// 
-//     // try hexdump(hexfbs.writer(), "this is the header", buffer);
-//     // try hexdump(std.io.getStdOut().writer()
-//     //            , "Hello World", &buffer);
-//     try hexdump(hexwriter, "Hello World", &buffer);
-// 
-//     print("\nPRINTING\n", .{});
+//     try hexdump(hexwriter, "Hello World", buffer);
 //     print("{s}\n", .{hexfbs.getWritten()});
+// 
 // }
