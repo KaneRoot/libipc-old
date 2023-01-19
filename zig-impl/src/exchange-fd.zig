@@ -89,7 +89,7 @@ pub fn send_fd(sockfd: os.socket_t, msg: []const u8, fd: os.fd_t) void {
     });
 
     const len = os.sendmsg(sockfd, .{
-        .name = undefined,
+        .name = null,
         .namelen = 0,
         .iov = &iov,
         .iovlen = iov.len,
@@ -189,9 +189,9 @@ pub fn recvmsg(
 /// WARNING: buffer must be at least 1500 bytes.
 pub fn receive_fd(sockfd: os.socket_t, buffer: []u8, msg_size: *usize) !os.fd_t {
 
-    var msg_buffer: [1500]u8 = undefined;
+    var msg_buffer = [_]u8{0} ** 1500;
 
-    var iov = [1]os.iovec{
+    var iov = [_]os.iovec{
         .{
               .iov_base = msg_buffer[0..]
             , .iov_len  = msg_buffer.len
