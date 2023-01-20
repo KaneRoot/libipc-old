@@ -11,16 +11,39 @@ Network code separation
   * networking: performed by dedicated services
   * other applications: think all communications are local
 
+#pause
 Library code separation
   * make libraries language independent
   * micro-services are great, each of them does its part
+#pause
     why not on base systems?
 
-
+#pause
 Applications are better than libraries
   * implementations change
   * languages change
   * API… not so much (not as often at least)
+
+## In practice
+
+usage must be simple
+
+  1. init connection or service
+  2. loop over events
+
+#pause
+events are simple and high level
+
+  1. connection and disconnection
+  2. message received and sent
+
+## When
+
+LibIPC is useful when the app:
+
+- cannot be a simple shell command
+- needs a bidirectional communication
+- is an abstraction over a library
 
 ## Available libraries
 
@@ -54,21 +77,22 @@ Is it designed *NOT* to be used?
   * documentation isn't great
     * no code example
 
-And kinda obsolete: a big chunk of the documentation is
+## DBUS (bonus page!)
+
+DBUS feels obsolete: a big chunk of the documentation is
 about message format. Just use CBOR already!
 
+#pause
 They even admit they did a poor job on the C part:
 > There is a low-level C binding, but that is probably too detailed
 > and cumbersome for anything but writing other bindings.
 
+#pause
 Oh. And C++. YOU SHALL NOT PASS!
 
 This is a Linux requirement nowadays, wth?
 
 ## Bare libc api
-
-All have great performances
-
 
 shared memory and semaphores
 
@@ -80,8 +104,11 @@ pipes, sockets
 
 * lack a conventional message format
   ... but that's about it
-  Great to start with!
+* Great to start with!
 
+All have great performances to exchange data.
+
+What is slow is the function to _wait_ for new events.
 
 ## LibIPC history
 
@@ -100,16 +127,10 @@ pipes, sockets
 #pause
 3. rewrite using poll(2)
   * many bugfixes later, way more tested than before
-  * implementation now kinda production-ready
-  * enough for altideal.com at least
+  * implementation was kinda production-ready
+  * implementation was simple: < 2000 lines of C code
 
 ## Current implementation of libIPC
-
-implementation is simple: < 2000 lines of C code
-
-usage is simple
-  1. init connection or server
-  2. loop over events
 
 bindings are available in Crystal
   * as well as fancy mappings: JSON and CBOR class serialization
