@@ -439,7 +439,7 @@ pub const Context = struct {
                     };
 
                     if (maybe_message) |m| {
-                        return Event.init(Event.Type.MESSAGE, i, fd.fd, m);
+                        return Event.init(Event.Type.MESSAGE_RX, i, fd.fd, m);
                     }
 
                     try self.close(i);
@@ -486,7 +486,7 @@ pub const Context = struct {
                     // otherwise = write message for the msg.fd
                     try self.write (m);
                     m.deinit();
-                    return Event.init(Event.Type.TX, i, fd.fd, null);
+                    return Event.init(Event.Type.MESSAGE_TX, i, fd.fd, null);
                 }
             }
             // .revent is POLLHUP

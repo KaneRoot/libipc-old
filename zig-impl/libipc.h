@@ -5,14 +5,14 @@
 
 enum event_types {
 	  ERROR = 0         // A problem occured.
-	, EXTERNAL = 1      // Message received from a non IPC socket.
-	, SWITCH_RX = 2     // Message received from a switched FD.
-	, SWITCH_TX = 3     // Message sent to a switched fd.
-	, CONNECTION = 4    // New user.
-	, DISCONNECTION = 5 // User disconnected.
-	, MESSAGE = 6       // New message.
-	, TIMER = 7         // Timeout in the poll(2) function.
-	, TX = 8            // Message sent.
+	, CONNECTION = 1    // New user.
+	, DISCONNECTION = 2 // User disconnected.
+	, MESSAGE_RX = 3    // New message.
+	, MESSAGE_TX = 4    // Message sent.
+	, TIMER = 5         // Timeout in the poll(2) function.
+	, EXTERNAL = 6      // Message received from a non IPC socket.
+	, SWITCH_RX = 7     // Message received from a switched FD.
+	, SWITCH_TX = 8     // Message sent to a switched fd.
 };
 
 // Return type of callback functions when switching.

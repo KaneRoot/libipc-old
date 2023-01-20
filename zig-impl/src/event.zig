@@ -35,14 +35,14 @@ pub const Event = struct {
 
     pub const Type = enum {
         ERROR,         // A problem occured.
+        CONNECTION,    // New user.
+        DISCONNECTION, // User disconnected.
+        MESSAGE_RX,    // New message.
+        MESSAGE_TX,    // Message sent.
+        TIMER,         // Timeout in the poll(2) function.
         EXTERNAL,      // Message received from a non IPC socket.
         SWITCH_RX,     // Message received from a switched FD.
         SWITCH_TX,     // Message sent to a switched fd.
-        CONNECTION,    // New user.
-        DISCONNECTION, // User disconnected.
-        MESSAGE,       // New message.
-        TIMER,         // Timeout in the poll(2) function.
-        TX,            // Message sent.
     };
 
     t: Event.Type,

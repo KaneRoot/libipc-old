@@ -79,7 +79,7 @@ fn create_service() !void {
                     , .{some_event.origin, ctx.pollfd.items.len});
             },
 
-            .MESSAGE => {
+            .MESSAGE_RX => {
                 if (some_event.m) |m| {
                     print("New message ({} bytes)\n", .{m.payload.len});
                     util.print_message ("RECEIVED MESSAGE", m);
@@ -92,7 +92,7 @@ fn create_service() !void {
                 }
             },
 
-            .TX => {
+            .MESSAGE_TX => {
                 print("Message sent.\n", .{});
             },
 

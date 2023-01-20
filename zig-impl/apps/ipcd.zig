@@ -107,7 +107,7 @@ fn create_service() !void {
                 break;
             },
 
-            .MESSAGE => {
+            .MESSAGE_RX => {
                 print("Client asking for a service through ipcd.\n", .{});
                 defer ctx.close_fd (some_event.origin) catch {};
                 if (some_event.m) |m| {
@@ -206,7 +206,7 @@ fn create_service() !void {
                 }
             },
 
-            .TX => {
+            .MESSAGE_TX => {
                 print("Message sent.\n", .{});
             },
 

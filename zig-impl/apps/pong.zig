@@ -43,7 +43,7 @@ pub fn main() !u8 {
                 print("Timer!\n", .{});
             },
 
-            .MESSAGE => {
+            .MESSAGE_RX => {
                 if (some_event.m) |m| {
                     print("message has been bounced: {}\n", .{m});
                     m.deinit();
@@ -55,7 +55,7 @@ pub fn main() !u8 {
                 }
             },
 
-            .TX => {
+            .MESSAGE_TX => {
                 print("Message sent.\n", .{});
             },
 

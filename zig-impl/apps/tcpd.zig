@@ -185,7 +185,7 @@ fn create_service() !void {
                 print ("Message has been sent (SWITCH fd {}).\n", .{some_event.origin});
             },
 
-            .MESSAGE => {
+            .MESSAGE_RX => {
                 print ("Client asking for a service through TCPd.\n", .{});
                 errdefer ctx.close (some_event.index) catch {};
                 if (some_event.m) |m| {
@@ -240,7 +240,7 @@ fn create_service() !void {
                 }
             },
 
-            .TX => {
+            .MESSAGE_TX => {
                 print ("Message sent.\n", .{});
             },
 
