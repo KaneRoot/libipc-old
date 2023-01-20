@@ -19,10 +19,6 @@
 	==32374==    by 0x28161E: callMainWithArgs (start.zig:498)
 	==32374==    by 0x28161E: main (start.zig:513)
 
-### build.zig
-
-- should build different applications (ipcd tcpd pong pongd)
-
 ### makefile
 
 - distribution
