@@ -174,11 +174,11 @@ int wait_event(void) {
 				printf ("TIMER.\n");
 				break;
 			}
-		case TX: {
+		case MESSAGE_TX: {
 				printf ("A message has been sent.\n");
 				break;
 			}
-		case MESSAGE: {
+		case MESSAGE_RX: {
 				if (size == 0) {
 					printf ("No message returned.\n");
 					return 1;

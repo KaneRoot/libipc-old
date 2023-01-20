@@ -95,11 +95,11 @@ int main(int argc, char**argv) {
 
 				break;
 			}
-		case TX: {
+		case MESSAGE_TX: {
 				printf ("Message sent.\n");
 				break;
 			}
-		case MESSAGE: {
+		case MESSAGE_RX: {
 				if (size == 0) {
 					printf ("Error: no message returned.\n");
 					should_continue = 0;
