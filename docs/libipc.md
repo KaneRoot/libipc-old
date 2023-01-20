@@ -3,26 +3,51 @@
 This file is a presentation.
 Better get the point tools here: https://git.baguette.netlib.re/Baguette/pointtools
 
+TODO: Explain the problem
+TODO: Explain the solution
+TODO: Explain why LibIPC
+TODO: Explain how LibIPC
+TODO: Explain other possible implementations
+TODO: Explain future of LibIPC
+TODO: Explain what can be done right now
+TODO: Explain what I actually do with it
+TODO: Explain LibIPC isn't a silver bullet but fine for what I want
+
 Have fun!
 
-## Why libIPC?
+## Programming problems
 
-Network code separation
+Libraries
+* change often = hard to follow
+* don't often provide a high-level interface
+* each library is coded in its own way
+* availability vary depending on the language
+
+Example: libraries to access databases
+* languages often have their own implementation
+* functions may vary from a language to another
+
+## Infrastructure problems
+
+Infrastructure
+* Always need to install all required libraries
+* No clear way to sandbox part of an application
+
+## What solution?
+
+MAKE APPLICATIONS, NOT LIBRARIES
+* apps talking to apps
+
+Create an abstraction for
+
+libraries
+  * languages, implementations, code modifications in general
+
+network code
   * networking: performed by dedicated services
-  * other applications: think all communications are local
-
-#pause
-Library code separation
-  * make libraries language independent
-  * micro-services are great, each of them does its part
-#pause
-    why not on base systems?
-
-#pause
-Applications are better than libraries
-  * implementations change
-  * languages change
-  * API… not so much (not as often at least)
+    - example: TCPd, UDPd, TLSd, HTTPd...
+    - LibIPC is independant from protocols and formats
+  * applications think communications are local
 
 ## In practice
 
@@ -37,6 +62,11 @@ events are simple and high level
   1. connection and disconnection
   2. message received and sent
 
+#pause
+message have a simple format: length + value
+
+#pause
+And that's it.
 ## When
 
 LibIPC is useful when the app:
@@ -47,24 +77,16 @@ LibIPC is useful when the app:
 
 ## Available libraries
 
-* libevent
 * DBUS
+* libevent
 * even more complicated stuff
   * RPC-style, like Corba
 
 #pause
 * ... or bare libc api
+  * shared memory
   * pipes
   * sockets (unix, inet, inet6)
-  * shared memory
-
-## libevent
-
-* works with epoll and kqueue
-  * great performances
-  * works on Linux and *BSD
-
-* a bit complicated at first
 
 ## DBUS
 
@@ -92,6 +114,14 @@ Oh. And C++. YOU SHALL NOT PASS!
 
 This is a Linux requirement nowadays, wth?
 
+## libevent
+
+* works with epoll and kqueue
+  * great performances
+  * works on Linux and *BSD
+
+* a bit complicated
+
 ## Bare libc api
 
 shared memory and semaphores
@@ -110,7 +140,21 @@ All have great performances to exchange data.
 
 What is slow is the function to _wait_ for new events.
 
-## LibIPC history
+## LibIPC's choice
+
+Unix sockets
+- fast, simple, reliable, bidirectional
+- remote connections will have their own service (ex: TCPd)
+
+Dumbest possible message format
+- length + value
+- build your own format on top of it!
+
+Wait on file descriptors with poll(2)
+- slow, but available everywhere
+- may upgrade to libevent
+
+## LibIPC history (1/2)
 
 1. based on pipes
   * because we gotta go fast!
@@ -118,21 +162,26 @@ What is slow is the function to _wait_ for new events.
 
 #pause
 2. rewrite to work with unix sockets
-  * performances are excellent, no need for absolute best
+  * performances are excellent, no need for _absolute best_
   * way nicer implementation
   * select(2) for listening on file descriptors
 #pause
   * ... wait, does select(2) support more than 1024 connections?
 
-#pause
+## LibIPC history (2/2)
+
 3. rewrite using poll(2)
   * many bugfixes later, way more tested than before
-  * implementation was kinda production-ready
+  * implementation was (kinda) production-ready
   * implementation was simple: < 2000 lines of C code
+
+Still wasn't as simple as I wanted
 
 ## Current implementation of libIPC
 
-bindings are available in Crystal
+Written in Zig
+
+bindings available in Crystal
   * as well as fancy mappings: JSON and CBOR class serialization
 
 #pause
@@ -151,7 +200,7 @@ LibIPC has a high level API for the user
 
 1. init a connection (client) or create an unix socket (service)
 
-  example: ipc_server_init (context, "service")
+  example: ipc_service_init (context, "service")
 
 #pause
 2. loop, wait for events
@@ -162,9 +211,9 @@ LibIPC has a high level API for the user
     while(1) {
       wait_event (context, &event, &timer)
       switch (event.type) {
-        case IPC_EVENT_TYPE_CONNECTION : ...
-        case IPC_EVENT_TYPE_DISCONNECTION : ...
-        case IPC_EVENT_TYPE_MESSAGE: {
+        case IPC_CONNECTION : ...
+        case IPC_DISCONNECTION : ...
+        case IPC_MESSAGE: {
           struct ipc_message *m = event.m;
           ...
         }
