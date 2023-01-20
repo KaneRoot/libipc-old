@@ -1,38 +1,11 @@
-SRC      ?= snd-rcv
-FULLNAME ?= misc/$(SRC).zig
-
 CC=gcc
 CFLAGS=-Wall -Wextra #-Wno-implicit-function-declaration
 LDFLAGS=-I build/ -L build/ -lipc
 
-m: $(FULLNAME)
-	@-rm /tmp/.TEST_USOCK > /dev/null
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-	./$(SRC)
+bin: build.zig apps/*.zig src/*.zig
+	$(ZIGC) build
 
-run: $(FULLNAME)
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-	./$(SRC)
-
-t: $(FULLNAME)
-	$(ZIGC) test $(ZIGOPTS) $^
-
-pongd: src/pongd.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-
-pong: src/pong.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-
-c: misc/send-msg.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-
-s: misc/receive-msg.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-
-sr: misc/snd-rcv.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-
-lib:
+lib: build.zig src/*.zig
 	$(ZIGC) build
 
 stop-ipcd:
@@ -41,33 +14,33 @@ stop-ipcd:
 stop-tcpd:
 	-pkill -1 tcpd
 
-buildrun-ipcd: ipcd
+run-ipcd:
 	-rm /tmp/libipc-run/ipc 2>/dev/null || true
 	$(VALGRIND) ./ipcd
 
-buildrun-pongd: pongd
+run-pongd:
 	-rm /tmp/libipc-run/pong 2>/dev/null || true
 	$(VALGRIND) ./pongd
 
-buildrun-tcpd: tcpd
+run-tcpd:
 	@-rm /tmp/libipc-run/tcp 2>/dev/null || true
 	$(VALGRIND) ./tcpd
 
 TCP_SERVICE_ALT ?= 127.0.0.1:9898
-buildrun-tcpd-alternative: tcpd
+run-tcpd-alternative:
 	-rm /tmp/libipc-run/tcpdup 2>/dev/null || true
 	IPC_SERVICE_NAME=tcpdup ADDRESS=$(TCP_SERVICE_ALT) $(VALGRIND) ./tcpd
 
 SERVICE_NAME ?= p
 IPC_NETWORK  ?= p unix://pong
-buildrun-pong: pong
+run-pong:
 	@#Force pong to contact IPCd.
 	@#SERVICE is the service to contact and IPC_NETWORK is the IPCd
 	@#configuration to translate "p" into "pong" (still using UNIX
 	@#sockets on the same computer).
 	SERVICE="$(SERVICE_NAME)" IPC_NETWORK="$(IPC_NETWORK)" $(VALGRIND) ./pong
 
-buildrun-pong-test-tcpd: pong
+run-pong-test-tcpd:
 	SERVICE="pong" IPC_NETWORK="pong tcp://$(TCP_SERVICE_ALT)/pong" $(VALGRIND) ./pong
 
 ifeq ($(SRC),)
@@ -78,7 +51,7 @@ else
 test-src:
 endif
 
-comp: zigcompilation test-bindings-pong test-bindings-pongd
+comp: bin test-bindings-pong test-bindings-pongd
 
 list-obj-files: test-src
 	@# List all .o included in a .a archive.
@@ -89,9 +62,6 @@ list-symbols: test-src
 list-symbols-alt: test-src
 	@# Alternative: grep .text section in an objdump output.
 	objdump -T $(SRC) | grep text
-
-zigcompilation: build.zig src/*.zig
-	$(ZIGC) build
 
 bindings-compile-pong: test-bindings/pong.c
 	@-mkdir bin-bindings 2>/dev/null || true
@@ -116,15 +86,7 @@ init-websocket-tcpd:
 	websocat -b -E ws-l:$(WS_SERVICE) tcp:$(TCP_SERVICE)
 
 init-websocket-client:
+	@# websocat -b -E tcp-l:127.0.0.1:9000 ws://127.0.0.1:9999
 	websocat -b -E ws://$(WS_SERVICE)
-#websocat -b -E tcp-l:127.0.0.1:9000 ws://127.0.0.1:9999
 
-build-all:
-	$(ZIGC) build-exe src/write-tcpd-pong-messages.zig -lc
-	$(ZIGC) build-exe $(ZIGOPTS) src/ipcd.zig
-	$(ZIGC) build-exe $(ZIGOPTS) src/tcpd.zig
-	$(ZIGC) build-exe $(ZIGOPTS) src/pong.zig
-	$(ZIGC) build-exe $(ZIGOPTS) src/pongd.zig
-
-serve:
-	find src/ | entr make build-all
+.PHONY: bin lib
