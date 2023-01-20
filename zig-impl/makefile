@@ -27,29 +27,17 @@ VG_SUPPRESS_WARNINGS ?=
 VG_GENERATE_SUPPRESSION ?=
 USE_VALGRIND ?=
 
-ipcd: src/ipcd.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-
-tcpd: src/tcpd.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $^
-
-test-libipc: src/main.zig
-	$(ZIGC) test $(ZIGOPTS) $^
-
-test-ipcd: src/ipcd.zig
-	$(ZIGC) test $(ZIGOPTS) $^
-
-doc: src/ipcd.zig
-	$(ZIGC) build-exe $(ZIGOPTS) $(ZIGMAKEDOC) $^
-
 TO_CLEAN != ls misc/*.zig | sed 's/.zig$\//' | sed 's_misc/__'
-TO_CLEAN += ipcd tcpd pong pongd
-TO_CLEAN += *.o
+TO_CLEAN += bin/ipcd bin/tcpd bin/pong bin/pongd
+TO_CLEAN += bin/*.o
 clean:
 	@-rm $(TO_CLEAN) 2>/dev/null
 
 mrproper: clean
 	@-rm -r docs build zig-cache zig-out 2>/dev/null
+
+doc: src/ipcd.zig
+	$(ZIGC) build-exe $(ZIGOPTS) $(ZIGMAKEDOC) $^
 
 ACCESS_LOGS ?= ./access.log
 servedoc:

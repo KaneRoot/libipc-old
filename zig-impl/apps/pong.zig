@@ -1,11 +1,12 @@
 const std = @import("std");
-const hexdump = @import("./hexdump.zig");
 const net = std.net;
 const fmt = std.fmt;
 const os = std.os;
 
 const print = std.debug.print;
-const ipc = @import("./main.zig");
+
+const ipc = @import("ipc");
+const hexdump = ipc.hexdump;
 const Message = ipc.Message;
 
 pub fn main() !u8 {

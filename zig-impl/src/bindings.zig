@@ -1,6 +1,6 @@
 const std = @import("std");
 const print = std.debug.print;
-const ipc = @import("./main.zig");
+const ipc = @import("./ipc.zig");
 const Context = ipc.Context;
 const Message = ipc.Message;
 const CBEventType = ipc.CBEvent.Type;

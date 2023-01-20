@@ -5,7 +5,7 @@ const fmt = std.fmt;
 
 const net = std.net;
 
-const ipc = @import("./main.zig");
+const ipc = @import("./ipc.zig");
 const Message  = ipc.Message;
 const CBEventType = ipc.CBEvent.Type;
 

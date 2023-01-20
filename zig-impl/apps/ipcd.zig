@@ -1,22 +1,22 @@
 const std = @import("std");
-const hexdump = @import("./hexdump.zig");
 const net = std.net;
 const fmt = std.fmt;
 const os = std.os;
 
-const ipc = @import("./main.zig");
+const ipc = @import("ipc");
+const hexdump = ipc.hexdump;
 const Message = ipc.Message;
 
 // Import send_fd this way in order to produce docs for exchange-fd functions.
-const exchange_fd = @import("./exchange-fd.zig");
+const exchange_fd = ipc.exchangefd;
 const send_fd = exchange_fd.send_fd;
 
 const builtin = @import("builtin");
 const native_os = builtin.target.os.tag;
 const print = std.debug.print;
 const testing = std.testing;
-const print_eq = @import("./util.zig").print_eq;
-const URI = @import("./util.zig").URI;
+const print_eq = ipc.util.print_eq;
+const URI = ipc.util.URI;
 
 // Standard library is unecessary complex regarding networking.
 // libipc drops it and uses plain old file descriptors instead.
