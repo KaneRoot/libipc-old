@@ -26,7 +26,7 @@ enum cb_event_types {
 int ipc_context_init (void** ptr);
 int ipc_service_init (void* ctx, int* servicefd, const char* service_name, uint16_t service_name_len);
 int ipc_connect_service (void* ctx, int* servicefd, const char* service_name, uint16_t service_name_len);
-void ipc_context_deinit (void* ctx);
+void ipc_context_deinit (void** ctx);
 int ipc_write (void* ctx, int servicefd, char* mcontent, uint32_t mlen);
 int ipc_schedule (void* ctx, int servicefd, const char* mcontent, uint32_t mlen);
 int ipc_read_fd (void* ctx, int fd, char* buffer, size_t* buflen);

@@ -29,8 +29,10 @@ export fn ipc_connect_service (ctx: *Context, servicefd: *i32, service_name: [*]
     return 0;
 }
 
-export fn ipc_context_deinit (ctx: *Context) callconv(.C) void {
-    ctx.deinit();
+export fn ipc_context_deinit (ctx: **Context) callconv(.C) void {
+    var ptr: *Context = ctx.*;
+    ptr.deinit();
+    std.heap.c_allocator.destroy(ptr);
 }
 
 /// Write a message (no waiting).

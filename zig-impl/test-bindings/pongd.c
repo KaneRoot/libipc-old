@@ -121,9 +121,7 @@ int main(int argc, char**argv) {
 	}
 
 	printf ("Deinit context\n");
-	ipc_context_deinit (ctx);
-
-	free(ctx);
+	ipc_context_deinit (&ctx);
 
 	printf ("Context freed.\n");
 	return 0;

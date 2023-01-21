@@ -36,8 +36,7 @@ int direct_write_then_read(void) {
 	if (ret != 0) {
 		printf ("Cannot connect to a service.\n");
 		printf ("Deinit context\n");
-		ipc_context_deinit (ctx);
-		free(ctx);
+		ipc_context_deinit (&ctx);
 		return 1;
 	}
 
@@ -47,8 +46,7 @@ int direct_write_then_read(void) {
 	if (ret != 0) {
 		printf ("Cannot write to the service.\n");
 		printf ("Deinit context\n");
-		ipc_context_deinit (ctx);
-		free(ctx);
+		ipc_context_deinit (&ctx);
 		return 1;
 	}
 
@@ -60,16 +58,14 @@ int direct_write_then_read(void) {
 	if (ret != 0) {
 		printf ("Cannot read from the service fd: %d.\n", ret);
 		printf ("Deinit context\n");
-		ipc_context_deinit (ctx);
-		free(ctx);
+		ipc_context_deinit (&ctx);
 		return 1;
 	}
 
 	if (size == 0) {
 		printf ("No message returned.\n");
 		printf ("Deinit context\n");
-		ipc_context_deinit (ctx);
-		free(ctx);
+		ipc_context_deinit (&ctx);
 		return 1;
 	}
 
@@ -77,9 +73,7 @@ int direct_write_then_read(void) {
 	printf ("Response: %s.\n", message);
 
 	printf ("Deinit context\n");
-	ipc_context_deinit (ctx);
-
-	free(ctx);
+	ipc_context_deinit (&ctx);
 
 	printf ("Context freed.\n");
 	return 0;
@@ -102,8 +96,7 @@ int wait_event(void) {
 	if (ret != 0) {
 		printf ("Cannot init context.\n");
 		printf ("Deinit context\n");
-		ipc_context_deinit (ctx);
-		free(ctx);
+		ipc_context_deinit (&ctx);
 		return 1;
 	}
 
@@ -113,8 +106,7 @@ int wait_event(void) {
 	if (ret != 0) {
 		printf ("Cannot connect to a service.\n");
 		printf ("Deinit context\n");
-		ipc_context_deinit (ctx);
-		free(ctx);
+		ipc_context_deinit (&ctx);
 		return 1;
 	}
 
@@ -124,8 +116,7 @@ int wait_event(void) {
 	if (ret != 0) {
 		printf ("Cannot schedule a message.\n");
 		printf ("Deinit context\n");
-		ipc_context_deinit (ctx);
-		free(ctx);
+		ipc_context_deinit (&ctx);
 		return 1;
 	}
 
@@ -194,9 +185,7 @@ int wait_event(void) {
 	}
 
 	printf ("Deinit context\n");
-	ipc_context_deinit (ctx);
-
-	free(ctx);
+	ipc_context_deinit (&ctx);
 
 	printf ("Context freed.\n");
 	return 0;
