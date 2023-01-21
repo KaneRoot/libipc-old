@@ -13,7 +13,7 @@ lib LibIPC
 	end
 
 	fun init   = ipc_context_init   (Void**) : LibC::Int
-	fun deinit = ipc_context_deinit (Void*) : Void
+	fun deinit = ipc_context_deinit (Void**) : Void
 
 	fun service_init    = ipc_service_init   (Void*, LibC::Int*, LibC::Char*, LibC::UInt16T) : LibC::Int
 	fun connect_service = ipc_connect_service(Void*, LibC::Int*, LibC::Char*, LibC::UInt16T) : LibC::Int
@@ -50,7 +50,7 @@ def test_without_wait()
 	received = String.new(buffer.to_unsafe, buflen)
 	pp! received
 
-	LibIPC.deinit (ctx)
+	LibIPC.deinit (pointerof(ctx))
 end
 
 class IPC
@@ -62,15 +62,23 @@ class IPC
 	#	end
 	#end
 
+	# Reception buffer with a big capacity.
+	# Allocated once.
+	@reception_buffer = Array(UInt8).new 2_000_000
+	@reception_buffer_len : LibC::UInt64T = 2_000_000
+
 	class Event
 		property type : LibIPC::EventType
 		property index : LibC::UInt64T
 		property fd : Int32
-		property buffer : Array(UInt8)
+		property message : Array(UInt8)? = nil
 
 		def initialize(t : UInt8, @index, @fd, buffer, buflen)
 			@type = LibIPC::EventType.new t
-			@buffer = buffer.to_a[0..buflen - 1]
+			if buflen > 0
+				# Array -> Pointer -> Slice -> Array
+				@message = buffer.to_unsafe.to_slice(buflen).to_a
+			end
 		end
 	end
 
@@ -81,7 +89,7 @@ class IPC
 	end
 
 	def deinit
-		LibIPC.deinit(@context)
+		LibIPC.deinit(pointerof(@context))
 	end
 
 	def connect(name : String) : Int
@@ -106,20 +114,19 @@ class IPC
 		eventtype : UInt8 = 0
 		index : LibC::UInt64T = 0
 		fd : Int32 = 0
-		buflen : LibC::UInt64T = 10000
-		buffer = uninitialized UInt8[10000]
+		buflen = @reception_buffer_len
 		ret = LibIPC.wait(@context,
 			pointerof(eventtype),
 			pointerof(index),
 			pointerof(fd),
-			buffer.to_unsafe,
+			@reception_buffer.to_unsafe,
 			pointerof(buflen))
 
 		if ret != 0
 			raise "Oh noes, 'wait' iz brkn"
 		end
 
-		Event.new(eventtype, index, fd, buffer, buflen)
+		Event.new(eventtype, index, fd, @reception_buffer, buflen)
 	end
 end
 
@@ -143,7 +150,7 @@ def test_with_wait()
 	received = String.new(buffer.to_unsafe, buflen)
 	pp! received
 
-	LibIPC.deinit (ctx)
+	LibIPC.deinit (pointerof(ctx))
 end
 
 def test_high_level
@@ -151,9 +158,17 @@ def test_high_level
 	fd = ipc.connect("pong")
 	ipc.write(fd, "hello this is some value")
 	event = ipc.wait()
+
 	pp! event.type
 	pp! event.fd
-	pp! String.new(event.buffer.to_unsafe, event.buffer.size)
+
+	m = event.message
+	if m.nil?
+		puts "No message"
+	else
+		m.not_nil!
+		pp! String.new(m.to_unsafe, m.size)
+	end
 end
 
 # TODO: Write documentation for `Some::Crystal::App`
