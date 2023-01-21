@@ -36,18 +36,17 @@ Infrastructure
 ## What solution?
 
 MAKE APPLICATIONS, NOT LIBRARIES
-* apps talking to apps
+  * apps talking to apps
 
-Create an abstraction for
-
-libraries
+Create an abstraction for libraries
   * languages, implementations, code modifications in general
 
-network code
-  * networking: performed by dedicated services
-    - example: TCPd, UDPd, TLSd, HTTPd...
-    - LibIPC is independant from protocols and formats
+Create an abstraction for network code
   * applications think communications are local
+  * networking is performed by dedicated services
+    * examples: TCPd, UDPd, TLSd, HTTPd...
+  * apps are independant from protocols and formats
+    (unless they are fundamentaly network-related)
 
 ## In practice
 
@@ -154,7 +153,7 @@ Wait on file descriptors with poll(2)
 - slow, but available everywhere
 - may upgrade to libevent
 
-## LibIPC history (1/2)
+## LibIPC history (1/3)
 
 1. based on pipes
   * because we gotta go fast!
@@ -168,7 +167,7 @@ Wait on file descriptors with poll(2)
 #pause
   * ... wait, does select(2) support more than 1024 connections?
 
-## LibIPC history (2/2)
+## LibIPC history (2/3)
 
 3. rewrite using poll(2)
   * many bugfixes later, way more tested than before
@@ -177,30 +176,106 @@ Wait on file descriptors with poll(2)
 
 Still wasn't as simple as I wanted
 
-## Current implementation of libIPC
+## LibIPC history (3/3)
 
-Written in Zig
+4. rewrite in Zig
+  * still uses poll(2) (at least for now)
+  * C-compatible bindings are available
+
+## Why Zig? (1/2)
+
+error management is built-in and mandatory
+
+simpler to read and write
+  * nicer data structures (contain functions)
+  * less code redundancy (defer, more generic functions)
+  * no more C's pitfalls
+  * fully qualified names
+
+## Why Zig? (2/2)
+
+better standard library
+  * usual structures: lists, hashtables
+  * log system
+
+memory management is simpler, more secure and more flexible
+
+better at exposing bugs (better type system)
+
+simpler to cross-compile: same standard library for all OSs
+
+## Current implementation of libIPC
 
 bindings available in Crystal
   * as well as fancy mappings: JSON and CBOR class serialization
 
 #pause
 epoll (Linux) and kqueue (*BSD) were avoided
-  * 'cause callbacks hell => harder to read and to write code
+  * because callbacks hell => harder to read and to write code
 #pause
-  * but we need them for better performances with many connections
-    though, API should stay the same for non threaded applications (simple implementation)
+  * still a possibility for someday, not the priority right now
 
 #pause
 LibIPC doesn't handle parallelism, yet
 
-## How libIPC works
+## How libIPC works (in Zig)
 
-LibIPC has a high level API for the user
+LibIPC has a high level API
+
+	var context = try Context.init(allocator);
+	defer context.deinit();
+
+#pause
+	var pong_fd = try context.connect_service ("pong");
+	var message = try Message.init (pong_fd, allocator, "hello");
+	try context.schedule (message);
+
+## How libIPC works (in Zig)
+
+	var event = try context.wait_event();
+
+	switch (event.t) {
+	    ...
+	}
+
+## How libIPC works (in Zig)
+
+	var event = try context.wait_event();
+
+	switch (event.t) {
+
+	    .CONNECTION => {
+	        print ("New client!\n", .{});
+	    },
+
+	    ...
+	}
+
+
+## How libIPC works (in Zig)
+
+	var event = try context.wait_event();
+
+	switch (event.t) {
+
+	    .CONNECTION => {
+	        print ("New client!\n", .{});
+	    },
+
+	    .MESSAGE_RX => {
+	        if (event.m) |m| {
+	            print ("a message has been received: {s}\n", .{m});
+	        }
+	    }
+	    ...
+	}
+
+## How libIPC works (bindings)
 
 1. init a connection (client) or create an unix socket (service)
 
-  example: ipc_service_init (context, "service")
+  ipc_connect_service (context, &fd, service_name, service_len)
+  ipc_service_init (context, &fd, service_name, service_len)
 
 #pause
 2. loop, wait for events
@@ -209,14 +284,11 @@ LibIPC has a high level API for the user
   example:
 
     while(1) {
-      wait_event (context, &event, &timer)
-      switch (event.type) {
+      ipc_wait_event (context, &type, &index, &fd, buffer, &buffer_len)
+      switch (type) {
         case IPC_CONNECTION : ...
         case IPC_DISCONNECTION : ...
-        case IPC_MESSAGE: {
-          struct ipc_message *m = event.m;
-          ...
-        }
+        case IPC_MESSAGE: ...
       }
     }
 
@@ -225,20 +297,15 @@ LibIPC has a high level API for the user
 3. send messages
 
 ```c
-    struct ipc_message m
-    m.payload   = ...
-    m.length    = strlen(m.payload)
-    m.fd        = event.fd
-    m.type      = ...
-    m.user_type = ...
-    ipc_write (context, &m)
+    ipc_schedule (context, fd, buffer, buffer_len)
+    or
+    ipc_write (context, fd, buffer, buffer_len)
 ```
 
 #pause
-4. add and remove fd from the context
+4. add a file descriptor to listen to
 
-    ipc_add_fd (context, fd)
-    ipc_del_fd (context, fd)
+    ipc_add_external (context, fd)
 
 ## How libIPC works
 
@@ -259,70 +326,51 @@ Example: websocketd.
 
          ipc_switching_callbacks (context, client_fd, cb_in, cb_out)
 
-## libIPC internal structures
+## libIPC internal structures (1/2)
 
 Main goal: simplest possible structures
 
-Examples:
+Examples (nothing hidden):
 
-  Message
-
-    struct ipc_message {
-      char type;        => Internal message type, used by protocol daemons.
-      char user_type;   => User-defined message type (arbitrary).
-      int fd;           => File descriptor concerned about this message.
-      uint32_t length;  => Payload length.
-      char *payload;    => Actual payload.
+    Message {
+      fd: i32                        => File descriptor concerned about this message.
+      payload: []u8                  => Actual payload.
+      allocator: std.mem.Allocator   => Memory management.
     };
 
-  Context of the whole networking state
-
-    struct ipc_ctx {
-      struct ipc_connection_info *cinfos;  => Keeps track of connections.
-      struct pollfd *pollfd;               => List of "pollfd" structures within cinfos,
-                                              so we can pass it to poll(2).
-      size_t size;                         => Size of the connection list.
-      struct ipc_messages tx;              => Messages to send.
-      struct ipc_switchings switchdb;      => Relations between fd.
+    Event {
+      t: Event.Type     => Example: connection, message tx, ...
+      m: ?Message       => Message, if there is one.
+      index: usize      => (Internal stuff).
+      originfd: i32     => File descriptor related to the event.
     };
 
+## libIPC internal structures (2/2)
+
+Context structure is slightly more complicated, but _reasonable_.
+
+	Context {
+	    rundir: [] u8,      // Where the UNIX sockets are.
+	    pollfd: PollFD,     // File descriptors to manage.
+	    tx: Messages,       // Messages to send, once their fd is available.
+	    ...
+	};
+
+The rest is implementation details (and more advanced usage of LibIPC).
 
 ## Future of libIPC
-
-LibIPC will be rewritten in Zig
-
-* simpler to read and write
-  * data structures are simpler to create with comptime
-  * less code redundancy (more generic functions)
-  * already existing error management as written in current libIPC
-  * already existing loggin system
-  * no more C's pitfalls
-
-* way better at exposing bugs
-  * thanks to a better type system
-
-* way safer: cannot ignore errors
-  * so I won't
-
-* simpler to cross-compile: same standard library for every OSs
-* simpler (and more secure) memory management
-
-
-Also: this won't change existing bindings! No excuses!
-
 
 ## Why not use it?
 
 Current limitations
 
 * performances (libIPC is based on poll(2), not epoll nor kqueue)
-  * it really isn't an issue until you have hundreds or thousands of clients
+  * it really isn't an issue until you have hundreds of clients
+  * LibIPC could someday use libevent
 
-* parallelism is not permitted
-  nothing in libIPC is thread-safe
+* nothing in libIPC is thread-safe
 
-
-The future Zig implementation will overcome these issues.
+These limitations are the price for a simple implementation.
 
 ## Questions?
 
