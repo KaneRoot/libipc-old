@@ -1,0 +1,229 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr1
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_init_linux_data_start
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_push_all_eager
+   fun:GC_with_callee_saves_pushed
+   fun:GC_push_roots
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_push_all_eager
+   fun:GC_with_callee_saves_pushed
+   fun:GC_push_roots
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_mark_from
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_mark_from
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_mark_from
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_mark_from
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_mark_from
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:memalign
+   fun:posix_memalign
+   obj:/tmp/libipc/zig-impl/build/libipc.so.0.1.0
+   fun:*Crystal::main_user_code<Int32, Pointer(Pointer(UInt8))>:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:*Signal::setup_segfault_handler:(Int32 | Nil)
+   fun:*Exception::CallStack::setup_crash_handler:(Int32 | Nil)
+   fun:__crystal_main
+   fun:*Crystal::main_user_code<Int32, Pointer(Pointer(UInt8))>:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_mark_from
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_push_all_eager
+   fun:GC_with_callee_saves_pushed
+   fun:GC_push_roots
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr1
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_init_linux_data_start
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_mark_from
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_mark_from
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_push_all_eager
+   fun:GC_with_callee_saves_pushed
+   fun:GC_push_roots
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_mark_from
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:GC_mark_from
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_mark_some
+   obj:/usr/lib/libgc.so.1.5.0
+   fun:GC_try_to_collect_inner
+   fun:GC_init
+   fun:*GC::init:Nil
+   fun:*Crystal::main<Int32, Pointer(Pointer(UInt8))>:Int32
+   fun:main
+}

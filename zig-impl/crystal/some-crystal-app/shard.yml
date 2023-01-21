@@ -1,0 +1,13 @@
+name: some-crystal-app
+version: 0.1.0
+
+authors:
+  - Philippe Pittoli <karchnu@karchnu.fr>
+
+targets:
+  some-crystal-app:
+    main: src/some-crystal-app.cr
+
+crystal: 1.7.1
+
+license: MIT
