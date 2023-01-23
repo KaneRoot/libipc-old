@@ -135,7 +135,6 @@ def test_with_wait()
 	LibIPC.init (pointerof(ctx))
 	fd : Int32 = 0
 	LibIPC.connect_service(ctx, pointerof(fd), "pong", 4)
-	pp! fd
 	LibIPC.write(ctx, fd, "Hello", 5)
 
 	buflen : LibC::UInt64T = 10
@@ -146,7 +145,7 @@ def test_with_wait()
 	LibIPC.timer(ctx, 2000) # Wait at most 2 seconds.
 	LibIPC.wait(ctx, pointerof(eventtype), pointerof(index), pointerof(fd), buffer.to_unsafe, pointerof(buflen))
 
-	pp! LibIPC::EventType.new(eventtype), fd, index, buflen
+	#pp! LibIPC::EventType.new(eventtype), fd, index, buflen
 	received = String.new(buffer.to_unsafe, buflen)
 	pp! received
 
@@ -159,14 +158,10 @@ def test_high_level
 	ipc.write(fd, "hello this is some value")
 	event = ipc.wait()
 
-	pp! event.type
-	pp! event.fd
-
 	m = event.message
 	if m.nil?
 		puts "No message"
 	else
-		m.not_nil!
 		pp! String.new(m.to_unsafe, m.size)
 	end
 end
