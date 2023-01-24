@@ -32,36 +32,26 @@ lib LibIPC
 	fun timer = ipc_context_timer (Void*, LibC::Int)
 
 	# Closing connections.
-	fun ipc_close(Void*, LibC::UInt64T) : LibC::Int
-	fun ipc_close_all(Void*) : LibC::Int
+	fun close     = ipc_close(Void*, LibC::UInt64T) : LibC::Int
+	fun close_fd  = ipc_close_fd(Void*, LibC::Int) : LibC::Int
+	fun close_all = ipc_close_all(Void*) : LibC::Int
 end
 
-def test_without_wait()
-	ctx = Pointer(Void).null
-	LibIPC.init (pointerof(ctx))
-	fd : Int32 = 0
-	LibIPC.connect_service(ctx, pointerof(fd), "pong", 4)
-	pp! fd
-	LibIPC.write(ctx, fd, "Hello", 5)
-
-	buflen : LibC::UInt64T = 10
-	buffer = uninitialized UInt8[10]
-	LibIPC.read(ctx, fd, buffer.to_unsafe, pointerof(buflen))
-	received = String.new(buffer.to_unsafe, buflen)
-	pp! received
-
-	LibIPC.deinit (pointerof(ctx))
+# TODO:
+module IPCMessage
+	class TypedMessage
+		@fd      : Int32
+		@type    : UInt8
+		@payload : Bytes
+		def initialize(@fd, @type, string : String)
+			@payload = Bytes.new string
+		end
+		def initialize(@fd, @type, @payload)
+		end
+	end
 end
 
 class IPC
-	#class Message
-	#	@fd : Int32
-	#	@payload : Bytes
-	#	def initialize(@fd, string : String)
-	#		@payload = Bytes.new string
-	#	end
-	#end
-
 	# Reception buffer with a big capacity.
 	# Allocated once.
 	@reception_buffer = Array(UInt8).new 2_000_000
@@ -88,6 +78,7 @@ class IPC
 		at_exit { deinit }
 	end
 
+	# Closes all connections then remove the structure from memory.
 	def deinit
 		LibIPC.deinit(pointerof(@context))
 	end
@@ -95,9 +86,13 @@ class IPC
 	def connect(name : String) : Int
 		fd = uninitialized Int32
 		if LibIPC.connect_service(@context, pointerof(fd), name, name.size) != 0
-			raise "oh noes"
+			raise "oh noes, 'connect_service' iz brkn"
 		end
 		fd
+	end
+
+	def write(fd : Int, message : IPCMessage::TypedMessage)
+		self.write(fd, message.payload.to_unsafe, message.payload.size)
 	end
 
 	def write(fd : Int, string : String)
@@ -106,7 +101,35 @@ class IPC
 
 	def write(fd : Int, buffer : UInt8*, buflen : UInt64)
 		if LibIPC.write(@context, fd, buffer, buflen) != 0
-			raise "oh noes"
+			raise "oh noes, 'write' iz brkn"
+		end
+	end
+
+	def schedule(fd : Int, string : String)
+		self.schedule(fd, string.to_unsafe, string.size.to_u64)
+	end
+
+	def schedule(fd : Int, buffer : UInt8*, buflen : UInt64)
+		if LibIPC.schedule(@context, fd, buffer, buflen) != 0
+			raise "oh noes, 'schedule' iz brkn"
+		end
+	end
+
+	def close(index : LibC::UInt64T)
+		if LibIPC.close(@context, index) != 0
+			raise "Oh noes, 'close index' iz brkn"
+		end
+	end
+
+	def close(fd : LibC::Int)
+		if LibIPC.close_fd(@context, fd) != 0
+			raise "Oh noes, 'close fd' iz brkn"
+		end
+	end
+
+	def close_all()
+		if LibIPC.close_all(@context) != 0
+			raise "Oh noes, 'close all' iz brkn"
 		end
 	end
 
@@ -128,29 +151,14 @@ class IPC
 
 		Event.new(eventtype, index, fd, @reception_buffer, buflen)
 	end
+
+	def loop(&block : Proc(IPC::Event, Nil))
+		::loop do
+			yield wait
+		end
+	end
 end
 
-def test_with_wait()
-	ctx = Pointer(Void).null
-	LibIPC.init (pointerof(ctx))
-	fd : Int32 = 0
-	LibIPC.connect_service(ctx, pointerof(fd), "pong", 4)
-	LibIPC.write(ctx, fd, "Hello", 5)
-
-	buflen : LibC::UInt64T = 10
-	buffer = uninitialized UInt8[10]
-	eventtype : UInt8 = 0
-	index : LibC::UInt64T = 0
-
-	LibIPC.timer(ctx, 2000) # Wait at most 2 seconds.
-	LibIPC.wait(ctx, pointerof(eventtype), pointerof(index), pointerof(fd), buffer.to_unsafe, pointerof(buflen))
-
-	#pp! LibIPC::EventType.new(eventtype), fd, index, buflen
-	received = String.new(buffer.to_unsafe, buflen)
-	pp! received
-
-	LibIPC.deinit (pointerof(ctx))
-end
 
 def test_high_level
 	ipc = IPC.new
@@ -166,11 +174,33 @@ def test_high_level
 	end
 end
 
+def test_loop
+	ipc = IPC.new
+	fd = ipc.connect("pong")
+	ipc.schedule(fd, "hello this is some value")
+	ipc.loop do |event|
+		case event.type
+		when LibIPC::EventType::MessageRx
+			m = event.message
+			if m.nil?
+				puts "No message"
+			else
+				pp! String.new(m.to_unsafe, m.size)
+			end
+			exit 0
+		when LibIPC::EventType::MessageTx
+			puts "A message has been sent"
+		else
+			puts "Unexpected: #{event.type}"
+			exit 1
+		end
+	end
+end
+
 # TODO: Write documentation for `Some::Crystal::App`
 module Some::Crystal::App
 	VERSION = "0.1.0"
 
-	test_without_wait
-	test_with_wait
 	test_high_level
+	test_loop
 end
