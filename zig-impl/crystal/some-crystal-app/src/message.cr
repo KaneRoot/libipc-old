@@ -15,7 +15,7 @@ module IPCMessage
 		def initialize(@payload)
 		end
 
-		def self.deserialize(payload) : UntypedMessage
+		def self.deserialize(payload : Bytes) : UntypedMessage
 			IPCMessage::UntypedMessage.new payload
 		end
 
@@ -49,7 +49,7 @@ module IPCMessage
 		def serialize
 			bytes = Bytes.new (1 + @payload.size)
 			type = @type
-			bytes[0] = type.nil? ? 0 : type
+			bytes[0] = type.nil? ? 0.to_u8 : type
 			bytes[1..].copy_from @payload
 			bytes
 		end
@@ -60,10 +60,10 @@ end
 class IPC
 	def schedule(fd : Int32, m : (IPCMessage::TypedMessage | IPCMessage::UntypedMessage))
 		payload = m.serialize
-		schedule fd, payload, payload.size
+		schedule fd, payload
 	end
 	def write(fd : Int32, m : (IPCMessage::TypedMessage | IPCMessage::UntypedMessage))
 		payload = m.serialize
-		write fd, payload, payload.size
+		write fd, payload
 	end
 end

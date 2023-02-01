@@ -48,6 +48,10 @@ class IPC
 		fd
 	end
 
+	def timer(value : LibC::Int)
+		LibIPC.timer(@context, value)
+	end
+
 	def write(fd : Int, string : String)
 		self.write(fd, string.to_unsafe, string.size.to_u64)
 	end
@@ -58,12 +62,20 @@ class IPC
 		end
 	end
 
+	def write(fd : Int32, buffer : Bytes)
+		self.write(fd, buffer.to_unsafe, buffer.size.to_u64)
+	end
+
 	def schedule(fd : Int32, string : String)
 		self.schedule(fd, string.to_unsafe, string.size.to_u64)
 	end
 
 	def schedule(fd : Int32, buffer : Array(UInt8), buflen : Int32)
 		self.schedule(fd, buffer.to_unsafe, buflen.to_u64)
+	end
+
+	def schedule(fd : Int32, buffer : Bytes)
+		self.schedule(fd, buffer.to_unsafe, buffer.size.to_u64)
 	end
 
 	def schedule(fd : Int32, buffer : UInt8*, buflen : UInt64)
