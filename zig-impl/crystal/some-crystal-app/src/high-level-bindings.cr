@@ -48,10 +48,6 @@ class IPC
 		fd
 	end
 
-	def write(fd : Int, message : IPCMessage::TypedMessage)
-		self.write(fd, message.payload.to_unsafe, message.payload.size)
-	end
-
 	def write(fd : Int, string : String)
 		self.write(fd, string.to_unsafe, string.size.to_u64)
 	end
