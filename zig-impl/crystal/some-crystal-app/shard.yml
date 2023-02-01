@@ -5,8 +5,10 @@ authors:
   - Philippe Pittoli <karchnu@karchnu.fr>
 
 targets:
-  some-crystal-app:
-    main: src/some-crystal-app.cr
+  main:
+    main: src/main.cr
+  pongd:
+    main: src/pongd.cr
 
 crystal: 1.7.1
 

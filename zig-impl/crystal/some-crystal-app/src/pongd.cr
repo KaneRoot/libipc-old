@@ -1,4 +1,4 @@
-require "./some-crystal-app.cr"
+require "./main.cr"
 
 # In 5 messages: quit
 count = 5
