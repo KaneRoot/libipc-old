@@ -1,4 +1,4 @@
-require "ipc/json"
+require "../src/json"
 
 module AuthD
 	class Client < IPC

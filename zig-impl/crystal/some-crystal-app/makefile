@@ -15,11 +15,18 @@ valgrind:
 run:
 	LD_LIBRARY_PATH=$(LDPATH) $(SRC)
 
+build-pongd:
+	CRYSTAL_LIBRARY_PATH=$(LDPATH) shards build pongd
+
 run-pongd:
 	LD_LIBRARY_PATH=$(LDPATH) ./bin/pongd
 
-build-pongd:
-	CRYSTAL_LIBRARY_PATH=$(LDPATH) shards build pongd
+build-authd:
+	CRYSTAL_LIBRARY_PATH=$(LDPATH) shards build authd
+
+run-authd:
+	LD_LIBRARY_PATH=$(LDPATH) ./bin/authd
+
 
 run-test:
 	crystal run src/libauth.cr

@@ -9,7 +9,25 @@ targets:
     main: src/main.cr
   pongd:
     main: src/pongd.cr
+  authd:
+    main: authd/main.cr
 
 crystal: 1.7.1
+
+dependencies:
+    grok:
+        github: spinscale/grok.cr
+    passwd:
+        git: https://git.baguette.netlib.re/Baguette/passwd.cr
+        branch: master
+    jwt:
+        github: crystal-community/jwt
+        branch: master
+    baguette-crystal-base:
+        git: https://git.baguette.netlib.re/Baguette/baguette-crystal-base
+        branch: master
+    dodb:
+        git: https://git.baguette.netlib.re/Baguette/dodb.cr
+        branch: master
 
 license: MIT

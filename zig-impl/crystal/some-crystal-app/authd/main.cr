@@ -42,7 +42,7 @@ class AuthD::Service < IPC
 	property last_uid_file   : String
 
 	def initialize(@configuration)
-		super
+		super()
 
 		@users = DODB::DataBase(User).new @configuration.storage
 		@users_per_uid   = @users.new_index "uid",   &.uid.to_s
@@ -81,7 +81,10 @@ class AuthD::Service < IPC
 	def handle_request(event : IPC::Event)
 		request_start = Time.utc
 
-		request = AuthD.requests.parse_ipc_json event.message.not_nil!
+		array = event.message.not_nil!
+		slice = Slice.new array.to_unsafe, array.size
+		message = IPCMessage::TypedMessage.deserialize slice
+		request = AuthD.requests.parse_ipc_json message.not_nil!
 
 		if request.nil?
 			raise "unknown request type"
