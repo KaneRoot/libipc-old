@@ -9,7 +9,7 @@ class AuthD::Request
 		def initialize(@login, @password, @email, @phone, @profile)
 		end
 
-		def handle(authd : AuthD::Service, event : IPC::Event::Events)
+		def handle(authd : AuthD::Service)
 			if ! authd.configuration.registrations
 				return Response::Error.new "registrations not allowed"
 			end
