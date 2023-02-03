@@ -193,11 +193,11 @@ begin
 			configuration.shared_key = File.read(file_name).chomp
 		end
 
-		parser.on "-R", "--allow-registrations" do
+		parser.on "-R", "--allow-registrations", "Allow user registration." do
 			configuration.registrations = true
 		end
 
-		parser.on "-E", "--require-email" do
+		parser.on "-E", "--require-email", "Require an email." do
 			configuration.require_email = true
 		end
 
