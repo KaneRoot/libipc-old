@@ -35,6 +35,7 @@ int ipc_wait_event(void* ctx, char* t, size_t* index, int* originfd, char* buffe
 void ipc_context_timer (void* ctx, int timer);
 int ipc_close_fd (void* ctx, int fd);
 int ipc_close (void* ctx, size_t index);
+int ipc_close_all (void* ctx);
 
 // Switch functions (for "protocol" services, such as TCPd).
 int ipc_add_external (void* ctx, int newfd);
