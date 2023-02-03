@@ -70,7 +70,7 @@ class IPC
 		buffer : Bytes = Bytes.new 2000000
 		size = buffer.size.to_u64
 		LibIPC.read(@context, fd, buffer.to_unsafe, pointerof(size))
-		buffer[0..size]
+		buffer[0..size - 1]
 	end
 
 	def schedule(fd : Int32, string : String)
