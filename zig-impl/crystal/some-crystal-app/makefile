@@ -25,14 +25,15 @@ build-authd:
 	CRYSTAL_LIBRARY_PATH=$(LDPATH) shards build authd
 
 run-authd:
-	LD_LIBRARY_PATH=$(LDPATH) ./bin/authd
+	@-rm /tmp/libipc-run/auth 2>/dev/null || true
+	# LD_LIBRARY_PATH=$(LDPATH) ./bin/authd -R -E
+	LD_LIBRARY_PATH=$(LDPATH) ./bin/authd --allow-registrations --require-email
 
 build-authc:
 	CRYSTAL_LIBRARY_PATH=$(LDPATH) shards build authc
 
 run-authc:
 	LD_LIBRARY_PATH=$(LDPATH) ./bin/authc
-
 
 run-test:
 	crystal run src/libauth.cr

@@ -12,7 +12,7 @@ targets:
   authd:
     main: authd/main.cr
   authc:
-    main: authd/authc.cr
+    main: authc/authc.cr
 
 crystal: 1.7.1
 
