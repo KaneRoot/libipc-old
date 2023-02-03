@@ -1,4 +1,4 @@
-require "./some-crystal-app.cr"
+require "../main.cr"
 
 def test_high_level
 	ipc = IPC.new
