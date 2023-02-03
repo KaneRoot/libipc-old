@@ -11,6 +11,8 @@ targets:
     main: src/pongd.cr
   authd:
     main: authd/main.cr
+  authc:
+    main: authd/authc.cr
 
 crystal: 1.7.1
 

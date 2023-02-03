@@ -40,7 +40,7 @@ class IPC
 		fd
 	end
 
-	def connect(name : String) : Int
+	def connect(name : String) : Int32
 		fd = uninitialized Int32
 		if LibIPC.connect_service(@context, pointerof(fd), name, name.size) != 0
 			raise "oh noes, 'connect_service' iz brkn"
@@ -64,6 +64,13 @@ class IPC
 
 	def write(fd : Int32, buffer : Bytes)
 		self.write(fd, buffer.to_unsafe, buffer.size.to_u64)
+	end
+
+	def read(fd : Int32) : Slice(UInt8)
+		buffer : Bytes = Bytes.new 2000000
+		size = buffer.size.to_u64
+		LibIPC.read(@context, fd, buffer.to_unsafe, pointerof(size))
+		buffer[0..size]
 	end
 
 	def schedule(fd : Int32, string : String)
@@ -96,7 +103,7 @@ class IPC
 		end
 	end
 
-	def close_all()
+	def close
 		if LibIPC.close_all(@context) != 0
 			raise "Oh noes, 'close all' iz brkn"
 		end

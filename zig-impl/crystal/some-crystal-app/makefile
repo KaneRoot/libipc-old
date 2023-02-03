@@ -27,6 +27,12 @@ build-authd:
 run-authd:
 	LD_LIBRARY_PATH=$(LDPATH) ./bin/authd
 
+build-authc:
+	CRYSTAL_LIBRARY_PATH=$(LDPATH) shards build authc
+
+run-authc:
+	LD_LIBRARY_PATH=$(LDPATH) ./bin/authc
+
 
 run-test:
 	crystal run src/libauth.cr
