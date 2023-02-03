@@ -31,5 +31,8 @@ dependencies:
     dodb:
         git: https://git.baguette.netlib.re/Baguette/dodb.cr
         branch: master
+    cbor:
+        git: https://git.baguette.netlib.re/Baguette/crystal-cbor
+        branch: master
 
 license: MIT
