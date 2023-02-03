@@ -37,3 +37,10 @@ run-authc:
 
 run-test:
 	crystal run src/libauth.cr
+
+doc:
+	crystal docs
+
+ACCESS_LOGS ?= ./access.log
+serve-doc:
+	darkhttpd docs/ --addr 127.0.0.1 --port 35001 --log $(ACCESS_LOGS)
