@@ -1,6 +1,6 @@
 require "json"
 
-# IPC::JSON is the mother class for all exchanged messages (using JSON).
+# IPC::JSON is the root class for all exchanged messages (using JSON).
 # IPC::JSON inherited classes have a common 'type' class attribute,
 # which enables to find the right IPC::JSON+ class given a TypedMessage's type.
 
