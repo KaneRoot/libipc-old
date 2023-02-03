@@ -8,7 +8,7 @@ targets:
   main:
     main: src/main.cr
   pongd:
-    main: src/pongd.cr
+    main: tests/pongd.cr
   authd:
     main: authd/main.cr
   authc:
