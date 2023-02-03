@@ -5,7 +5,7 @@ require "yaml"
 
 require "baguette-crystal-base"
 
-require "./authd.cr"
+require "../authd/authd.cr"
 
 # require "./altideal-client.cr"
 # require "./yaml_uuid.cr"  # YAML UUID parser
