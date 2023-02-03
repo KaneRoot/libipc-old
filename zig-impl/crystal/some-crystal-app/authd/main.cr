@@ -16,14 +16,14 @@ extend AuthD
 
 class Baguette::Configuration
 	class Auth < IPC
-		property recreate_indexes       : Bool          = false
-		property storage                : String        = "storage"
-		property registrations          : Bool          = false
-		property require_email          : Bool          = false
-		property activation_url         : String?       = nil
-		property field_subject          : String?       = nil
-		property field_from             : String?       = nil
-		property read_only_profile_keys : Array(String) = Array(String).new
+		property recreate_indexes        : Bool          = false
+		property storage                 : String        = "storage"
+		property registrations           : Bool          = false
+		property require_email           : Bool          = false
+		property activation_template     : String        = "email-activation"
+		property recovery_template       : String        = "email-recovery"
+		property mailer_exe              : String        = "mailer"
+		property read_only_profile_keys  : Array(String) = Array(String).new
 
 		property print_password_recovery_parameters : Bool = false
 	end
@@ -135,6 +135,9 @@ class AuthD::Service < IPC
 	def run
 		Baguette::Log.title "Starting authd"
 
+		Baguette::Log.info "(mailer) Email activation template: #{@configuration.activation_template}"
+		Baguette::Log.info "(mailer) Email recovery template: #{@configuration.recovery_template}"
+
 		self.loop do |event|
 			case event.type
 			when LibIPC::EventType::Timer
@@ -201,17 +204,18 @@ begin
 			configuration.require_email = true
 		end
 
-		parser.on "-t subject", "--subject title", "Subject of the email." do |s|
-			configuration.field_subject = s
+		parser.on "-t activation-template-name", "--activation-template name", "Email activation template." do |opt|
+			configuration.activation_template = opt
 		end
 
-		parser.on "-f from-email", "--from email", "'From:' field to use in activation email." do |f|
-			configuration.field_from = f
+		parser.on "-r recovery-template-name", "--recovery-template name", "Email recovery template." do |opt|
+			configuration.recovery_template = opt
 		end
 
-		parser.on "-u", "--activation-url url", "Activation URL." do |opt|
-			configuration.activation_url = opt
+		parser.on "-m mailer-exe", "--mailer mailer-exe", "Application to send registration emails." do |opt|
+			configuration.mailer_exe = opt
 		end
+
 
 		parser.on "-x key", "--read-only-profile-key key", "Marks a user profile key as being read-only." do |key|
 			configuration.read_only_profile_keys.push key
