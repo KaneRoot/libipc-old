@@ -121,6 +121,11 @@ export fn ipc_close (ctx: *Context, index: usize) callconv(.C) i32 {
     return 0;
 }
 
+export fn ipc_close_all (ctx: *Context) callconv(.C) i32 {
+    ctx.close_all () catch return -1;
+    return 0;
+}
+
 /// Add a new file descriptor to listen to.
 /// The FD is marked as "external"; it isn't a simple libipc connection.
 /// You may want to handle any operation on it by yourself.
