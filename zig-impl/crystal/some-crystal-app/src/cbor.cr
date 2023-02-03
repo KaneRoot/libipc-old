@@ -1,4 +1,5 @@
 require "cbor"
+require "./main.cr"
 
 # IPC::CBOR is the root class for all exchanged messages (using CBOR).
 # IPC::CBOR inherited classes have a common 'type' class attribute,
@@ -39,19 +40,6 @@ class IPC
 	def write(fd : Int32, message : IPC::CBOR)
 		typed_msg = IPCMessage::TypedMessage.new message.type.to_u8, message.to_cbor
 		write fd, typed_msg
-	end
-end
-
-# CAUTION: Only use this method on an Array(IPC::CBOR.class)
-class Array(T)
-	def parse_ipc_cbor(message : IPC::Message) : IPC::CBOR?
-		message_type = find &.type.==(message.utype)
-
-		if message_type.nil?
-			raise "invalid message type (#{message.utype})"
-		end
-
-		message_type.from_cbor message.payload
 	end
 end
 
