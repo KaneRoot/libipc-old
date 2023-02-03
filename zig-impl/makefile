@@ -40,7 +40,7 @@ doc: src/ipcd.zig
 	$(ZIGC) build-exe $(ZIGOPTS) $(ZIGMAKEDOC) $^
 
 ACCESS_LOGS ?= ./access.log
-servedoc:
+serve-doc:
 	darkhttpd docs/ --addr 127.0.0.1 --port 35000 --log $(ACCESS_LOGS)
 
 # You can add your specific instructions there.

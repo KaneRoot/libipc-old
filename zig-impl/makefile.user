@@ -16,15 +16,15 @@ stop-tcpd:
 
 run-ipcd:
 	-rm /tmp/libipc-run/ipc 2>/dev/null || true
-	$(VALGRIND) ./ipcd
+	$(VALGRIND) ./bin/ipcd
 
 run-pongd:
 	-rm /tmp/libipc-run/pong 2>/dev/null || true
-	$(VALGRIND) ./pongd
+	$(VALGRIND) ./bin/pongd
 
 run-tcpd:
 	@-rm /tmp/libipc-run/tcp 2>/dev/null || true
-	$(VALGRIND) ./tcpd
+	$(VALGRIND) ./bin/tcpd
 
 TCP_SERVICE_ALT ?= 127.0.0.1:9898
 run-tcpd-alternative:
@@ -38,7 +38,7 @@ run-pong:
 	@#SERVICE is the service to contact and IPC_NETWORK is the IPCd
 	@#configuration to translate "p" into "pong" (still using UNIX
 	@#sockets on the same computer).
-	SERVICE="$(SERVICE_NAME)" IPC_NETWORK="$(IPC_NETWORK)" $(VALGRIND) ./pong
+	SERVICE="$(SERVICE_NAME)" IPC_NETWORK="$(IPC_NETWORK)" $(VALGRIND) ./bin/pong
 
 run-pong-test-tcpd:
 	SERVICE="pong" IPC_NETWORK="pong tcp://$(TCP_SERVICE_ALT)/pong" $(VALGRIND) ./pong
