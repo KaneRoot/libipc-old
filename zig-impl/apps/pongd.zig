@@ -1,6 +1,4 @@
 const std = @import("std");
-const net = std.net;
-const fmt = std.fmt;
 const os = std.os;
 
 const ipc = @import("ipc");
