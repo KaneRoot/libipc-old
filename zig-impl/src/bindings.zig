@@ -1,5 +1,5 @@
 const std = @import("std");
-const print = std.debug.print;
+const log = std.log.scoped(.libipc_bindings);
 const ipc = @import("./ipc.zig");
 const Context = ipc.Context;
 const Message = ipc.Message;
@@ -9,7 +9,7 @@ export fn ipc_context_init (ptr: **Context) callconv(.C) i32 {
     ptr.* = std.heap.c_allocator.create(Context) catch return -1;
 
     ptr.*.* = Context.init(std.heap.c_allocator) catch |err| {
-        print ("libipc: error while init context: {}\n", .{err});
+        log.warn("error while init context: {}\n", .{err});
         return -1;
     };
     return 0;

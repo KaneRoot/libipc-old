@@ -1,5 +1,4 @@
 const std = @import("std");
-const print = std.debug.print;
 
 pub fn hexdump(stream: anytype, header: [] const u8, buffer: [] const u8) std.os.WriteError!void {
     // Print a header.
@@ -71,6 +70,8 @@ pub fn hexdump(stream: anytype, header: [] const u8, buffer: [] const u8) std.os
     try stream.writeAll("\n");
 }
 
+const print = std.debug.print;
+
 test "36-byte hexdump test" {
     print("\nPrint hexdump, NO AUTOMATIC VERIFICATION, READ SOURCE CODE\n", .{});
 
@@ -80,7 +81,6 @@ test "36-byte hexdump test" {
     var hexwriter = hexfbs.writer();
     try hexdump(hexwriter, "Hello World", buffer);
     print("{s}\n", .{hexfbs.getWritten()});
-
 }
 
 test "32-byte hexdump test" {
@@ -92,7 +92,6 @@ test "32-byte hexdump test" {
     var hexwriter = hexfbs.writer();
     try hexdump(hexwriter, "Hello World", buffer);
     print("{s}\n", .{hexfbs.getWritten()});
-
 }
 
 test "26-byte hexdump test" {
@@ -104,7 +103,6 @@ test "26-byte hexdump test" {
     var hexwriter = hexfbs.writer();
     try hexdump(hexwriter, "Hello World", buffer);
     print("{s}\n", .{hexfbs.getWritten()});
-
 }
 
 test "1-byte hexdump test" {
@@ -116,7 +114,6 @@ test "1-byte hexdump test" {
     var hexwriter = hexfbs.writer();
     try hexdump(hexwriter, "Hello World", buffer);
     print("{s}\n", .{hexfbs.getWritten()});
-
 }
 
 test "0-byte hexdump test" {
@@ -128,5 +125,4 @@ test "0-byte hexdump test" {
     var hexwriter = hexfbs.writer();
     try hexdump(hexwriter, "Hello World", buffer);
     print("{s}\n", .{hexfbs.getWritten()});
-
 }

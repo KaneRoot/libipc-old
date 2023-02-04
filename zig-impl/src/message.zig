@@ -1,10 +1,8 @@
 const std = @import("std");
-// const hexdump = @import("./hexdump.zig");
 const testing = std.testing;
 const net = std.net;
 const fmt = std.fmt;
 
-const print = std.debug.print;
 const print_eq = @import("./util.zig").print_eq;
 
 pub const Messages = std.ArrayList(Message);

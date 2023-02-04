@@ -1,5 +1,4 @@
 const std = @import("std");
-const hexdump = @import("./hexdump.zig");
 const testing = std.testing;
 const fmt = std.fmt;
 
@@ -13,7 +12,7 @@ const Allocator = std.mem.Allocator;
 
 const util = @import("./util.zig");
 const print_eq = util.print_eq;
-const print = std.debug.print;
+const log = std.log.scoped(.libipc_switch);
 
 const Event = ipc.Event;
 
@@ -301,7 +300,7 @@ fn default_in (origin: i32, mcontent: [*]u8, mlen: *u32) CBEventType {
 
     // Let's handle this as a disconnection.
     if (packet_size < 4) {
-        // print("message is less than 4 bytes ({} bytes)\n", .{packet_size});
+        log.debug("message is less than 4 bytes ({} bytes)", .{packet_size});
         return CBEventType.FD_CLOSING;
     }
 

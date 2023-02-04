@@ -2,7 +2,7 @@ const std = @import("std");
 const hexdump = @import("./hexdump.zig");
 const testing = std.testing;
 
-const print = std.debug.print;
+const log = std.log.scoped(.libipc_util);
 const Message = @import("./message.zig").Message;
 
 /// A VERY LIGHT and INCOMPLETE way of decoding URI.
@@ -42,7 +42,7 @@ pub fn print_buffer (header: []const u8, buffer: []const u8) void {
     var hexfbs = std.io.fixedBufferStream(&hexbuf);
     var hexwriter = hexfbs.writer();
     hexdump.hexdump(hexwriter, header, buffer) catch unreachable;
-    print("{s}\n", .{hexfbs.getWritten()});
+    log.debug("{s}", .{hexfbs.getWritten()});
 }
 
 pub fn print_message (header: []const u8, m: Message) void {
@@ -55,8 +55,6 @@ pub fn print_eq(expected: anytype, obj: anytype) !void {
     var writer = fbs.writer();
 
     try writer.print("{}", .{obj});
-    // print("print_eq, expected: {s}\n", .{expected});
-    // print("print_eq: {s}\n", .{fbs.getWritten()});
 
     // typing workaround
     var secbuffer: [4096]u8 = undefined;

@@ -1,15 +1,14 @@
 const std = @import("std");
-// const hexdump = @import("./hexdump.zig");
 const testing = std.testing;
 const net = std.net;
 const os = std.os;
 const fmt = std.fmt;
 
+const log = std.log.scoped(.libipc_context);
+
 const receive_fd = @import("./exchange-fd.zig").receive_fd;
 
 const Timer = std.time.Timer;
-
-const print = std.debug.print;
 
 const CBEvent = @import("./callback.zig").CBEvent;
 const Connection = @import("./connection.zig").Connection;
@@ -76,7 +75,7 @@ pub const Context = struct {
     pub fn deinit(self: *Self) void {
         self.close_all() catch |err| switch(err){
             error.IndexOutOfBounds => {
-                print("context.deinit(): IndexOutOfBounds\n", .{});
+                log.err("context.deinit(): IndexOutOfBounds", .{});
             },
         };
         self.allocator.free(self.rundir);
@@ -119,7 +118,7 @@ pub const Context = struct {
         var network_envvar = std.process.getEnvVarOwned(allocator, "IPC_NETWORK") catch |err| switch(err) {
             // error{ OutOfMemory, EnvironmentVariableNotFound, InvalidUtf8 } (ErrorSet)
             error.EnvironmentVariableNotFound => {
-                print("no IPC_NETWORK envvar: IPCd won't be contacted\n", .{});
+                log.debug("no IPC_NETWORK envvar: IPCd won't be contacted", .{});
                 return null;
             }, // no need to contact IPCd
             else => { return err; },
@@ -200,7 +199,7 @@ pub const Context = struct {
     pub fn connect_ipc (self: *Self, service_name: []const u8) !i32 {
         // First, try ipcd.
         if (try self.connect_ipcd (service_name, Connection.Type.IPC)) |fd| {
-            print("Connected via IPCd, fd is {}\n", .{fd});
+            log.debug("Connected via IPCd, fd is {}", .{fd});
             return fd;
         }
         // In case this doesn't work, connect directly.
@@ -342,8 +341,8 @@ pub const Context = struct {
         var current_event: Event = Event.init(Event.Type.ERROR, 0, 0, null);
         var wait_duration: i32 = -1; // -1 == unlimited
 
-        if (self.timer) |t| { wait_duration = t; }
-        else                { print("listening (no timer)\n", .{});         }
+        if (self.timer) |t| { log.debug("listening (timer: {} ms)", .{t}); wait_duration = t; }
+        else                { log.debug("listening (no timer)", .{}); }
 
         // Make sure we listen to the right file descriptors,
         // setting POLLIN & POLLOUT flags.
@@ -368,7 +367,7 @@ pub const Context = struct {
         count = try os.poll(self.pollfd.items, wait_duration);
 
         if (count < 0) {
-            print("there is a problem: poll < 0\n", .{});
+            log.err("there is a problem: poll < 0", .{});
             current_event = Event.init(Event.Type.ERROR, 0, 0, null);
             return current_event;
         }
@@ -404,20 +403,20 @@ pub const Context = struct {
                         },
                         .DISCONNECTION => {
                             var dest = try self.switchdb.getDest(fd.fd);
-                            print("disconnection from {} -> removing {}, too\n", .{fd.fd, dest});
+                            log.debug("disconnection from {} -> removing {}, too", .{fd.fd, dest});
                             self.switchdb.nuke(fd.fd);
                             self.safe_close_fd(fd.fd);
                             self.safe_close_fd(dest);
                         },
                         .ERROR => {
                             var dest = try self.switchdb.getDest(fd.fd);
-                            print("error from {} -> removing {}, too\n", .{fd.fd, dest});
+                            log.warn("error from {} -> removing {}, too", .{fd.fd, dest});
                             self.switchdb.nuke(fd.fd);
                             self.safe_close_fd(fd.fd);
                             self.safe_close_fd(dest);
                         },
                         else => {
-                            print("switch rx incoherent error: {}\n", .{current_event.t});
+                            log.warn("switch rx incoherent error: {}", .{current_event.t});
                             return error.incoherentSwitchError;
                         },
                     }
@@ -431,7 +430,7 @@ pub const Context = struct {
                 else {
                     var maybe_message = self.read(i) catch |err| switch(err) {
                         error.ConnectionResetByPeer => {
-                            print("connection reset by peer\n", .{});
+                            log.warn("connection reset by peer", .{});
                             try self.close(i);
                             return Event.init(Event.Type.DISCONNECTION, i, fd.fd, null);
                         },
@@ -470,13 +469,13 @@ pub const Context = struct {
                         },
                         .ERROR => {
                             var dest = try self.switchdb.getDest(fd.fd);
-                            print("error from {} -> removing {}, too\n", .{fd.fd, dest});
+                            log.warn("error from {} -> removing {}, too", .{fd.fd, dest});
                             self.switchdb.nuke(fd.fd);
                             self.safe_close_fd(fd.fd);
                             self.safe_close_fd(dest);
                         },
                         else => {
-                            print("switch tx incoherent error: {}\n", .{current_event.t});
+                            log.warn("switch tx incoherent error: {}", .{current_event.t});
                             return error.incoherentSwitchError;
                         },
                     }
@@ -608,7 +607,7 @@ test "Context - creation, display and memory check" {
     // SERVER SIDE: creating a service.
     var server = c.server_init("simple-context-test") catch |err| switch(err) {
         error.FileNotFound => {
-            print ("\nError: cannot init server at {s}\n", .{path});
+            log.err("cannot init server at {s}", .{path});
             return err;
         },
         else => return err,
@@ -684,7 +683,7 @@ test "Context - creation, echo once" {
     // SERVER SIDE: creating a service.
     var server = c.server_init("simple-context-test") catch |err| switch(err) {
         error.FileNotFound => {
-            print ("\nError: cannot init server at {s}\n", .{path});
+            log.err("cannot init server at {s}", .{path});
             return err;
         },
         else => return err,

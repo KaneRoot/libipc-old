@@ -1,7 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
 const os = std.os;
-const print = std.debug.print;
+const log = std.log.scoped(.libipc_exchangefd);
 
 const builtin = @import("builtin");
 const windows = std.os.windows;
@@ -97,14 +97,13 @@ pub fn send_fd(sockfd: os.socket_t, msg: []const u8, fd: os.fd_t) void {
         .controllen = @sizeOf(@TypeOf(cmsg)),
         .flags = 0,
         }, 0) catch |err| {
-        print("error sendmsg failed with {s}", .{@errorName(err)});
+        log.err("error sendmsg failed with {s}", .{@errorName(err)});
         return;
     };
 
     if (len != msg.len) {
-        // we don't have much choice but to exit here
-        // log.err(@src(), "expected sendmsg to return {} but got {}", .{msg.len, len});
-        print("expected sendmsg to return {} but got {}", .{msg.len, len});
+        // We don't have much choice but to exit here.
+        log.err("expected sendmsg to return {} but got {}", .{msg.len, len});
         os.exit(0xff);
     }
 }
@@ -215,7 +214,7 @@ pub fn receive_fd(sockfd: os.socket_t, buffer: []u8, msg_size: *usize) !os.fd_t 
     };
 
     var msglen = recvmsg(sockfd, msg, 0) catch |err| {
-        print("error recvmsg failed with {s}", .{@errorName(err)});
+        log.err("error recvmsg failed with {s}", .{@errorName(err)});
         return 0;
     };
 
