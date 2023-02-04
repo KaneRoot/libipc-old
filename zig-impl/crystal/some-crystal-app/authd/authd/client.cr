@@ -1,4 +1,4 @@
-require "../src/json"
+require "../../src/json"
 require "json"
 
 module AuthD
