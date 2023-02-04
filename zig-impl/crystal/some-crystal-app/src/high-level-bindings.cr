@@ -32,8 +32,6 @@ class IPC
 
 	def service_init(name : String) : Int
 		fd = uninitialized Int32
-		puts "service name: #{name}"
-		puts "service name len: #{name.size}"
 		if LibIPC.service_init(@context, pointerof(fd), name, name.size) != 0
 			raise "oh noes, 'service_init' iz brkn"
 		end
