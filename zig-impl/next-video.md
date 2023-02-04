@@ -14,6 +14,11 @@
 	    else => { return err; },
 	};
 
+
+	const log = std.log.scoped(.libipc_context);
+	log.err("context.deinit(): IndexOutOfBounds", .{});
+	log.debug("stuff(): IndexOutOfBounds", .{});
+
 # Functions done
 
 	receive_fd
