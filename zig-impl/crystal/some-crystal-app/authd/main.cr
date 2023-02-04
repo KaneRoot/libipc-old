@@ -64,6 +64,13 @@ class AuthD::Service < IPC
 		digest.hexfinal
 	end
 
+	# new_uid reads the last given UID and returns it incremented.
+	# Splitting the retrieval and record of new user ids allows to
+	# only increment when an user fully registers, thus avoiding a
+	# Denial of Service attack.
+	#
+	# WARNING: to record this new UID, new_uid_commit must be called.
+	# WARNING: new_uid isn't thread safe.
 	def new_uid
 		begin
 			uid = File.read(@last_uid_file).to_i
@@ -72,10 +79,12 @@ class AuthD::Service < IPC
 		end
 
 		uid += 1
+	end
 
+	# new_uid_commit records the new UID.
+	# WARNING: new_uid_commit isn't thread safe.
+	def new_uid_commit(uid : Int)
 		File.write @last_uid_file, uid.to_s
-
-		uid
 	end
 
 	def handle_request(event : IPC::Event)

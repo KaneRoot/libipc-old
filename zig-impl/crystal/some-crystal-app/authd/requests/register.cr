@@ -76,7 +76,7 @@ class AuthD::Request
 
 			# add the user only if we were able to send the confirmation mail
 			authd.users << user
-
+			authd.new_uid_commit uid
 			Response::UserAdded.new user.to_public
 		end
 	end

@@ -44,7 +44,7 @@ class AuthD::Request
 			user.date_registration = Time.local
 
 			authd.users << user
-
+			authd.new_uid_commit uid
 			Response::UserAdded.new user.to_public
 		end
 	end
