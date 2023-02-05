@@ -9,11 +9,12 @@ CATPOINT = $(PWD)/catpoint/catpoint
 MD2POINT = $(PWD)/pointtools/bin/md2point
 PRESENTATION = $(PWD)/libipc.md
 
-BDIR=tmp
+BDIR=build
 clean:
-	@-rm $(BDIR)/*.txt 2>/dev/null || true
+	@-rm -r $(BDIR) 2>/dev/null || true
 
 generate:
+	@test -d $(BDIR) || mkdir $(BDIR)
 	@cd $(BDIR) && (cat $(PRESENTATION) | $(MD2POINT))
 
 display:
