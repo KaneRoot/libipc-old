@@ -31,7 +31,7 @@ For performance improvements within `libipc`:
 
 # Planning for 0.9
 
-- `libipc` should use `epoll/kqueue` for performance improvments
+- `libipc` should use `epoll/kqueue` for performance improvements
   * new functions will be added to the API
   * **but** we'll keep the same API for applications with no need for threading (way simpler implementation)
 - `libipc` should be thread-safe
