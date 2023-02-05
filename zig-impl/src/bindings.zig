@@ -1,6 +1,6 @@
 const std = @import("std");
 const log = std.log.scoped(.libipc_bindings);
-const ipc = @import("./ipc.zig");
+const ipc = @import("./main.zig");
 const Context = ipc.Context;
 const Message = ipc.Message;
 const CBEventType = ipc.CBEvent.Type;

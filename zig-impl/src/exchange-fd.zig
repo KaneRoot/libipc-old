@@ -120,7 +120,7 @@ pub fn recvmsg(
 ) SendMsgError!usize {
     while (true) {
         var m = msg;
-        const rc = system.recvmsg(sockfd, @ptrCast(*std.x.os.Socket.Message, &m), @intCast(c_int, flags));
+        const rc = system.recvmsg(sockfd, @ptrCast(*std.os.msghdr, &m), @intCast(c_uint, flags));
         if (builtin.os.tag == .windows) {
             if (rc == windows.ws2_32.SOCKET_ERROR) {
                 switch (windows.ws2_32.WSAGetLastError()) {

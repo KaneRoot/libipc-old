@@ -20,7 +20,7 @@ const print_eq = @import("./util.zig").print_eq;
 const Messages = @import("./message.zig").Messages;
 const SwitchDB = @import("./switch.zig").SwitchDB;
 const Connections = @import("./connection.zig").Connections;
-const CBEventType = @import("./ipc.zig").CBEvent.Type;
+const CBEventType = @import("./main.zig").CBEvent.Type;
 
 pub const PollFD = std.ArrayList(std.os.pollfd);
 
