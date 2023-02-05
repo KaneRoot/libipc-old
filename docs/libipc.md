@@ -1,7 +1,9 @@
 ## Before starting
 
-This file is a presentation.
-Better get the point tools here: https://git.baguette.netlib.re/Baguette/pointtools
+This file is a presentation based on the point tools:
+https://git.baguette.netlib.re/Baguette/pointtools
+
+To see it, type 'make'.
 
 TODO: Explain the problem
 TODO: Explain the solution
