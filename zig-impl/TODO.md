@@ -1,3 +1,12 @@
+### LibIPC not entirely exposed
+
+Some functions are not available in the bindings, mostly functions related to switching.
+
+### MISC
+
+- create the unix socket directory
+- close the connection and log when we receive too big messages
+
 ### src/exchange-fd.zig
 
 - still very WIP, even though it works as expected
