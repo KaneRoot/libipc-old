@@ -22,4 +22,3 @@ test {
     _ = @import("./switch.zig");
     _ = @import("./util.zig");
 }
-
