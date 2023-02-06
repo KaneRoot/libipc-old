@@ -207,8 +207,8 @@ fn successful_in (_: i32, mcontent: [*]u8, mlen: *u32) CBEventType {
 
     var fbs = std.io.fixedBufferStream(mcontent[0..mlen.*]);
     var writer = fbs.writer();
-    _ = m.write (writer) catch unreachable;
-    mlen.* = @truncate(u32, m.payload.len);
+    const bytes_written = m.write (writer) catch unreachable;
+    mlen.* = @truncate(u32, bytes_written);
     return CBEventType.NO_ERROR;
 }
 
