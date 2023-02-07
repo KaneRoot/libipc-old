@@ -13,7 +13,7 @@ TODO: Explain other possible implementations
 TODO: Explain future of LibIPC
 TODO: Explain what can be done right now
 TODO: Explain what I actually do with it
-TODO: Explain LibIPC isn't a silver bullet but fine for what I want
+TODO: Explain LibIPC isn't a silver bullet
 
 Have fun!
 
@@ -228,6 +228,7 @@ LibIPC has a high level API
 	defer context.deinit();
 
 #pause
+
 	var pong_fd = try context.connect_service ("pong");
 	var message = try Message.init (pong_fd, allocator, "hello");
 	try context.schedule (message);
