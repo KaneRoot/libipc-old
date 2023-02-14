@@ -24,6 +24,10 @@
 	receive_fd
 	send_fd
 
+# switch
+
+An example of `catch |err| switch(err)`.
+
 # Test stuff
 
 	zig test src/main.zig
@@ -35,6 +39,22 @@
 	ACCESS_LOGS ?= ./access.log
 	servedoc:
 		darkhttpd docs/ --addr 127.0.0.1 --port 35000 --log $(ACCESS_LOGS)
+
+### Frustration
+
+Searching for a type, this type depends on a sub-type, which depends on the OS, which ultimately... cannot be documented automatically.
+
+Example:
+
+	std.fs.File.Mode => const Mode: "mode_t" = os.mode_t;
+	os.mode_t => const mode_t: "mode_t" = system.mode_t;
+
+### anytype
+
+    // create a server path for the UNIX socket based on the service name
+    pub fn server_path(self: *Self, service_name: []const u8, writer: anytype) !void {
+        try writer.print("{s}/{s}", .{ self.rundir, service_name });
+    }
 
 # Errors
 
