@@ -1,0 +1,21 @@
+all: allfigures
+
+FIGS=$(shell ls figs/*.fig)
+FIGL=./figlayers
+
+LIBIPC=figs/libipc
+
+figlibipc: $(LIBIPC).fig
+	echo "libipc"
+	$(FIGL) 999 5 10-12               < $(LIBIPC).fig > $(LIBIPC)-1.fig # local
+	$(FIGL) 999 5 11-12 15 20-25    < $(LIBIPC).fig > $(LIBIPC)-2.fig # remote
+	$(FIGL) 999 5       15    30    < $(LIBIPC).fig > $(LIBIPC)-3.fig # web remote
+
+allfigures: figlibipc
+	echo "make ps"
+	cd figs/ ; ./graph-this.sh
+	# cd diag/ ; ./graph-this.sh
+
+clean:
+	echo "rm figs/*.ps"
+	rm figs/*.ps
