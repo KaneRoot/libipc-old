@@ -56,6 +56,17 @@ Example:
         try writer.print("{s}/{s}", .{ self.rundir, service_name });
     }
 
+From
+    var buffer: [1000]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buffer);
+    var writer = fbs.writer();
+    try ctx.server_path("simple-context-test", writer);
+    var path = fbs.getWritten();
+To
+    var buffer: [1000]u8 = undefined;
+    var path = try std.fmt.bufPrint(&buffer, "{s}/{s}", .{ ctx.rundir, "simple-context-test" });
+
+
 # Errors
 
 Double returning type => no need for specific return structures.
